@@ -1,6 +1,4 @@
-black
-isort
-flake8
+ruff
 mypy
 pytest
 pytest-cov

@@ -38,9 +38,8 @@ pre-commit install
 Run checks:
 
 ```bash
-black --check src tests
-isort --check-only src tests
-flake8 src tests
+ruff check src tests
+ruff format --check src tests
 mypy src
 pytest
 ```
