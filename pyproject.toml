@@ -68,6 +68,7 @@ select = [
     "PERF",  # Perflint – performance-related checks
     "FURB",  # Refurb – rules for code refurbishment
     "RUF",   # Ruff-specific rules – additional Ruff checks
+    "ANN",   # Flake8-annotations - enforces type annotations
 ]
 
 # 2. CAREFULLY FILTERED IGNORE LIST (D1 and E501 removed from here so they run!)
@@ -92,9 +93,9 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 # Rules to ignore only within test environments
-"test_*.py" = ["S101", "S105", "S106", "S107", "PLR2004", "SLF001", "D", "ARG001", "PLC0415", "EM102"]
-"*_test.py" = ["S101", "S105", "S106", "S107", "PLR2004", "SLF001", "D", "ARG001", "PLC0415", "EM102"]
-"conftest.py" = ["S101", "S105", "S106", "S107", "PLR2004", "SLF001", "D", "ARG001", "PLC0415", "EM102"]
+"test_*.py" = ["S101", "S105", "S106", "S107", "PLR2004", "SLF001", "D", "ARG001", "PLC0415", "EM102", "ANN"]
+"*_test.py" = ["S101", "S105", "S106", "S107", "PLR2004", "SLF001", "D", "ARG001", "PLC0415", "EM102", "ANN"]
+"conftest.py" = ["S101", "S105", "S106", "S107", "PLR2004", "SLF001", "D", "ARG001", "PLC0415", "EM102", "ANN"]
 
 [tool.ruff.lint.mccabe]
 # Standard strict function complexity ceiling
