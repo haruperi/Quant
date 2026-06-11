@@ -4,25 +4,31 @@ All notable HaruQuantAI project changes should be recorded here.
 
 ## [Unreleased]
 
-### Added
+| ID       | Functionality | Notes                                     |
+| -------- | ------------- | ----------------------------------------- |
+| TODO-001 | Logger        | Logs all events in JSON format to a file. |
 
-- Documentation bootstrap for HaruQuantAI.
+## Added
 
-### Decisions
+| ID       | Functionality                | Notes                                    |
+| -------- | ---------------------------- | ---------------------------------------- |
+| DONE-001 | Implementation Documentation | Documentation bootstrap for HaruQuantAI. |
 
-- Project name: HaruQuantAI.
-- Clean-room rebuild with preserved functionality and safety behavior.
-- Docs are the project source of truth.
-- Module order approved from Utils through Conversation.
-- MT5 and SQLite are launch-critical.
-- Email and Telegram are launch notification channels.
-- Backend entry point is `api.main:app`.
+## Decisions
 
-### Pending
+| ID      | Decision       | Notes                                                                                                                            |
+| ------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| DEC-001 | Project Name   | project name is HaruQuantAI                                                                                                      |
+| DEC-002 | Project Memory | project memory lives in durable files, not chat                                                                                  |
+| DEC-003 | Rebuild Style  | HaruQuantAI is a clean-room rebuild that preserves important functionality and safety behavior while adding new product behavior |
+| DEC-004 | Product Scope  | product scope includes tools, API, UI, data, live, research, and conversation surfaces                                           |
 
-- First-release module acceptance depth.
-- First symbols/timeframes/accounts.
-- Mutation/governance matrix.
-- Risk threshold approval.
-- AI provider and retention approval.
-- Deployment target.
+## Pending Decisions
+
+| ID       | Proposed decision                             | Why pending                                              |
+| -------- | --------------------------------------------- | -------------------------------------------------------- |
+| PDEC-001 | Chat and regulated artifact retention policy. | Compliance impact.                                       |
+| PDEC-002 | Risk threshold defaults.                      | Numeric trading policy must be approved before live use. |
+| PDEC-003 | Event bus implementation phases.              | Needs reliability and deployment input.                  |
+| PDEC-004 | New service-tool catalog format.              | Needs implementation repo structure.                     |
+| PDEC-005 | SQLite production duration.                   | Depends on concurrency and deployment targets.           |

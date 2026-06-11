@@ -6,21 +6,21 @@
 
 **Generated from uploaded source requirements:**
 
-| Phase | Source file | Module path | Phase focus |
-|---|---|---|---|
-| 01 | `01-utils(3).md` | `tools/utils/` | Core platform primitives: logging, standard envelopes, errors, identity, time, paths, schemas, security, settings, auth, event bus, notifications, observability. |
-| 02 | `02-data(2).md` | `tools/data/` | Contract-driven historical, real-time, local, synthetic, broker, and external market-data gateway. |
-| 03 | `03-indicator(1).md` | `tools/indicators/` | Pure deterministic indicator calculation library with no direct I/O and explicit no-lookahead metadata. |
-| 04 | `04-strategy(1).md` | `tools/strategies/` | Side-effect-free decision layer converting market data, indicators, config, and read-only state into TradeIntent objects. |
-| 05 | `05-risk(1).md` | `tools/risk/` | Deterministic risk governance and safety gate between strategy intent and execution-sensitive workflows. |
-| 06 | `06_analytics(1).md` | `tools/analytics/` | Read-only performance, robustness, dashboard, and reporting evidence layer. |
-| 07 | `07_trading(1).md` | `tools/trading/` | Shared route-aware trading surface for simulation and live workflows. |
-| 08 | `08-simulation(1).md` | `tools/simulation/` | Canonical deterministic tick-based backtesting and simulated execution engine. |
-| 09 | `09_optimization(1).md` | `tools/optimization/` | Parameter search, walk-forward, robustness, Monte Carlo, scoring, and optimization evidence packaging. |
-| 10 | `10_live(1).md` | `tools/live/` | Governed live-mutation boundary, live session runtime, gates, reconciliation, monitoring, and incident handling. |
-| 11 | `11_ui_api(1).md` | `api/ + ui/` | FastAPI gateway and Next.js frontend surface for validated, governed access to backend capabilities. |
-| 12 | `12_research(1).md` | `tools/research/` | Sandboxed market research, edge discovery, statistical validation, market structure, feature engineering, and reports. |
-| 13 | `13_conversation(1).md` | `tools/conversation/` | Governed AI chat layer with durable threads, memory, page context, CEO/planner routing, read-only evidence, and action drafts. |
+| Phase | Source file               | Module path             | Phase focus                                                                                                                                                       |
+| ----- | ------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 01    | `01-utils(3).md`        | `tools/utils/`        | Core platform primitives: logging, standard envelopes, errors, identity, time, paths, schemas, security, settings, auth, event bus, notifications, observability. |
+| 02    | `02-data(2).md`         | `tools/data/`         | Contract-driven historical, real-time, local, synthetic, broker, and external market-data gateway.                                                                |
+| 03    | `03-indicator(1).md`    | `tools/indicators/`   | Pure deterministic indicator calculation library with no direct I/O and explicit no-lookahead metadata.                                                           |
+| 04    | `04-strategy(1).md`     | `tools/strategies/`   | Side-effect-free decision layer converting market data, indicators, config, and read-only state into TradeIntent objects.                                         |
+| 05    | `05-risk(1).md`         | `tools/risk/`         | Deterministic risk governance and safety gate between strategy intent and execution-sensitive workflows.                                                          |
+| 06    | `06_analytics(1).md`    | `tools/analytics/`    | Read-only performance, robustness, dashboard, and reporting evidence layer.                                                                                       |
+| 07    | `07_trading(1).md`      | `tools/trading/`      | Shared route-aware trading surface for simulation and live workflows.                                                                                             |
+| 08    | `08-simulation(1).md`   | `tools/simulation/`   | Canonical deterministic tick-based backtesting and simulated execution engine.                                                                                    |
+| 09    | `09_optimization(1).md` | `tools/optimization/` | Parameter search, walk-forward, robustness, Monte Carlo, scoring, and optimization evidence packaging.                                                            |
+| 10    | `10_live(1).md`         | `tools/live/`         | Governed live-mutation boundary, live session runtime, gates, reconciliation, monitoring, and incident handling.                                                  |
+| 11    | `11_ui_api(1).md`       | `api/ + ui/`          | FastAPI gateway and Next.js frontend surface for validated, governed access to backend capabilities.                                                              |
+| 12    | `12_research(1).md`     | `tools/research/`     | Sandboxed market research, edge discovery, statistical validation, market structure, feature engineering, and reports.                                            |
+| 13    | `13_conversation(1).md` | `tools/conversation/` | Governed AI chat layer with durable threads, memory, page context, CEO/planner routing, read-only evidence, and action drafts.                                    |
 
 ---
 
@@ -63,10 +63,10 @@
 
 ## Cross-Phase Architecture Deliverables
 
-- [ ] Create `docs/PROJECT.md` updates that describe this phased implementation approach without duplicating every requirement.
+- [ ] Create `docs/ARCHITECTURE.md` updates that describe this phased implementation approach without duplicating every requirement.
 - [ ] Create `docs/ARCHITECTURE.md` module-boundary diagram showing ownership and forbidden ownership for every module.
-- [ ] Create `docs/PROJECT.md` with one concise module entry per phase: owns, does not own, public surface, dependencies, and readiness status.
-- [ ] Create `docs/ROADMAP.md` with phase gates and deferred scope register.
+- [ ] Create `docs/ARCHITECTURE.md` with one concise module entry per phase: owns, does not own, public surface, dependencies, and readiness status.
+- [ ] Maintain `CHANGELOG.md` with decisions log and pending/deferred scope.
 - [ ] Create `docs/BUILDER.md` with common Builder dry-run rules and acceptance checklist.
 - [ ] Maintain a central error-code catalog or per-module error catalogs linked from module docs.
 - [ ] Maintain an official tool catalog per module before exposing anything to agents or API routes.
@@ -77,7 +77,7 @@
 
 ## Phase 01 — Utils Foundation
 
-**Source:** `01-utils(3).md`
+**Source:** `01-utils.md`
 **Target path:** `tools/utils/`
 **Phase objective:** Create the shared HaruQuantAI utility foundation before any domain module depends on envelopes, errors, IDs, timestamps, schema validation, settings, security, events, notifications, or observability.
 
@@ -989,6 +989,7 @@ The following structure is the expected implementation layout. Files must be cre
 #### Recommended File Creation Order
 
 **API (FastAPI):**
+
 1. `api/dependencies.py` (DI containers and middleware injectors)
 2. `api/middleware/__init__.py`
 3. `api/middleware/redaction.py`, `api/middleware/intent.py`, `api/middleware/auth.py`
@@ -998,12 +999,14 @@ The following structure is the expected implementation layout. Files must be cre
 7. `api/main.py` (Production entry-point runner)
 
 **UI (Next.js):**
+
 1. `ui/src/lib/validators/` (DTO validation schemas matching backend types)
 2. `ui/src/lib/api/` (Guarded-write preflight typed API fetch clients)
 3. `ui/src/components/` (RADIX UI page components)
 4. `ui/src/app/` (Next.js app layouts and routers)
-      api/               # Typed API client wrappers
-      validators/        # Client contract validation schemas
+   api/               # Typed API client wrappers
+   validators/        # Client contract validation schemas
+
 ```
 
 ### Phase acceptance gate
