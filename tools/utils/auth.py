@@ -1,0 +1,163 @@
+"""Authentication context and deterministic authorization helpers."""
+
+from __future__ import annotations
+
+import time
+from collections.abc import Iterable
+from dataclasses import dataclass
+from typing import Literal
+
+from tools.utils.errors import SecurityError, ValidationError
+from tools.utils.identity import validate_request_id, validate_workflow_id
+from tools.utils.standard import (
+    StandardResponse,
+    build_metadata,
+    error_response,
+    success_response,
+)
+
+PrincipalType = Literal["owner", "operator", "service", "agent", "viewer"]
+DecisionStatus = Literal["allowed", "denied"]
+
+
+def _string_set(value: object) -> set[str]:
+    """Return a set of strings from an iterable object."""
+    if value is None:
+        return set()
+    if isinstance(value, str) or not isinstance(value, Iterable):
+        raise ValidationError("auth collection fields must be iterable.")
+    return {str(item) for item in value}
+
+
+@dataclass(frozen=True, slots=True)
+class AuthContext:
+    """Immutable authentication context."""
+
+    principal_id: str
+    principal_type: PrincipalType
+    roles: frozenset[str]
+    permissions: frozenset[str]
+    scopes: frozenset[str]
+    request_id: str
+    workflow_id: str
+    correlation_id: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AuthorizationDecision:
+    """Deterministic authorization decision."""
+
+    status: DecisionStatus
+    allowed: bool
+    reason: str
+    missing_permissions: tuple[str, ...]
+
+
+def build_auth_context(  # noqa: PLR0913
+    *,
+    principal_id: str,
+    principal_type: PrincipalType,
+    roles: set[str] | frozenset[str],
+    permissions: set[str] | frozenset[str],
+    scopes: set[str] | frozenset[str],
+    request_id: str,
+    workflow_id: str,
+    correlation_id: str | None = None,
+) -> AuthContext:
+    """Build and validate an immutable auth context."""
+    if not principal_id.strip():
+        raise ValidationError("principal_id must be non-empty.", code="INVALID_INPUT")
+    if principal_type not in {"owner", "operator", "service", "agent", "viewer"}:
+        raise ValidationError("principal_type is invalid.", code="INVALID_INPUT")
+    return AuthContext(
+        principal_id=principal_id.strip(),
+        principal_type=principal_type,
+        roles=frozenset(roles),
+        permissions=frozenset(permissions),
+        scopes=frozenset(scopes),
+        request_id=validate_request_id(request_id),
+        workflow_id=validate_workflow_id(workflow_id),
+        correlation_id=correlation_id,
+    )
+
+
+def authorize_action(
+    context: AuthContext | None,
+    *,
+    required_permissions: set[str] | frozenset[str],
+    required_scopes: set[str] | frozenset[str] = frozenset(),
+) -> AuthorizationDecision:
+    """Return a deny-by-default authorization decision."""
+    if context is None:
+        return AuthorizationDecision(
+            "denied", False, "missing auth context", tuple(required_permissions)
+        )
+    missing_permissions = tuple(
+        sorted(set(required_permissions) - set(context.permissions))
+    )
+    missing_scopes = tuple(sorted(set(required_scopes) - set(context.scopes)))
+    missing = (*missing_permissions, *missing_scopes)
+    if missing:
+        return AuthorizationDecision(
+            "denied", False, "missing permissions or scopes", missing
+        )
+    return AuthorizationDecision("allowed", True, "authorized", ())
+
+
+def require_authorization(
+    context: AuthContext | None,
+    *,
+    required_permissions: set[str] | frozenset[str],
+    required_scopes: set[str] | frozenset[str] = frozenset(),
+) -> None:
+    """Raise ``SecurityError`` when authorization fails."""
+    decision = authorize_action(
+        context,
+        required_permissions=required_permissions,
+        required_scopes=required_scopes,
+    )
+    if not decision.allowed:
+        raise SecurityError(decision.reason, code="AUTHORIZATION_FAILED")
+
+
+def validate_auth_context(
+    payload: dict[str, object],
+    *,
+    request_id: str | None = None,
+) -> StandardResponse:
+    """Official low-risk read-only auth context validator."""
+    start = time.perf_counter()
+    metadata = build_metadata(
+        tool_name="validate_auth_context",
+        start_time=start,
+        request_id=request_id,
+        tool_category="utils",
+        tool_risk_level="low",
+    )
+    try:
+        build_auth_context(
+            principal_id=str(payload["principal_id"]),
+            principal_type=payload["principal_type"],  # type: ignore[arg-type]
+            roles=_string_set(payload.get("roles")),
+            permissions=_string_set(payload.get("permissions")),
+            scopes=_string_set(payload.get("scopes")),
+            request_id=str(payload["request_id"]),
+            workflow_id=str(payload["workflow_id"]),
+            correlation_id=(
+                str(payload["correlation_id"])
+                if payload.get("correlation_id") is not None
+                else None
+            ),
+        )
+    except (KeyError, TypeError, ValidationError, SecurityError) as exc:
+        return error_response(
+            message="Auth context is invalid.",
+            code=getattr(exc, "code", "INVALID_AUTH_CONTEXT"),
+            details=str(exc),
+            metadata=metadata,
+        )
+    return success_response(
+        message="Auth context is valid.",
+        data={"valid": True},
+        metadata=metadata,
+    )

@@ -24,14 +24,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-import logging
 import math
 import re
 import time
 from collections.abc import Mapping
 from typing import Literal, NotRequired, TypedDict
 
-import tools.utils as utils_registry
 from tools.utils.errors import (
     ErrorPayload,
     SecurityError,
@@ -40,8 +38,7 @@ from tools.utils.errors import (
     normalize_error_code,
     validate_error_payload,
 )
-
-project_logger: logging.Logger = utils_registry.logger
+from tools.utils.logger import logger as project_logger
 
 ToolStatus = Literal["success", "error"]
 ToolRiskLevel = Literal["low", "medium", "high", "critical"]

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from datetime import UTC as DATETIME_UTC
-from datetime import date, datetime, time, tzinfo
+from datetime import date, datetime, time, timedelta, timezone, tzinfo
 from typing import Literal, NoReturn, TypedDict
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -29,6 +29,9 @@ from tools.utils.logger import logger
 
 DEFAULT_TIMEZONE = "UTC"
 UTC = DATETIME_UTC
+FALLBACK_TIMEZONES: dict[str, tzinfo] = {
+    "Africa/Cairo": timezone(timedelta(hours=3), name="Africa/Cairo"),
+}
 TimestampIssueCode = Literal[
     "INVALID_TIMESTAMP",
     "NON_MONOTONIC_TIMESTAMP",
@@ -82,6 +85,8 @@ def _timezone_from(value: str | tzinfo) -> tzinfo:
     try:
         return ZoneInfo(name)
     except ZoneInfoNotFoundError as exc:
+        if name in FALLBACK_TIMEZONES:
+            return FALLBACK_TIMEZONES[name]
         message = f"unknown timezone: {name}"
         raise ValidationError(message, code="INVALID_INPUT") from exc
 

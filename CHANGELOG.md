@@ -13,6 +13,16 @@ All notable HaruQuantAI project changes should be recorded here.
 | TODO-006 | Utils Identity | Collision-resistant trace IDs, prefix validation, version defaulting, and request propagation helpers. |
 | TODO-007 | Utils Normalization | UTC-first timestamp parsing, formatting, stale checks, sequence diagnostics, and clock-drift helpers. |
 | TODO-008 | Utils Paths | Safe path normalization, base-directory traversal protection, and explicit directory creation helpers. |
+| TODO-009 | Utils Dataframe Tools | Lazy-pandas dataframe alignment, serialization, OHLC/OHLCV comparison, chunking, and parameter-grid helpers. |
+| TODO-010 | Utils Data Quality | Bounded OHLCV quality diagnostics and standard-envelope validation wrapper without repair or persistence ownership. |
+| TODO-011 | Utils Schema Validation | Deterministic schema, range, handoff, evidence, approval, registry, and freshness validation helpers. |
+| TODO-012 | Utils Security | Secret redaction, password hashing, lazy optional encryption helpers, and redaction tool wrapper. |
+| TODO-013 | Utils Settings | Immutable runtime settings loader with explicit side-effect boundaries and safe path normalization. |
+| TODO-014 | Utils Auth | Immutable auth contexts, deny-by-default authorization decisions, and auth validation envelope helper. |
+| TODO-015 | Utils Event Bus | Bounded in-memory event envelopes, pub/sub, idempotency handling, queue-full behavior, and sanitized payloads. |
+| TODO-016 | Utils Error Routing | Sanitized error routing with deduplication and caller-owned Event Bus integration. |
+| TODO-017 | Utils Notifications | Fake/local notification routing, redaction, disabled-channel handling, throttling, deduplication, and provider failure reporting. |
+| TODO-018 | Utils Observability | In-memory metrics, Prometheus-compatible text export, health snapshots, clock-drift status, and circuit-breaker primitives. |
 
 ## Added
 

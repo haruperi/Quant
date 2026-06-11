@@ -6,6 +6,7 @@ This script demonstrates how to import, configure, and use the structured logger
 import sys
 import tempfile
 import time
+from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -16,11 +17,20 @@ if project_root not in sys.path:
 
 # Import the default root logger as exported from the tools.utils package
 from tools.utils import (  # noqa: E402
+    FakeNotificationAdapter,
+    InMemoryEventBus,
+    MetricRegistry,
+    NotificationRouter,
     # standard imports
     SecurityError,
+    authorize_action,
+    build_auth_context,
     build_error_event,
+    build_event_envelope,
+    build_health_snapshot,
     build_metadata,
     canonical_json,
+    chunked,
     circuit_open_response,
     # logger imports
     clear_trace_context,
@@ -29,23 +39,35 @@ from tools.utils import (  # noqa: E402
     ensure_parent_dir,
     error_response,
     exception_to_error_payload,
+    export_prometheus_metrics,
     format_utc_timestamp,
     generate_correlation_id,
     generate_event_id,
     generate_request_id,
     generate_workflow_id,
     get_logger,
+    hash_password,
+    inspect_ohlcv_quality,
     is_stale,
+    load_runtime_settings,
     logger,
     message_for,
     normalize_path,
     normalize_timestamp,
+    parameter_combinations,
+    record_metric,
+    redact_mapping,
+    render_notification,
+    route_error,
     set_trace_context,
     success_response,
+    validate_auth_context,
+    validate_input_schema,
     validate_ohlcv_records,
     validate_request_id,
     validate_standard_response,
     validate_timestamp_sequence,
+    verify_password,
 )
 
 
@@ -284,6 +306,187 @@ def example_06_path_utilities() -> None:
         )
 
 
+def example_07_dataframe_tools() -> None:
+    """Demonstrate dataframe helper primitives and lazy optional dependency errors."""
+    print("\n" + "=" * 100)
+    print("--- 7. Dataframe Helper Primitives ---")
+    print("=" * 100)
+    print(
+        canonical_json(
+            {
+                "chunks": chunked([1, 2, 3], size=2),
+                "parameter_combinations": parameter_combinations(
+                    {"fast": [5, 10], "slow": [20]},
+                ),
+            },
+        ),
+    )
+
+
+def example_08_schema_validation() -> None:
+    """Demonstrate schema validation official tool envelopes."""
+    print("\n" + "=" * 100)
+    print("--- 8. Schema Validation Helpers ---")
+    print("=" * 100)
+    schema_response = validate_input_schema(
+        {"schema_version": "1.0.0", "name": "demo"},
+        {"required": ("schema_version",), "schema_version": "1.0.0"},
+        request_id="req-usage-schema",
+    )
+    validate_standard_response(schema_response)
+    print(canonical_json(schema_response))
+
+
+def example_09_data_quality() -> None:
+    """Demonstrate OHLCV diagnostics and lazy pandas failure behavior."""
+    print("\n" + "=" * 100)
+    print("--- 9. Data Quality Diagnostics ---")
+    print("=" * 100)
+    issues = validate_ohlcv_records(
+        [
+            {"symbol": "EURUSD", "open": 1.1, "high": 1.2, "low": 1.0, "close": 1.15},
+            {"symbol": "EURUSD", "open": 0, "high": 1.2, "low": 1.0, "close": 1.15},
+        ],
+        expected_symbol="EURUSD",
+    )
+    print(canonical_json({"record_issues": issues}))
+    try:
+        inspect_ohlcv_quality(object())
+    except Exception as exc:  # noqa: BLE001
+        print(canonical_json(exception_to_error_payload(exc)))
+
+
+def example_10_security() -> None:
+    """Demonstrate security redaction and password hashing helpers."""
+    print("\n" + "=" * 100)
+    print("--- 10. Security Helpers ---")
+    print("=" * 100)
+    password_hash = hash_password("usage-password", salt=b"1234567890123456")
+    print(
+        canonical_json(
+            {
+                "redacted": redact_mapping({"api_key": "secret", "safe": "ok"}),
+                "password_verified": verify_password("usage-password", password_hash),
+            },
+        ),
+    )
+
+
+def example_11_settings() -> None:
+    """Demonstrate immutable runtime settings loading."""
+    print("\n" + "=" * 100)
+    print("--- 11. Runtime Settings Helpers ---")
+    print("=" * 100)
+    settings = load_runtime_settings(
+        {
+            "HARUQUANT_HOME": str(Path.cwd() / ".haruquant"),
+            "ALLOW_LIVE_MUTATIONS": "false",
+            "STRICT_VALIDATION": "true",
+        },
+    )
+    print(
+        canonical_json(
+            {
+                "environment": settings.environment,
+                "allow_live_mutations": settings.allow_live_mutations,
+                "strict_validation": settings.strict_validation,
+            },
+        ),
+    )
+
+
+def example_12_auth() -> None:
+    """Demonstrate auth context validation and deny-by-default decisions."""
+    print("\n" + "=" * 100)
+    print("--- 12. Auth Helpers ---")
+    print("=" * 100)
+    request_id = generate_request_id()
+    workflow_id = generate_workflow_id()
+    context = build_auth_context(
+        principal_id="usage-agent",
+        principal_type="agent",
+        roles={"researcher"},
+        permissions={"utils.read"},
+        scopes={"usage"},
+        request_id=request_id,
+        workflow_id=workflow_id,
+    )
+    decision = authorize_action(context, required_permissions={"utils.read"})
+    response = validate_auth_context(
+        {
+            "principal_id": context.principal_id,
+            "principal_type": context.principal_type,
+            "roles": list(context.roles),
+            "permissions": list(context.permissions),
+            "scopes": list(context.scopes),
+            "request_id": request_id,
+            "workflow_id": workflow_id,
+        },
+    )
+    print(canonical_json({"authorized": decision.allowed, "reason": decision.reason}))
+    print(canonical_json(response))
+
+
+def example_13_event_bus() -> None:
+    """Demonstrate sanitized Event Bus publish behavior."""
+    print("\n" + "=" * 100)
+    print("--- 13. Event Bus Helpers ---")
+    print("=" * 100)
+    bus = InMemoryEventBus()
+    event = build_event_envelope(
+        event_type="utility.usage",
+        source="usage_example",
+        payload={"token": "secret", "status": "ok"},
+    )
+    print(canonical_json(asdict(bus.publish(event))))
+
+
+def example_14_error_routing() -> None:
+    """Demonstrate sanitized error routing."""
+    print("\n" + "=" * 100)
+    print("--- 14. Error Routing Helpers ---")
+    print("=" * 100)
+    result = route_error(
+        SecurityError("token=secret should be redacted"),
+        source="usage_example",
+    )
+    print(canonical_json(asdict(result)))
+
+
+def example_15_notifications() -> None:
+    """Demonstrate fake/local notification routing."""
+    print("\n" + "=" * 100)
+    print("--- 15. Notification Helpers ---")
+    print("=" * 100)
+    adapter = FakeNotificationAdapter(channel="desktop")
+    router = NotificationRouter(adapters={"desktop": adapter})
+    notification = router.route(
+        channel="desktop",
+        title="Usage example",
+        body="token=secret",
+        dedupe_key="usage-example",
+    )
+    print(canonical_json(asdict(notification)))
+    print(canonical_json(render_notification(title="Notice", body="**hello**")))
+
+
+def example_16_observability() -> None:
+    """Demonstrate metrics export and health snapshots."""
+    print("\n" + "=" * 100)
+    print("--- 16. Observability Helpers ---")
+    print("=" * 100)
+    registry = MetricRegistry()
+    record_metric(
+        registry,
+        name="haruquant_usage_total",
+        kind="counter",
+        value=1,
+        labels={"component": "utils"},
+    )
+    print(export_prometheus_metrics(registry))
+    print(canonical_json(build_health_snapshot(component="utils", status="healthy")))
+
+
 if __name__ == "__main__":
     example_01_logger()
     example_02_standard_response()
@@ -291,3 +494,13 @@ if __name__ == "__main__":
     example_04_identity_utilities()
     example_05_normalization_utilities()
     example_06_path_utilities()
+    example_07_dataframe_tools()
+    example_08_schema_validation()
+    example_09_data_quality()
+    example_10_security()
+    example_11_settings()
+    example_12_auth()
+    example_13_event_bus()
+    example_14_error_routing()
+    example_15_notifications()
+    example_16_observability()

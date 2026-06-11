@@ -87,6 +87,7 @@ ignore = [
     "EM101",   # Flake8-errmsg - Checks for string literals in exception constructors
     "TC002",   # Flake8-type-checking - Checks for typing imports outside TYPE_CHECKING blocks
     "TC003",   # Flake8-type-checking - Checks for imports from typing outside TYPE_CHECKING blocks
+    "UP047",   # Pyupgrade - PEP 695 generic functions are not supported by pinned mypy/pre-commit yet
     "COM812",  # Flake8-commas - Formatter conflicts
     "ISC001",  # Flake8-implicit-str-concat - Formatter conflicts
 ]
