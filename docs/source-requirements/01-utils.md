@@ -772,34 +772,34 @@ _No source checklist items mapped to this subgroup._
 
 #### Functional Requirements
 
-- [ ] The module must provide `normalize_path`.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 318_
-- [ ] The module must provide `ensure_dir`.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 319_
-- [ ] The module must provide `ensure_parent_dir`.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 320_
-- [ ] Path inputs must be validated.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 321_
-- [ ] Directory creation helpers must be explicit side-effect helpers.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 322_
-- [ ] `normalize_path` must have no side effects.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 323_
-- [ ] `ensure_dir` must create a directory when missing.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 324_
-- [ ] `ensure_parent_dir` must create a parent directory when missing.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 325_
-- [ ] Path traversal outside `base_dir` must be rejected when a base directory is supplied.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 326_
-- [ ] Path helpers must return `Path` objects.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 327_
-- [ ] File and directory permissions must use platform-safe defaults.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 328_
-- [ ] Path helpers must accept string or `Path` values and optional `base_dir`.  _Source: 6. Inputs and Outputs > 6.1 Inputs, line 852_
-- [ ] Path helpers must return `Path` objects.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 873_
-- [ ] Implement `tools/utils/paths.py` before settings and artifact helpers.  _Source: 14. Implementation Priority Order, line 1333_
+- [X] The module must provide `normalize_path`.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 318_
+- [X] The module must provide `ensure_dir`.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 319_
+- [X] The module must provide `ensure_parent_dir`.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 320_
+- [X] Path inputs must be validated.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 321_
+- [X] Directory creation helpers must be explicit side-effect helpers.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 322_
+- [X] `normalize_path` must have no side effects.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 323_
+- [X] `ensure_dir` must create a directory when missing.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 324_
+- [X] `ensure_parent_dir` must create a parent directory when missing.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 325_
+- [X] Path traversal outside `base_dir` must be rejected when a base directory is supplied.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 326_
+- [X] Path helpers must return `Path` objects.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 327_
+- [X] File and directory permissions must use platform-safe defaults.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 328_
+- [X] Path helpers must accept string or `Path` values and optional `base_dir`.  _Source: 6. Inputs and Outputs > 6.1 Inputs, line 852_
+- [X] Path helpers must return `Path` objects.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 873_
+- [X] Implement `tools/utils/paths.py` before settings and artifact helpers.  _Source: 14. Implementation Priority Order, line 1333_
 
 #### Non-Functional & Security Requirements
 
-- [ ] Importing any `tools.utils` module must not create files or directories.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 693_
+- [X] Importing any `tools.utils` module must not create files or directories.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 693_
 
 #### Testing & Edge Cases
 
-- [ ] Empty paths must fail validation.  _Source: 8. Edge Cases, line 918_
-- [ ] Unsafe path traversal outside `base_dir` must be rejected.  _Source: 8. Edge Cases, line 919_
-- [ ] Tests must cover success paths.  _Source: 11. Testing Requirements, line 1129_
-- [ ] Tests must cover failure paths.  _Source: 11. Testing Requirements, line 1132_
-- [ ] Logger tests must verify human-readable console formatting includes datetime, level, module path, function name, line number, and message.  _Source: 11. Testing Requirements, line 1144_
-- [ ] Path tests must verify safe normalization, unsafe traversal, directory creation, and parent creation.  _Source: 11. Testing Requirements, line 1150_
-- [ ] A concurrency stress test suite must exist outside the fast unit-test path.  _Source: 11. Testing Requirements, line 1225_
+- [X] Empty paths must fail validation.  _Source: 8. Edge Cases, line 918_
+- [X] Unsafe path traversal outside `base_dir` must be rejected.  _Source: 8. Edge Cases, line 919_
+- [X] Tests must cover success paths.  _Source: 11. Testing Requirements, line 1129_
+- [X] Tests must cover failure paths.  _Source: 11. Testing Requirements, line 1132_
+- [X] Logger tests must verify human-readable console formatting includes datetime, level, module path, function name, line number, and message.  _Source: 11. Testing Requirements, line 1144_
+- [X] Path tests must verify safe normalization, unsafe traversal, directory creation, and parent creation.  _Source: 11. Testing Requirements, line 1150_
+- [X] A concurrency stress test suite must exist outside the fast unit-test path.  _Source: 11. Testing Requirements, line 1225_
 
 ---
 

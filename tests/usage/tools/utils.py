@@ -25,6 +25,8 @@ from tools.utils import (  # noqa: E402
     # logger imports
     clear_trace_context,
     configure_logging,
+    ensure_dir,
+    ensure_parent_dir,
     error_response,
     exception_to_error_payload,
     format_utc_timestamp,
@@ -36,6 +38,7 @@ from tools.utils import (  # noqa: E402
     is_stale,
     logger,
     message_for,
+    normalize_path,
     normalize_timestamp,
     set_trace_context,
     success_response,
@@ -48,6 +51,9 @@ from tools.utils import (  # noqa: E402
 
 def example_01_logger() -> None:
     """Run logging system usage demonstrations."""
+    print("\n" + "=" * 100)
+    print("--- 1. Logging System Usage Demonstrations ---")
+    print("=" * 100)
     # Log debug message using the default imported root logger
     logger.info("This is an info message")
     logger.warning("This is a warning message")
@@ -126,6 +132,9 @@ def example_01_logger() -> None:
 
 def example_02_standard_response() -> None:
     """Demonstrate success and error handling with standard envelopes."""
+    print("\n" + "=" * 100)
+    print("--- 2. Standard Response Handling (Success/Error Envelopes) ---")
+    print("=" * 100)
     start_time = time.perf_counter()
     metadata = build_metadata(
         tool_name="validate_research_payload",
@@ -188,6 +197,9 @@ def example_02_standard_response() -> None:
 
 def example_03_error_utilities() -> None:
     """Demonstrate typed errors and deterministic exception mapping."""
+    print("\n" + "=" * 100)
+    print("--- 3. Typed Errors and Deterministic Exception Mapping ---")
+    print("=" * 100)
     payload = exception_to_error_payload(SecurityError("agent is not approved"))
     print(canonical_json(payload))
     print(message_for(payload["code"]))
@@ -195,6 +207,9 @@ def example_03_error_utilities() -> None:
 
 def example_04_identity_utilities() -> None:
     """Demonstrate trace ID generation and request ID propagation."""
+    print("\n" + "=" * 100)
+    print("--- 4. Trace ID Generation and Request ID Propagation ---")
+    print("=" * 100)
     request_id = validate_request_id(generate_request_id())
     identity_payload = {
         "request_id": request_id,
@@ -218,6 +233,9 @@ def example_04_identity_utilities() -> None:
 
 def example_05_normalization_utilities() -> None:
     """Demonstrate UTC-first timestamp normalization helpers."""
+    print("\n" + "=" * 100)
+    print("--- 5. UTC-First Timestamp Normalization Helpers ---")
+    print("=" * 100)
     normalized = normalize_timestamp(
         "2026-06-11T12:30:00+02:00",
         assumed_timezone="UTC",
@@ -242,9 +260,34 @@ def example_05_normalization_utilities() -> None:
     )
 
 
+def example_06_path_utilities() -> None:
+    """Demonstrate safe path normalization and explicit directory creation."""
+    print("\n" + "=" * 100)
+    print("--- 6. Safe Path Normalization and Explicit Directory Creation ---")
+    print("=" * 100)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base_dir = Path(tmpdir)
+        normalized = normalize_path("audit/events/event.json", base_dir=base_dir)
+        cache_dir = ensure_dir("cache", base_dir=base_dir)
+        artifact_path = ensure_parent_dir(
+            "artifacts/run-001/result.json",
+            base_dir=base_dir,
+        )
+        print(
+            canonical_json(
+                {
+                    "normalized": str(normalized.relative_to(base_dir)),
+                    "cache_exists": cache_dir.is_dir(),
+                    "artifact_parent_exists": artifact_path.parent.is_dir(),
+                },
+            ),
+        )
+
+
 if __name__ == "__main__":
     example_01_logger()
     example_02_standard_response()
     example_03_error_utilities()
     example_04_identity_utilities()
     example_05_normalization_utilities()
+    example_06_path_utilities()

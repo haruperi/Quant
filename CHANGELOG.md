@@ -12,6 +12,7 @@ All notable HaruQuantAI project changes should be recorded here.
 | TODO-005 | Utils Errors | Typed HaruQuant exceptions, deterministic error-code registry, and safe exception-to-envelope mapping. |
 | TODO-006 | Utils Identity | Collision-resistant trace IDs, prefix validation, version defaulting, and request propagation helpers. |
 | TODO-007 | Utils Normalization | UTC-first timestamp parsing, formatting, stale checks, sequence diagnostics, and clock-drift helpers. |
+| TODO-008 | Utils Paths | Safe path normalization, base-directory traversal protection, and explicit directory creation helpers. |
 
 ## Added
 

@@ -64,6 +64,7 @@ from tools.utils.normalization import (
     utc_now,
     validate_timestamp_sequence,
 )
+from tools.utils.paths import ensure_dir, ensure_parent_dir, normalize_path
 from tools.utils.standard import (
     AlertDeduplicator,
     DataQualityIssue,
@@ -119,6 +120,8 @@ __all__ = [
     "code_for_exception",
     "configure_logging",
     "details_for_exception",
+    "ensure_dir",
+    "ensure_parent_dir",
     "ensure_version",
     "error_name",
     "error_response",
@@ -139,6 +142,7 @@ __all__ = [
     "logger",
     "message_for",
     "normalize_error_code",
+    "normalize_path",
     "normalize_timestamp",
     "normalize_timestamp_column",
     "normalize_timestamp_sequence",
