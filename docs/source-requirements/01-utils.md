@@ -342,56 +342,56 @@ _No source checklist items mapped to this subgroup._
 
 #### Functional Requirements
 
-- [ ] The logger must be exported as a support object and must not be treated as an official AI tool.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 152_
-- [ ] Official AI tools must use structured logging.  _Source: 3. Functional Requirements > 3.3 Official AI Tools, line 181_
-- [ ] The module must expose a project-wide `logger`.  _Source: 3. Functional Requirements > 3.5 Logging, line 205_
-- [ ] The module must expose `get_logger(name: str | None = None)`.  _Source: 3. Functional Requirements > 3.5 Logging, line 206_
-- [ ] The module must expose `configure_logging(level: str | int = "INFO")`.  _Source: 3. Functional Requirements > 3.5 Logging, line 207_
-- [ ] Logging must use Python `logging`.  _Source: 3. Functional Requirements > 3.5 Logging, line 208_
-- [ ] Logging must use structured JSON-compatible output for production runtime events.  _Source: 3. Functional Requirements > 3.5 Logging, line 209_
-- [ ] Production logging must use a JSON-compatible structured formatter.  _Source: 3. Functional Requirements > 3.5 Logging, line 210_
-- [ ] Local development console logging must support colorized human-readable output.  _Source: 3. Functional Requirements > 3.5 Logging, line 211_
-- [ ] Human-readable console log lines must use the format `datetime | level | module.submodule.filename:function:line | message`.  _Source: 3. Functional Requirements > 3.5 Logging, line 212_
-- [ ] Human-readable console timestamps must use the format `YYYY-MM-DD HH:MM:SS`.  _Source: 3. Functional Requirements > 3.5 Logging, line 213_
-- [ ] Logging must include `timestamp`, `level`, `logger_name`, `message`, `event_name`, `module`, `function`, `request_id`, `workflow_id`, `correlation_id`, and `error_code` where available.  _Source: 3. Functional Requirements > 3.5 Logging, line 214_
-- [ ] Human-readable console logging must include source line numbers where available.  _Source: 3. Functional Requirements > 3.5 Logging, line 215_
-- [ ] Logging must support child loggers per module while preserving a stable root logger name.  _Source: 3. Functional Requirements > 3.5 Logging, line 216_
-- [ ] Logging configuration must avoid duplicate handlers.  _Source: 3. Functional Requirements > 3.5 Logging, line 217_
-- [ ] Logging configuration must happen only through an explicit configuration function.  _Source: 3. Functional Requirements > 3.5 Logging, line 218_
-- [ ] Importing logger utilities must not force application-level logging configuration.  _Source: 3. Functional Requirements > 3.5 Logging, line 219_
-- [ ] File logging must be opt-in and configured explicitly through runtime settings or `configure_logging`.  _Source: 3. Functional Requirements > 3.5 Logging, line 220_
-- [ ] File logging must write only to configured log directories that are normalized through safe path handling.  _Source: 3. Functional Requirements > 3.5 Logging, line 221_
-- [ ] File logging must use rotating log files when enabled.  _Source: 3. Functional Requirements > 3.5 Logging, line 222_
-- [ ] Log rotation must support configurable maximum file size and maximum retained file count.  _Source: 3. Functional Requirements > 3.5 Logging, line 223_
-- [ ] Log retention must support configurable deletion of old rotated log files.  _Source: 3. Functional Requirements > 3.5 Logging, line 224_
-- [ ] Log retention deletion must be bounded to configured log directories and must not delete arbitrary files.  _Source: 3. Functional Requirements > 3.5 Logging, line 225_
-- [ ] Log file writes, rotation, and retention deletion must degrade safely if the filesystem or logging sink fails.  _Source: 3. Functional Requirements > 3.5 Logging, line 226_
-- [ ] Logging must avoid writing secrets.  _Source: 3. Functional Requirements > 3.5 Logging, line 227_
-- [ ] Log-level configuration must be controlled by runtime settings.  _Source: 3. Functional Requirements > 3.5 Logging, line 228_
-- [ ] Production files must log function/tool calls, validation failures, successful completions, recoverable warnings, and execution failures where applicable.  _Source: 3. Functional Requirements > 3.5 Logging, line 229_
-- [ ] Official AI tool logs must distinguish start, completion, validation failure, recoverable warning, and execution failure lifecycle events.  _Source: 3. Functional Requirements > 3.5 Logging, line 230_
-- [ ] Official AI tool logs must include request and workflow trace identifiers where available.  _Source: 3. Functional Requirements > 3.5 Logging, line 231_
-- [ ] Event Bus logs must include publish, subscribe, delivery failure, retry, dead-letter, queue-full, and dropped-event events.  _Source: 3. Functional Requirements > 3.5 Logging, line 232_
-- [ ] Notification logs must include routing decisions and delivery outcomes without exposing sensitive message bodies.  _Source: 3. Functional Requirements > 3.5 Logging, line 233_
-- [ ] Auth logs must include sanitized auth validation and authorization decisions.  _Source: 3. Functional Requirements > 3.5 Logging, line 234_
-- [ ] Observability logs must include metrics/export/health-check failures where detectable.  _Source: 3. Functional Requirements > 3.5 Logging, line 235_
-- [ ] Production files must never log passwords, API keys, broker credentials, encryption keys, tokens, raw private payloads, full approval packets, notification provider credentials, authorization headers, or Telegram bot tokens.  _Source: 3. Functional Requirements > 3.5 Logging, line 236_
-- [ ] Implement `tools/utils/logger.py` before modules that need production logging.  _Source: 14. Implementation Priority Order, line 1328_
+- [x] The logger must be exported as a support object and must not be treated as an official AI tool.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 152_
+- [x] Official AI tools must use structured logging.  _Source: 3. Functional Requirements > 3.3 Official AI Tools, line 181_
+- [x] The module must expose a project-wide `logger`.  _Source: 3. Functional Requirements > 3.5 Logging, line 205_
+- [x] The module must expose `get_logger(name: str | None = None)`.  _Source: 3. Functional Requirements > 3.5 Logging, line 206_
+- [x] The module must expose `configure_logging(level: str | int = "INFO")`.  _Source: 3. Functional Requirements > 3.5 Logging, line 207_
+- [x] Logging must use Python `logging`.  _Source: 3. Functional Requirements > 3.5 Logging, line 208_
+- [x] Logging must use structured JSON-compatible output for production runtime events.  _Source: 3. Functional Requirements > 3.5 Logging, line 209_
+- [x] Production logging must use a JSON-compatible structured formatter.  _Source: 3. Functional Requirements > 3.5 Logging, line 210_
+- [x] Local development console logging must support colorized human-readable output.  _Source: 3. Functional Requirements > 3.5 Logging, line 211_
+- [x] Human-readable console log lines must use the format `datetime | level | module.submodule.filename:function:line | message`.  _Source: 3. Functional Requirements > 3.5 Logging, line 212_
+- [x] Human-readable console timestamps must use the format `YYYY-MM-DD HH:MM:SS`.  _Source: 3. Functional Requirements > 3.5 Logging, line 213_
+- [x] Logging must include `timestamp`, `level`, `logger_name`, `message`, `event_name`, `module`, `function`, `request_id`, `workflow_id`, `correlation_id`, and `error_code` where available.  _Source: 3. Functional Requirements > 3.5 Logging, line 214_
+- [x] Human-readable console logging must include source line numbers where available.  _Source: 3. Functional Requirements > 3.5 Logging, line 215_
+- [x] Logging must support child loggers per module while preserving a stable root logger name.  _Source: 3. Functional Requirements > 3.5 Logging, line 216_
+- [x] Logging configuration must avoid duplicate handlers.  _Source: 3. Functional Requirements > 3.5 Logging, line 217_
+- [x] Logging configuration must happen only through an explicit configuration function.  _Source: 3. Functional Requirements > 3.5 Logging, line 218_
+- [x] Importing logger utilities must not force application-level logging configuration.  _Source: 3. Functional Requirements > 3.5 Logging, line 219_
+- [x] File logging must be opt-in and configured explicitly through runtime settings or `configure_logging`.  _Source: 3. Functional Requirements > 3.5 Logging, line 220_
+- [x] File logging must write only to configured log directories that are normalized through safe path handling.  _Source: 3. Functional Requirements > 3.5 Logging, line 221_
+- [x] File logging must use rotating log files when enabled.  _Source: 3. Functional Requirements > 3.5 Logging, line 222_
+- [x] Log rotation must support configurable maximum file size and maximum retained file count.  _Source: 3. Functional Requirements > 3.5 Logging, line 223_
+- [x] Log retention must support configurable deletion of old rotated log files.  _Source: 3. Functional Requirements > 3.5 Logging, line 224_
+- [x] Log retention deletion must be bounded to configured log directories and must not delete arbitrary files.  _Source: 3. Functional Requirements > 3.5 Logging, line 225_
+- [x] Log file writes, rotation, and retention deletion must degrade safely if the filesystem or logging sink fails.  _Source: 3. Functional Requirements > 3.5 Logging, line 226_
+- [x] Logging must avoid writing secrets.  _Source: 3. Functional Requirements > 3.5 Logging, line 227_
+- [x] Log-level configuration must be controlled by runtime settings.  _Source: 3. Functional Requirements > 3.5 Logging, line 228_
+- [x] Production files must log function/tool calls, validation failures, successful completions, recoverable warnings, and execution failures where applicable.  _Source: 3. Functional Requirements > 3.5 Logging, line 229_
+- [x] Official AI tool logs must distinguish start, completion, validation failure, recoverable warning, and execution failure lifecycle events.  _Source: 3. Functional Requirements > 3.5 Logging, line 230_
+- [x] Official AI tool logs must include request and workflow trace identifiers where available.  _Source: 3. Functional Requirements > 3.5 Logging, line 231_
+- [x] Event Bus logs must include publish, subscribe, delivery failure, retry, dead-letter, queue-full, and dropped-event events.  _Source: 3. Functional Requirements > 3.5 Logging, line 232_
+- [x] Notification logs must include routing decisions and delivery outcomes without exposing sensitive message bodies.  _Source: 3. Functional Requirements > 3.5 Logging, line 233_
+- [x] Auth logs must include sanitized auth validation and authorization decisions.  _Source: 3. Functional Requirements > 3.5 Logging, line 234_
+- [x] Observability logs must include metrics/export/health-check failures where detectable.  _Source: 3. Functional Requirements > 3.5 Logging, line 235_
+- [x] Production files must never log passwords, API keys, broker credentials, encryption keys, tokens, raw private payloads, full approval packets, notification provider credentials, authorization headers, or Telegram bot tokens.  _Source: 3. Functional Requirements > 3.5 Logging, line 236_
+- [x] Implement `tools/utils/logger.py` before modules that need production logging.  _Source: 14. Implementation Priority Order, line 1328_
 
 #### Non-Functional & Security Requirements
 
-- [ ] Important events and recoverable failures must use structured logging.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 679_
-- [ ] Immutable constants and logger objects are allowed.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 708_
-- [ ] Logging must be thread-safe under concurrent tool execution.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 724_
-- [ ] Logging overhead must be minimal for normal tool execution.  _Source: 4. Non-Functional Requirements > 4.6 Performance, line 766_
-- [ ] Logging must degrade safely if a logging sink fails.  _Source: 4. Non-Functional Requirements > 4.7 Reliability and Degradation, line 772_
-- [ ] Documentation must describe required log fields and optional trace fields.  _Source: 12. Documentation Requirements, line 1253_
-- [ ] Local development logging supports colorized human-readable console output in the approved format.  _Source: 15. Definition of Done, line 1369_
+- [x] Important events and recoverable failures must use structured logging.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 679_
+- [x] Immutable constants and logger objects are allowed.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 708_
+- [x] Logging must be thread-safe under concurrent tool execution.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 724_
+- [x] Logging overhead must be minimal for normal tool execution.  _Source: 4. Non-Functional Requirements > 4.6 Performance, line 766_
+- [x] Logging must degrade safely if a logging sink fails.  _Source: 4. Non-Functional Requirements > 4.7 Reliability and Degradation, line 772_
+- [x] Documentation must describe required log fields and optional trace fields.  _Source: 12. Documentation Requirements, line 1253_
+- [x] Local development logging supports colorized human-readable console output in the approved format.  _Source: 15. Definition of Done, line 1369_
 
 #### Testing & Edge Cases
 
-- [ ] Logging output must be deterministic enough for unit testing where log fields are asserted.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 716_
-- [ ] Logger tests must verify colorized console output can be enabled and disabled deterministically.  _Source: 11. Testing Requirements, line 1145_
+- [x] Logging output must be deterministic enough for unit testing where log fields are asserted.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 716_
+- [x] Logger tests must verify colorized console output can be enabled and disabled deterministically.  _Source: 11. Testing Requirements, line 1145_
 
 ---
 

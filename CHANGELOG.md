@@ -6,7 +6,6 @@ All notable HaruQuantAI project changes should be recorded here.
 
 | ID       | Functionality | Notes                                     |
 | -------- | ------------- | ----------------------------------------- |
-| TODO-001 | Logger        | Logs all events in JSON format to a file. |
 | TODO-002 | Utils Registry | Public registry for utility domain, side-effect free. |
 
 ## Added
@@ -14,6 +13,7 @@ All notable HaruQuantAI project changes should be recorded here.
 | ID       | Functionality                | Notes                                    |
 | -------- | ---------------------------- | ---------------------------------------- |
 | DONE-001 | Implementation Documentation | Documentation bootstrap for HaruQuantAI. |
+| DONE-002 | Logger                       | Structured JSON production logs, color console logs, rotating file safety. |
 
 ## Decisions
 

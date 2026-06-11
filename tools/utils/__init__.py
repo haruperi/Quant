@@ -6,6 +6,8 @@ read configuration files, open network connections, or import heavy optional
 dependencies.
 """
 
+from tools.utils.logger import configure_logging, get_logger, logger
+
 # The following list defines the approved public names exported by the utils domain.
 # Since individual modules will be implemented incrementally, this list serves
 # as the source of truth for public API boundaries.
