@@ -32,6 +32,14 @@ from collections.abc import Mapping
 from typing import Literal, NotRequired, TypedDict
 
 import tools.utils as utils_registry
+from tools.utils.errors import (
+    ErrorPayload,
+    SecurityError,
+    ValidationError,
+    exception_to_error_payload,
+    normalize_error_code,
+    validate_error_payload,
+)
 
 project_logger: logging.Logger = utils_registry.logger
 
@@ -78,29 +86,7 @@ HIGH_CARDINALITY_LABEL_PATTERN = re.compile(
 )
 OHLC_COLUMNS = ("open", "high", "low", "close")
 
-ERROR_MESSAGES: dict[str, str] = {
-    "INVALID_INPUT": "The request input is invalid.",
-    "PERMISSION_DENIED": "The request is not permitted.",
-    "DATA_NOT_FOUND": "The requested data was not found.",
-    "EMPTY_RESULT": "The request completed but returned no results.",
-    "SERVICE_UNAVAILABLE": "The required service is unavailable.",
-    "BROKER_UNAVAILABLE": "The broker service is unavailable.",
-    "DATABASE_ERROR": "A database operation failed.",
-    "NETWORK_ERROR": "A network operation failed.",
-    "TIMEOUT": "The operation timed out.",
-    "VALIDATION_FAILED": "Response validation failed.",
-    "TOOL_EXECUTION_FAILED": "The tool failed during execution.",
-    "UNKNOWN_ERROR": "An unknown error occurred.",
-    "CIRCUIT_OPEN": "The circuit is open and the operation was blocked.",
-    "INVALID_EVENT": "The event payload is invalid.",
-}
-
-
-class StandardErrorPayload(TypedDict):
-    """Structured error payload used by standard tool envelopes."""
-
-    code: str
-    details: str
+StandardErrorPayload = ErrorPayload
 
 
 class StandardMetadata(TypedDict):
@@ -207,56 +193,6 @@ class AlertDeduplicator:
         return True
 
 
-class Error(Exception):
-    """Base deterministic utility error with a stable error code.
-
-    Use this for support helpers that need to map exceptions into standard
-    envelopes without hardcoding every future domain-specific exception.
-
-    Args:
-        message: Human-readable error details.
-        code: Stable deterministic error code.
-    """
-
-    code = "UNKNOWN_ERROR"
-
-    def __init__(self, message: str, *, code: str | None = None) -> None:
-        """Initialize the error with deterministic message and code."""
-        super().__init__(message)
-        if code is not None:
-            self.code = code
-
-
-class ValidationError(Error):
-    """Input or output validation failure."""
-
-    code = "VALIDATION_FAILED"
-
-
-class ConfigurationError(Error):
-    """Invalid or missing runtime configuration."""
-
-    code = "SERVICE_UNAVAILABLE"
-
-
-class DataError(Error):
-    """Data lookup, shape, or availability failure."""
-
-    code = "DATA_NOT_FOUND"
-
-
-class SecurityError(Error):
-    """Permission, authorization, or redaction failure."""
-
-    code = "PERMISSION_DENIED"
-
-
-class ExternalServiceError(Error):
-    """External service, network, broker, or timeout failure."""
-
-    code = "SERVICE_UNAVAILABLE"
-
-
 def _validate_non_empty_string(value: object, field_name: str) -> str:
     """Return a stripped string or raise a deterministic validation error."""
     if not isinstance(value, str) or not value.strip():
@@ -296,44 +232,6 @@ def _sanitize_mapping(payload: Mapping[str, object]) -> dict[str, object]:
         else:
             sanitized[str(key)] = _sanitize_value(value)
     return sanitized
-
-
-def error_name(code: str) -> str:
-    """Return a human-readable name for an error code.
-
-    Use this in logs, tests, usage examples, and operational diagnostics when a
-    deterministic display name is needed for a known or future error code.
-
-    Args:
-        code: Error code to convert.
-
-    Returns:
-        Title-cased display name. Unknown codes are handled deterministically.
-
-    Side effects:
-        None.
-    """
-    normalized = _validate_non_empty_string(code, "code").upper()
-    return normalized.replace("_", " ").title()
-
-
-def message_for(code: str) -> str:
-    """Return the deterministic default message for an error code.
-
-    Use this when building standard error envelopes and no more specific,
-    sanitized message is available.
-
-    Args:
-        code: Error code to look up.
-
-    Returns:
-        Known default message or a safe fallback for unknown codes.
-
-    Side effects:
-        None.
-    """
-    normalized = _validate_non_empty_string(code, "code").upper()
-    return ERROR_MESSAGES.get(normalized, f"{error_name(normalized)} occurred.")
 
 
 def stable_identifier(payload: object, *, prefix: str = "id") -> str:
@@ -499,6 +397,16 @@ def validate_ohlcv_records(  # noqa: C901, PLR0912
 
     expected = expected_symbol.strip() if expected_symbol else None
     for row_index, record in enumerate(records):
+        for column in OHLC_COLUMNS:
+            if column not in record:
+                add_issue(
+                    code="INVALID_INPUT",
+                    severity="error",
+                    message="Mandatory OHLC column is missing.",
+                    column=column,
+                    sample={"row_index": row_index, "column": column},
+                )
+
         for column in OHLC_COLUMNS:
             value = record.get(column)
             sample = {"row_index": row_index, "column": column, "value": value}
@@ -726,7 +634,7 @@ def error_response(
     Side effects:
         Logs a structured error event.
     """
-    normalized_code = _validate_non_empty_string(code, "code").upper()
+    normalized_code = normalize_error_code(code)
     response: StandardResponse = {
         "status": ERROR_STATUS,
         "message": _validate_non_empty_string(message, "message"),
@@ -771,20 +679,18 @@ def response_from_exception(
     Side effects:
         Logs the exception through the project logger.
     """
-    raw_code = getattr(exception, "code", "TOOL_EXECUTION_FAILED")
-    code = raw_code if isinstance(raw_code, str) else "TOOL_EXECUTION_FAILED"
-    details = f"{exception.__class__.__name__}: {exception}"
+    payload = exception_to_error_payload(exception)
     project_logger.exception(
         "standard exception mapped to response",
         extra={
             "event_name": "standard_response_exception",
-            "error_code": code,
+            "error_code": payload["code"],
         },
     )
     return error_response(
         message=message,
-        code=code,
-        details=details,
+        code=payload["code"],
+        details=payload["details"],
         metadata=metadata,
     )
 
@@ -847,7 +753,7 @@ def build_error_event(
     Side effects:
         None.
     """
-    normalized_code = _validate_non_empty_string(code, "code").upper()
+    normalized_code = normalize_error_code(code)
     safe_details = _sanitize_text(details)
     safe_metadata = _sanitize_mapping(metadata or {})
     event_material = {
@@ -1028,13 +934,7 @@ def _validate_error_payload(error: object) -> None:
     """Validate standard envelope error payload."""
     if not isinstance(error, Mapping):
         raise ValidationError("error responses must include an error mapping.")
-    keys = set(error.keys())
-    if keys != {"code", "details"}:
-        raise ValidationError("error must contain exactly code and details.")
-    if not isinstance(error["code"], str) or not error["code"]:
-        raise ValidationError("error.code must be a non-empty string.")
-    if not isinstance(error["details"], str) or not error["details"]:
-        raise ValidationError("error.details must be a non-empty string.")
+    validate_error_payload(error)
 
 
 def canonical_json(payload: object) -> str:

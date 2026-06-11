@@ -5,21 +5,23 @@ import time
 from collections.abc import Mapping
 
 import pytest
-from tools.utils.standard import (
-    AlertDeduplicator,
+from tools.utils.errors import (
     ConfigurationError,
     SecurityError,
     ValidationError,
+    error_name,
+    message_for,
+)
+from tools.utils.standard import (
+    AlertDeduplicator,
     build_data_quality_issue,
     build_error_event,
     build_metadata,
     canonical_json,
     circuit_open_response,
-    error_name,
     error_response,
     get_execution_ms,
     is_official_tool_allowed,
-    message_for,
     response_from_exception,
     stable_identifier,
     success_response,
@@ -158,7 +160,7 @@ def test_canonical_json_is_deterministic_and_rejects_nan() -> None:
 def test_error_helpers_are_deterministic_for_known_and_unknown_codes() -> None:
     assert error_name("invalid_input") == "Invalid Input"
     assert message_for("INVALID_INPUT") == "The request input is invalid."
-    assert message_for("FUTURE_DOMAIN_ERROR") == "Future Domain Error occurred."
+    assert message_for("FUTURE_DOMAIN_ERROR") == "An unknown error occurred."
 
 
 def test_response_from_exception_uses_compatible_code_attribute() -> None:
@@ -282,6 +284,19 @@ def test_validate_ohlcv_records_marks_symbol_verification_not_available() -> Non
 
     assert issues[0]["code"] == "SYMBOL_NOT_AVAILABLE"
     assert issues[0]["samples"] == [{"verification": "not_available"}]
+
+
+def test_validate_ohlcv_records_reports_missing_ohlc_columns_as_invalid_input() -> None:
+    issues = validate_ohlcv_records([{"open": 1.0, "high": 2.0}])
+
+    assert {issue["code"] for issue in issues} >= {"INVALID_INPUT"}
+    invalid_columns = {
+        issue["column"] for issue in issues if issue["code"] == "INVALID_INPUT"
+    }
+    assert invalid_columns >= {
+        "low",
+        "close",
+    }
 
 
 def test_validate_ohlcv_records_truncates_issue_list() -> None:

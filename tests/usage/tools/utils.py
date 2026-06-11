@@ -16,6 +16,7 @@ if project_root not in sys.path:
 # Import the default root logger as exported from the tools.utils package
 from tools.utils import (  # noqa: E402
     # standard imports
+    SecurityError,
     build_error_event,
     build_metadata,
     canonical_json,
@@ -24,8 +25,10 @@ from tools.utils import (  # noqa: E402
     clear_trace_context,
     configure_logging,
     error_response,
+    exception_to_error_payload,
     get_logger,
     logger,
+    message_for,
     set_trace_context,
     success_response,
     validate_ohlcv_records,
@@ -173,6 +176,14 @@ def example_02_standard_response() -> None:
     print(canonical_json(event))
 
 
+def example_03_error_utilities() -> None:
+    """Demonstrate typed errors and deterministic exception mapping."""
+    payload = exception_to_error_payload(SecurityError("agent is not approved"))
+    print(canonical_json(payload))
+    print(message_for(payload["code"]))
+
+
 if __name__ == "__main__":
     example_01_logger()
     example_02_standard_response()
+    example_03_error_utilities()

@@ -575,62 +575,62 @@ _No source checklist items mapped to this subgroup._
 
 #### Functional Requirements
 
-- [ ] Official AI tools must use deterministic error codes.  _Source: 3. Functional Requirements > 3.3 Official AI Tools, line 183_
-- [ ] Standard response validation should validate error codes against the approved error-code set where practical.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 198_
-- [ ] The module must define `Error`.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 280_
-- [ ] The module must define `ValidationError`.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 281_
-- [ ] The module must define `ConfigurationError`.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 282_
-- [ ] The module must define `SecurityError`.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 283_
-- [ ] The module must define `DataError`.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 284_
-- [ ] The module must define `ExternalServiceError`.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 285_
-- [ ] Every shared exception must carry a deterministic `code` attribute.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 286_
-- [ ] Error messages must be human-readable.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 287_
-- [ ] `error_name(code)` must return deterministic names.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 288_
-- [ ] `message_for(code, default)` must return useful fallback messages.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 289_
-- [ ] Unknown codes must resolve safely to `UNKNOWN_ERROR` or a provided default.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 290_
-- [ ] Future domain-specific errors must inherit from `Error` or expose a compatible `code: str` attribute.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 291_
-- [ ] Standard response builders must map `Error` subclasses generically without requiring every future domain error to be hardcoded.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 292_
-- [ ] Unknown non-HaruQuant exceptions must map safely to `UNKNOWN_ERROR` or `TOOL_EXECUTION_FAILED` at controlled tool boundaries.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 293_
-- [ ] Official error responses must include `status="error"`, message, `data=None`, error code/details, and metadata.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 868_
-- [ ] Support helpers may return native Python values or raise typed exceptions.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 880_
-- [ ] Unexpected execution failures must return `TOOL_EXECUTION_FAILED` or another safe deterministic error code.  _Source: 9. Error Handling Expectations, line 1013_
-- [ ] Implement `tools/utils/errors.py` before deterministic failure behavior is needed.  _Source: 14. Implementation Priority Order, line 1330_
-- [ ] Support helpers return clear native values or raise typed exceptions.  _Source: 15. Definition of Done, line 1365_
+- [X] Official AI tools must use deterministic error codes.  _Source: 3. Functional Requirements > 3.3 Official AI Tools, line 183_
+- [X] Standard response validation should validate error codes against the approved error-code set where practical.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 198_
+- [X] The module must define `Error`.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 280_
+- [X] The module must define `ValidationError`.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 281_
+- [X] The module must define `ConfigurationError`.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 282_
+- [X] The module must define `SecurityError`.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 283_
+- [X] The module must define `DataError`.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 284_
+- [X] The module must define `ExternalServiceError`.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 285_
+- [X] Every shared exception must carry a deterministic `code` attribute.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 286_
+- [X] Error messages must be human-readable.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 287_
+- [X] `error_name(code)` must return deterministic names.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 288_
+- [X] `message_for(code, default)` must return useful fallback messages.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 289_
+- [X] Unknown codes must resolve safely to `UNKNOWN_ERROR` or a provided default.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 290_
+- [X] Future domain-specific errors must inherit from `Error` or expose a compatible `code: str` attribute.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 291_
+- [X] Standard response builders must map `Error` subclasses generically without requiring every future domain error to be hardcoded.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 292_
+- [X] Unknown non-HaruQuant exceptions must map safely to `UNKNOWN_ERROR` or `TOOL_EXECUTION_FAILED` at controlled tool boundaries.  _Source: 3. Functional Requirements > 3.8 Error Utilities, line 293_
+- [X] Official error responses must include `status="error"`, message, `data=None`, error code/details, and metadata.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 868_
+- [X] Support helpers may return native Python values or raise typed exceptions.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 880_
+- [X] Unexpected execution failures must return `TOOL_EXECUTION_FAILED` or another safe deterministic error code.  _Source: 9. Error Handling Expectations, line 1013_
+- [X] Implement `tools/utils/errors.py` before deterministic failure behavior is needed.  _Source: 14. Implementation Priority Order, line 1330_
+- [X] Support helpers return clear native values or raise typed exceptions.  _Source: 15. Definition of Done, line 1365_
 
 #### Non-Functional & Security Requirements
 
-- [ ] Support helpers may raise typed HaruQuant exceptions for programmer or validation errors.  _Source: 9. Error Handling Expectations, line 1009_
-- [ ] Expected validation failures should use deterministic codes such as `INVALID_INPUT` or `VALIDATION_FAILED`.  _Source: 9. Error Handling Expectations, line 1012_
-- [ ] Raw exception objects must never be returned in `data`.  _Source: 9. Error Handling Expectations, line 1014_
-- [ ] Raw exception objects must never be returned in `error`.  _Source: 9. Error Handling Expectations, line 1015_
-- [ ] Unknown non-HaruQuant exceptions must map safely to `UNKNOWN_ERROR` or `TOOL_EXECUTION_FAILED`.  _Source: 9. Error Handling Expectations, line 1017_
-- [ ] `INVALID_AUTH_CONTEXT`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1048_
-- [ ] `AUTHORIZATION_FAILED`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1049_
-- [ ] `INVALID_EVENT`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1050_
-- [ ] `EVENT_PUBLISH_FAILED`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1051_
-- [ ] `EVENT_HANDLER_FAILED`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1052_
-- [ ] `EVENT_DEAD_LETTER_FAILED`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1053_
-- [ ] `QUEUE_FULL`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1054_
-- [ ] `BACKPRESSURE_EXCEEDED`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1055_
-- [ ] `NOTIFICATION_FAILED`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1056_
-- [ ] `NOTIFICATION_SUPPRESSED`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1057_
-- [ ] `NOTIFICATION_THROTTLED`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1058_
-- [ ] `OBSERVABILITY_ERROR`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1059_
-- [ ] `METRICS_EXPORT_FAILED`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1060_
-- [ ] `CLOCK_DRIFT_DETECTED`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1061_
-- [ ] `CIRCUIT_OPEN`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1062_
-- [ ] `SECRET_VERSION_CONFLICT`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1063_
-- [ ] Every public function must document raised exceptions or structured error behavior.  _Source: 12. Documentation Requirements, line 1242_
-- [ ] Official AI tool docstrings must explain what error codes may be returned.  _Source: 12. Documentation Requirements, line 1248_
-- [ ] Official tools use deterministic error codes.  _Source: 15. Definition of Done, line 1374_
+- [X] Support helpers may raise typed HaruQuant exceptions for programmer or validation errors.  _Source: 9. Error Handling Expectations, line 1009_
+- [X] Expected validation failures should use deterministic codes such as `INVALID_INPUT` or `VALIDATION_FAILED`.  _Source: 9. Error Handling Expectations, line 1012_
+- [X] Raw exception objects must never be returned in `data`.  _Source: 9. Error Handling Expectations, line 1014_
+- [X] Raw exception objects must never be returned in `error`.  _Source: 9. Error Handling Expectations, line 1015_
+- [X] Unknown non-HaruQuant exceptions must map safely to `UNKNOWN_ERROR` or `TOOL_EXECUTION_FAILED`.  _Source: 9. Error Handling Expectations, line 1017_
+- [X] `INVALID_AUTH_CONTEXT`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1048_
+- [X] `AUTHORIZATION_FAILED`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1049_
+- [X] `INVALID_EVENT`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1050_
+- [X] `EVENT_PUBLISH_FAILED`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1051_
+- [X] `EVENT_HANDLER_FAILED`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1052_
+- [X] `EVENT_DEAD_LETTER_FAILED`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1053_
+- [X] `QUEUE_FULL`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1054_
+- [X] `BACKPRESSURE_EXCEEDED`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1055_
+- [X] `NOTIFICATION_FAILED`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1056_
+- [X] `NOTIFICATION_SUPPRESSED`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1057_
+- [X] `NOTIFICATION_THROTTLED`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1058_
+- [X] `OBSERVABILITY_ERROR`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1059_
+- [X] `METRICS_EXPORT_FAILED`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1060_
+- [X] `CLOCK_DRIFT_DETECTED`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1061_
+- [X] `CIRCUIT_OPEN`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1062_
+- [X] `SECRET_VERSION_CONFLICT`  _Source: 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions, line 1063_
+- [X] Every public function must document raised exceptions or structured error behavior.  _Source: 12. Documentation Requirements, line 1242_
+- [X] Official AI tool docstrings must explain what error codes may be returned.  _Source: 12. Documentation Requirements, line 1248_
+- [X] Official tools use deterministic error codes.  _Source: 15. Definition of Done, line 1374_
 
 #### Testing & Edge Cases
 
-- [ ] Missing mandatory OHLC columns must return structured `INVALID_INPUT`.  _Source: 8. Edge Cases, line 926_
-- [ ] Unknown error codes must resolve safely.  _Source: 8. Edge Cases, line 966_
-- [ ] Unknown non-HaruQuant exceptions must map safely at controlled tool boundaries.  _Source: 8. Edge Cases, line 967_
-- [ ] Official AI tool tests must verify deterministic error codes.  _Source: 11. Testing Requirements, line 1137_
-- [ ] Error tests must verify exception attributes, known codes, unknown codes, and fallback messages.  _Source: 11. Testing Requirements, line 1147_
+- [X] Missing mandatory OHLC columns must return structured `INVALID_INPUT`.  _Source: 8. Edge Cases, line 926_
+- [X] Unknown error codes must resolve safely.  _Source: 8. Edge Cases, line 966_
+- [X] Unknown non-HaruQuant exceptions must map safely at controlled tool boundaries.  _Source: 8. Edge Cases, line 967_
+- [X] Official AI tool tests must verify deterministic error codes.  _Source: 11. Testing Requirements, line 1137_
+- [X] Error tests must verify exception attributes, known codes, unknown codes, and fallback messages.  _Source: 11. Testing Requirements, line 1147_
 
 ---
 
