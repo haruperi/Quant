@@ -36,12 +36,12 @@ def run_example() -> None:
     # 1. Local human-readable development console logging with color and file
     print("--- 1. Configuring Local Development Console Logging ---")
     with tempfile.TemporaryDirectory() as tmpdir:
-        dev_log_file = Path(tmpdir) / "dev_app.log"
+        dev_log_dir = Path(tmpdir) / "data" / "logs"
         configure_logging(
             level="DEBUG",
             use_json=False,
             use_color=True,
-            log_file_path=dev_log_file,
+            log_dir_path=dev_log_dir,
         )
 
         # Log debug message using the default imported root logger
@@ -56,10 +56,11 @@ def run_example() -> None:
         log.info("Message with trace identifiers active")
 
         # Verify file creation and output
-        if dev_log_file.exists():
-            print(f"Success: Dev log file created at {dev_log_file}")
+        app_file = dev_log_dir / "app.log"
+        if app_file.exists():
+            print(f"Success: Dev log file created at {app_file}")
             print("Dev File Content:")
-            print(dev_log_file.read_text(encoding="utf-8").strip())
+            print(app_file.read_text(encoding="utf-8").strip())
 
         # Reset logging configuration to close the file handler before exiting block
         # (This is necessary to release file lock on Windows)
@@ -75,24 +76,29 @@ def run_example() -> None:
 
     clear_trace_context()
 
-    # 3. Safe Rotating File Logging
+    # 3. Safe Rotating File Logging with Multi-File routing
     print("\n--- 3. Configuring Safe Rotating File Logging ---")
     with tempfile.TemporaryDirectory() as tmpdir:
-        log_file = Path(tmpdir) / "app.log"
+        log_dir = Path(tmpdir) / "data" / "logs"
         configure_logging(
             level="DEBUG",
             use_json=True,
-            log_file_path=log_file,
+            log_dir_path=log_dir,
             max_bytes=1024,
             backup_count=2,
         )
 
-        log.info("Wrote structured log to temporary file: %s", log_file)
-        # Verify file creation
-        if log_file.exists():
-            print(f"Success: Log file created at {log_file}")
-            print("File Content:")
-            print(log_file.read_text(encoding="utf-8").strip())
+        log.debug("This is a debug message routed to debug.log and app.log")
+        log.info("Access log event", extra={"event_name": "user_auth_success"})
+        log.error("Database connection failed routed to errors.log")
+
+        # Verify files creation
+        print("Success: Log files created under:", log_dir)
+        for name in ("app.log", "debug.log", "access.log", "errors.log"):
+            p = log_dir / name
+            if p.exists():
+                lines = len(p.read_text().splitlines())
+                print(f"- File {name} exists, lines count: {lines}")
 
         # Reset logging configuration to close the file handler before exiting block
         # (This is necessary to release file lock on Windows)

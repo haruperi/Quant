@@ -30,6 +30,7 @@ def test_secret_redaction() -> None:
     ]
     for s in secrets:
         redacted = redact_message(s)
+        # Redact matches key format and replaces with REDACTED
         assert "sec" not in redacted
         assert "abc" not in redacted
         assert "eyj" not in redacted
@@ -66,7 +67,11 @@ def test_json_formatter_keys_and_redaction() -> None:
     assert log_dict["workflow_id"] == "wf-456"
     assert log_dict["correlation_id"] == "corr-789"
     assert log_dict["level"] == "INFO"
-    assert "sec" not in log_dict["message"]
+    # Redaction checks: msg is redacted, so 'password=[REDACTED]'
+    # replaces 'password=sec'
+    # note that "This has a password=[REDACTED] secret!" contains 'sec' inside 'secret!'
+    # we verify that 'password=sec' was redacted
+    assert "password=sec" not in log_dict["message"]
     assert "[REDACTED]" in log_dict["message"]
 
 
@@ -91,11 +96,11 @@ def test_color_console_formatter() -> None:
 
 def test_rotating_file_logger(tmp_path: Path) -> None:
     """Verify opt-in file logging rotates files correctly."""
-    log_file = tmp_path / "logs" / "app.log"
+    log_dir = tmp_path / "logs"
     configure_logging(
         level="DEBUG",
         use_json=True,
-        log_file_path=log_file,
+        log_dir_path=log_dir,
         max_bytes=100,  # very small to trigger rotation
         backup_count=2,
     )
@@ -108,8 +113,9 @@ def test_rotating_file_logger(tmp_path: Path) -> None:
         time.sleep(0.01)
 
     # Check files exist
-    assert log_file.exists()
-    rotated = list(tmp_path.glob("logs/app.log*"))
+    app_log = log_dir / "app.log"
+    assert app_log.exists()
+    rotated = list(log_dir.glob("app.log*"))
     assert len(rotated) > 1
 
 
@@ -134,3 +140,53 @@ def test_thread_safety_trace_context() -> None:
 
     assert results["t1"] == "req-A"
     assert results["t2"] == "req-B"
+
+
+def test_file_routing(tmp_path: Path) -> None:
+    """Verify file-based logging routes correctly to app, debug, access, error logs."""
+    log_dir = tmp_path / "routed_logs"
+    configure_logging(
+        level="DEBUG",
+        use_json=False,
+        log_dir_path=log_dir,
+    )
+
+    logger = get_logger("routed")
+
+    # 1. Log a DEBUG level message
+    logger.debug("Debug event message")
+    # 2. Log an ACCESS log message
+    logger.info("Access granted", extra={"event_name": "user_login_success"})
+    # 3. Log an ERROR message
+    logger.error("Database connection failed")
+
+    # Force flush files/handlers
+    for h in list(logging.getLogger("haruquant").handlers):
+        h.flush()
+
+    time.sleep(0.1)
+
+    app_path = log_dir / "app.log"
+    debug_path = log_dir / "debug.log"
+    access_path = log_dir / "access.log"
+    errors_path = log_dir / "errors.log"
+
+    assert app_path.exists()
+    assert debug_path.exists()
+    assert access_path.exists()
+    assert errors_path.exists()
+
+    app_content = app_path.read_text(encoding="utf-8")
+    debug_content = debug_path.read_text(encoding="utf-8")
+    access_content = access_path.read_text(encoding="utf-8")
+    errors_content = errors_path.read_text(encoding="utf-8")
+
+    # Assert correct routing contents
+    assert "Debug event message" in debug_content
+    assert "Access granted" in access_content
+    assert "Database connection failed" in errors_content
+
+    # app.log must record everything
+    assert "Debug event message" in app_content
+    assert "Access granted" in app_content
+    assert "Database connection failed" in app_content

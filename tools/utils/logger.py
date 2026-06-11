@@ -187,6 +187,39 @@ class ColorConsoleFormatter(logging.Formatter):
         return formatted
 
 
+class LogFilter(logging.Filter):
+    """Custom filter to route specific types of logs.
+
+    Filters based on record level or attributes.
+    """
+
+    def __init__(self, target: str) -> None:
+        """Initialize filter with routing target.
+
+        Targets: 'debug', 'access', 'error', 'all'
+        """
+        super().__init__()
+        self.target = target
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """Filter log records based on the routing target."""
+        if self.target == "error":
+            return record.levelno >= logging.ERROR
+        if self.target == "debug":
+            return record.levelno == logging.DEBUG
+        if self.target == "access":
+            # Match logs carrying 'event_name' containing access/request patterns
+            event = getattr(record, "event_name", "")
+            return bool(
+                event
+                and any(
+                    x in str(event).lower()
+                    for x in ("access", "request", "auth", "login")
+                )
+            )
+        return True
+
+
 def get_logger(name: str | None = None) -> logging.Logger:
     """Retrieve or create a logger.
 
@@ -204,22 +237,23 @@ logger = get_logger()
 
 
 def configure_logging(  # noqa: PLR0913
-    level: str | int = "INFO",
+    level: str | int = "DEBUG",
     *,
     use_json: bool = False,
     use_color: bool = True,
-    log_file_path: str | Path | None = None,
+    log_dir_path: str | Path | None = None,
     max_bytes: int = 10 * 1024 * 1024,  # 10MB
     backup_count: int = 5,
 ) -> None:
     """Configure the project-wide logging system.
 
-    Clears existing handlers to avoid duplicate log emissions.
+    Clears existing handlers to avoid duplicate log emissions. Sets up console handler
+    and file-based logging (app.log, debug.log, access.log, errors.log).
     """
     root_l = logging.getLogger(LOGGER_NAME)
     numeric_level = level
     if isinstance(level, str):
-        numeric_level = getattr(logging, level.upper(), logging.INFO)
+        numeric_level = getattr(logging, level.upper(), logging.DEBUG)
 
     root_l.setLevel(numeric_level)
 
@@ -239,20 +273,44 @@ def configure_logging(  # noqa: PLR0913
     console_handler.setFormatter(formatter)
     root_l.addHandler(console_handler)
 
-    # Optional Rotating File Handler
-    if log_file_path:
+    # Multi-file routing under log directory
+    if log_dir_path:
         try:
-            f_path = Path(log_file_path).resolve()
-            f_path.parent.mkdir(parents=True, exist_ok=True)
+            d_path = Path(log_dir_path).resolve()
+            d_path.mkdir(parents=True, exist_ok=True)
 
-            file_handler = RotatingFileHandler(
-                f_path,
-                maxBytes=max_bytes,
-                backupCount=backup_count,
-                encoding="utf-8",
-            )
-            file_handler.setFormatter(formatter)
-            root_l.addHandler(file_handler)
+            # Files definitions: (filename, filter_target)
+            files_config = [
+                ("app.log", "all"),
+                ("debug.log", "debug"),
+                ("access.log", "access"),
+                ("errors.log", "error"),
+            ]
+
+            for filename, target in files_config:
+                f_path = d_path / filename
+                file_handler = RotatingFileHandler(
+                    f_path,
+                    maxBytes=max_bytes,
+                    backupCount=backup_count,
+                    encoding="utf-8",
+                )
+                file_handler.setFormatter(formatter)
+                file_handler.addFilter(LogFilter(target))
+                root_l.addHandler(file_handler)
         except (OSError, PermissionError) as e:
-            # Degrade safely: log to stderr or print that file logging setup failed
+            # Degrade safely
             sys.stderr.write(f"Logging file configuration failed safely: {e}\n")
+
+
+# Set up default project-wide logging configuration on import.
+# Defaults to level=DEBUG, colorized human-readable console, and writing
+# logs to data/logs/ under workspace root.
+_root_dir = Path(__file__).resolve().parent.parent.parent
+_default_logs_dir = _root_dir / "data" / "logs"
+configure_logging(
+    level="DEBUG",
+    use_json=False,
+    use_color=True,
+    log_dir_path=_default_logs_dir,
+)
