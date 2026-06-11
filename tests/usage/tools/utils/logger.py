@@ -3,10 +3,16 @@
 This script demonstrates how to import, configure, and use the structured logger.
 """
 
+import sys
 import tempfile
 from pathlib import Path
 
-from tools.utils.logger import (
+# Add the project root to sys.path to allow direct execution without PYTHONPATH issues
+project_root = str(Path(__file__).resolve().parent.parent.parent.parent)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from tools.utils.logger import (  # noqa: E402
     clear_trace_context,
     configure_logging,
     get_logger,
