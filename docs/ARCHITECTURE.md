@@ -93,6 +93,13 @@
 - **Testing**: Coverage scales with risk. Utils/Data/Indicator (deterministic) → Strategy/Risk/Trading (contracts & fail-closed) → Sim/Live (safety-gated) → UI/Conv (safety, redaction, drafts).
 - **Observability**: Cross-module request/correlation IDs mandatory. Structured JSON logs. Health monitoring (readiness, DB, feed status, clock drift). Audit trails for token logs and action approvals.
 
+### 11.1 Utility Standard Contracts
+- **Public registry classification**: `tools.utils.__all__` is the utility-domain registry. Standard envelope builders, validators, diagnostic issue helpers, deterministic identifiers, metric-label validators, and bounded deduplication helpers are support helpers unless a future tool module explicitly wraps them as official AI tools.
+- **Official tool attachment**: Agents may attach only names approved by the relevant registry/policy check. Standard helpers can verify an approved name set, but they do not execute tools or grant trading, broker, risk, portfolio, or strategy authority.
+- **Safe metric labels**: Metric labels must be bounded-cardinality and secret-free. Sensitive keys such as password, token, credential, secret, authorization, or API key are rejected. High-cardinality labels such as request IDs, user/account IDs, emails, UUIDs, session IDs, and long unbounded values are rejected unless explicitly normalized to deterministic fingerprints.
+- **Optional adapters**: Utility standard helpers are stdlib-only. Optional adapters for metrics exporters, notification transports, event buses, encryption providers, broker SDKs, or external services must be lazy-loaded by their owning modules and must fail only when that feature is used.
+- **Critical utility-layer failure runbook**: Fail closed, return a standard error envelope when possible, emit sanitized error events only, avoid retries for unknown side-effect state, check circuit-open state before provider calls, preserve request/workflow/correlation IDs, and escalate to the owning domain when the failure requires risk, trading, broker, portfolio, strategy, or governance judgment.
+
 ## 12. Pending Architecture Decisions
 1. Event bus durability phases.
 2. Exact API schema/versioning format.

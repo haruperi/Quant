@@ -8,20 +8,38 @@ def test_utils_registry_exports() -> None:
     import tools.utils
 
     expected_exports = {
+        "AlertDeduplicator",
         "ConfigurationError",
         "DataError",
+        "DataQualityIssue",
         "Error",
+        "ErrorEvent",
         "ExternalServiceError",
         "SecurityError",
         "StandardEnvelope",
         "StandardResponse",
         "ValidationError",
+        "build_metadata",
+        "build_data_quality_issue",
+        "build_error_event",
+        "canonical_json",
+        "clear_trace_context",
+        "circuit_open_response",
         "configure_logging",
         "error_name",
+        "error_response",
         "get_execution_ms",
         "get_logger",
+        "is_official_tool_allowed",
         "logger",
         "message_for",
+        "response_from_exception",
+        "set_trace_context",
+        "stable_identifier",
+        "success_response",
+        "validate_metric_labels",
+        "validate_ohlcv_records",
+        "validate_standard_response",
     }
 
     assert hasattr(tools.utils, "__all__")

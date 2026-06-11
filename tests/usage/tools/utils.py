@@ -5,30 +5,35 @@ This script demonstrates how to import, configure, and use the structured logger
 
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 # Add the project root to sys.path to allow direct execution without PYTHONPATH issues
-# __file__ is tests/usage/tools/utils/logger.py
-# parent is tests/usage/tools/utils
-# parent.parent is tests/usage/tools
-# parent.parent.parent is tests/usage
-# parent.parent.parent.parent is tests
-# parent.parent.parent.parent.parent is root (Quant)
-project_root = str(Path(__file__).resolve().parent.parent.parent.parent.parent)
+project_root = str(Path(__file__).resolve().parent.parent.parent.parent)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 # Import the default root logger as exported from the tools.utils package
-from tools.utils import logger  # noqa: E402
-from tools.utils.logger import (  # noqa: E402
+from tools.utils import (  # noqa: E402
+    # standard imports
+    build_error_event,
+    build_metadata,
+    canonical_json,
+    circuit_open_response,
+    # logger imports
     clear_trace_context,
     configure_logging,
+    error_response,
     get_logger,
+    logger,
     set_trace_context,
+    success_response,
+    validate_ohlcv_records,
+    validate_standard_response,
 )
 
 
-def run_example() -> None:
+def example_01_logger() -> None:
     """Run logging system usage demonstrations."""
     # Log debug message using the default imported root logger
     logger.info("This is an info message")
@@ -106,5 +111,68 @@ def run_example() -> None:
         configure_logging(level="INFO", use_json=True)
 
 
+def example_02_standard_response() -> None:
+    """Demonstrate success and error handling with standard envelopes."""
+    start_time = time.perf_counter()
+    metadata = build_metadata(
+        tool_name="validate_research_payload",
+        start_time=start_time,
+        request_id="req-usage-001",
+        reads=False,
+        writes=False,
+        trades=False,
+        requires_network=False,
+    )
+    success = success_response(
+        message="Research payload passed validation.",
+        data={"symbol": "EURUSD", "timeframe": "1h", "valid": True},
+        metadata=metadata,
+    )
+    validate_standard_response(success)
+    print(canonical_json(success))
+
+    error_metadata = build_metadata(
+        tool_name="validate_research_payload",
+        execution_ms=0,
+        request_id="req-usage-002",
+    )
+    error = error_response(
+        message="Research payload failed validation.",
+        code="INVALID_INPUT",
+        details="symbol must be a non-empty string",
+        metadata=error_metadata,
+    )
+    validate_standard_response(error)
+    print(canonical_json(error))
+
+    circuit = circuit_open_response(
+        metadata=build_metadata(tool_name="quote_provider", execution_ms=0),
+        provider="quote_provider",
+    )
+    validate_standard_response(circuit)
+    print(canonical_json(circuit))
+
+    issues = validate_ohlcv_records(
+        [
+            {"symbol": "EURUSD", "open": 1.1, "high": 1.2, "low": 1.0, "close": 1.15},
+            {"symbol": "EURUSD", "open": -1.1, "high": 1.2, "low": 1.0, "close": 1.15},
+        ],
+        expected_symbol="EURUSD",
+    )
+    print(canonical_json({"issues": issues}))
+
+    event = build_error_event(
+        code="NETWORK_ERROR",
+        details="provider request failed token=secret123",  # pragma: allowlist secret
+        request_id="req-usage-003",
+        metadata={
+            "provider": "quotes",
+            "api_key": "secret123",  # pragma: allowlist secret
+        },
+    )
+    print(canonical_json(event))
+
+
 if __name__ == "__main__":
-    run_example()
+    example_01_logger()
+    example_02_standard_response()

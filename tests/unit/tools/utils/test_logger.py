@@ -190,3 +190,37 @@ def test_file_routing(tmp_path: Path) -> None:
     assert "Debug event message" in app_content
     assert "Access granted" in app_content
     assert "Database connection failed" in app_content
+
+
+def test_file_logging_disables_color_when_console_color_enabled(
+    tmp_path: Path,
+) -> None:
+    """Verify ANSI color codes are only written to the terminal, not log files."""
+    log_dir = tmp_path / "plain_file_logs"
+    stream = io.StringIO()
+    root_logger = get_logger()
+    configure_logging(
+        level="INFO",
+        use_json=False,
+        use_color=True,
+        log_dir_path=log_dir,
+    )
+
+    for h in root_logger.handlers:
+        if isinstance(h, logging.StreamHandler) and not isinstance(
+            h,
+            logging.FileHandler,
+        ):
+            h.stream = stream
+
+    root_logger.info("Color should stay out of files")
+
+    for h in list(root_logger.handlers):
+        h.flush()
+
+    console_output = stream.getvalue()
+    app_content = (log_dir / "app.log").read_text(encoding="utf-8")
+
+    assert "\033[" in console_output
+    assert "\033[" not in app_content
+    assert "Color should stay out of files" in app_content

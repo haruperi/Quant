@@ -8,7 +8,7 @@ requires-python = ">=3.14"
 # Target Python version rules
 target-version = "py313"
 line-length = 88
-src = ["src", "tests"]
+src = ["tools", "tests"]
 
 [tool.ruff.lint]
 # 1. ENABLING ALL REQUESTED RULE GROUPS
@@ -108,12 +108,12 @@ convention = "google"
 [tool.pytest.ini_options]
 minversion = "7.0"
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["."]
 addopts = [
     "-ra",
     "--strict-markers",
     "--strict-config",
-    "--cov=src/app",
+    "--cov=tools.utils",
     "--cov-report=term-missing",
     "--cov-report=html",
     "--cov-fail-under=80"
@@ -121,7 +121,7 @@ addopts = [
 
 [tool.coverage.run]
 branch = true
-source = ["src/app"]
+source = ["tools/utils"]
 
 [tool.coverage.report]
 show_missing = true
@@ -136,8 +136,8 @@ exclude_lines = [
 [tool.mypy]
 python_version = "3.14"
 strict = true
-mypy_path = "src"
-packages = ["app"]
+mypy_path = "."
+packages = ["tools.utils"]
 warn_unused_configs = true
 warn_return_any = true
 warn_unused_ignores = true

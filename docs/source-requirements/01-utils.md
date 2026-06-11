@@ -71,44 +71,44 @@ No unresolved open questions remain for the baseline production-ready utils modu
 
 ## 5. Global API Contracts Matrix
 
-| File | Contract Area | Primary API Shape | Boundary Rule |
-| --- | --- | --- | --- |
-| tools/utils/__init__.py | Public registry | Exports approved names only | No runtime side effects |
-| tools/utils/standard.py | Tool envelope + constants | `status`, `message`, `data`, `error`, `metadata` | Official tool contract owner |
-| tools/utils/logger.py | Structured logging | JSON-compatible production logs; human console logs | No secrets, no implicit config |
-| tools/utils/errors.py | Error registry | Typed exceptions + deterministic codes | Safe fallback mapping |
-| tools/utils/identity.py | Trace IDs | Request/workflow/correlation/event/idempotency helpers | Safe for logs/audit |
-| tools/utils/normalization.py | Time normalization | UTC-first timestamps + monotonic durations | No local timezone assumption |
-| tools/utils/paths.py | Safe paths | Normalized `Path` outputs | Base-dir traversal protection |
-| tools/utils/dataframe_tools.py | DataFrame helpers | Native values / JSON-safe records | Lazy pandas import |
-| tools/utils/data_quality.py | OHLCV quality tool | Standard envelope for official tool | Diagnostic-only, no mutation |
-| tools/utils/schema_validation.py | Schema validators | Native validation + official wrappers | Bounded invalid-field diagnostics |
-| tools/utils/security.py | Redaction/encryption | Redacted scalars/mappings/text; encryption helpers | No key/plaintext leakage |
-| tools/utils/settings.py | Runtime settings | Immutable typed settings | Explicit load/injection only |
-| tools/utils/auth.py | Auth context + authorization | Allow/deny decisions | Deny by default |
-| tools/utils/event_bus.py | Event envelope + pub/sub | Publish/subscribe delivery result | Bounded queues/idempotency |
-| tools/utils/error_routing.py | Error events + routing | Routed/suppressed/deduped status | No recursive alert storms |
-| tools/utils/notifications.py | Notification routing | Sent/suppressed/throttled/deduped/failed status | Fake adapters for tests |
-| tools/utils/observability.py | Metrics + health | Prometheus-compatible metrics + health snapshots | No-op when not configured |
+| File                             | Contract Area                | Primary API Shape                                          | Boundary Rule                     |
+| -------------------------------- | ---------------------------- | ---------------------------------------------------------- | --------------------------------- |
+| tools/utils/__init__.py    | Public registry              | Exports approved names only                                | No runtime side effects           |
+| tools/utils/standard.py          | Tool envelope + constants    | `status`, `message`, `data`, `error`, `metadata` | Official tool contract owner      |
+| tools/utils/logger.py            | Structured logging           | JSON-compatible production logs; human console logs        | No secrets, no implicit config    |
+| tools/utils/errors.py            | Error registry               | Typed exceptions + deterministic codes                     | Safe fallback mapping             |
+| tools/utils/identity.py          | Trace IDs                    | Request/workflow/correlation/event/idempotency helpers     | Safe for logs/audit               |
+| tools/utils/normalization.py     | Time normalization           | UTC-first timestamps + monotonic durations                 | No local timezone assumption      |
+| tools/utils/paths.py             | Safe paths                   | Normalized `Path` outputs                                | Base-dir traversal protection     |
+| tools/utils/dataframe_tools.py   | DataFrame helpers            | Native values / JSON-safe records                          | Lazy pandas import                |
+| tools/utils/data_quality.py      | OHLCV quality tool           | Standard envelope for official tool                        | Diagnostic-only, no mutation      |
+| tools/utils/schema_validation.py | Schema validators            | Native validation + official wrappers                      | Bounded invalid-field diagnostics |
+| tools/utils/security.py          | Redaction/encryption         | Redacted scalars/mappings/text; encryption helpers         | No key/plaintext leakage          |
+| tools/utils/settings.py          | Runtime settings             | Immutable typed settings                                   | Explicit load/injection only      |
+| tools/utils/auth.py              | Auth context + authorization | Allow/deny decisions                                       | Deny by default                   |
+| tools/utils/event_bus.py         | Event envelope + pub/sub     | Publish/subscribe delivery result                          | Bounded queues/idempotency        |
+| tools/utils/error_routing.py     | Error events + routing       | Routed/suppressed/deduped status                           | No recursive alert storms         |
+| tools/utils/notifications.py     | Notification routing         | Sent/suppressed/throttled/deduped/failed status            | Fake adapters for tests           |
+| tools/utils/observability.py     | Metrics + health             | Prometheus-compatible metrics + health snapshots           | No-op when not configured         |
 
 ---
 
 ## 6. Configuration Defaults
 
-| Setting / Policy | Default / Rule | Expected Owner |
-| --- | --- | --- |
-| DEFAULT_TIMEZONE | `UTC` | tools/utils/normalization.py |
-| Tool response top-level keys | `status`, `message`, `data`, `error`, `metadata` | tools/utils/standard.py |
-| Execution timer | `time.perf_counter()` rounded to 3 ms decimals | tools/utils/standard.py |
-| OHLCV quality pass threshold | `90.0` | tools/utils/data_quality.py |
-| OHLCV penalty model | critical `-40`, error `-20`, warning `-5`, info `-1` | tools/utils/data_quality.py |
-| Runtime settings precedence | explicit mapping/function args → environment variables → `.env` → safe defaults | tools/utils/settings.py |
-| Default HaruQuant home | `HARUQUANT_HOME` or deterministic `.haruquant` under CWD | tools/utils/settings.py |
-| Default directories | `data`, `cache`, `audit` under HaruQuant home | tools/utils/settings.py |
-| Encryption key env var | `ENCRYPTION_KEY` | tools/utils/security.py |
-| Password hashing | Argon2id preferred; fail clearly unless approved fallback configured | tools/utils/security.py |
-| Production desktop notifications | Disabled by default unless explicitly enabled | tools/utils/notifications.py |
-| Production Event Bus critical queue policy | Fail-fast by default | tools/utils/event_bus.py |
+| Setting / Policy                           | Default / Rule                                                                      | Expected Owner               |
+| ------------------------------------------ | ----------------------------------------------------------------------------------- | ---------------------------- |
+| DEFAULT_TIMEZONE                           | `UTC`                                                                             | tools/utils/normalization.py |
+| Tool response top-level keys               | `status`, `message`, `data`, `error`, `metadata`                          | tools/utils/standard.py      |
+| Execution timer                            | `time.perf_counter()` rounded to 3 ms decimals                                    | tools/utils/standard.py      |
+| OHLCV quality pass threshold               | `90.0`                                                                            | tools/utils/data_quality.py  |
+| OHLCV penalty model                        | critical `-40`, error `-20`, warning `-5`, info `-1`                        | tools/utils/data_quality.py  |
+| Runtime settings precedence                | explicit mapping/function args → environment variables →`.env` → safe defaults | tools/utils/settings.py      |
+| Default HaruQuant home                     | `HARUQUANT_HOME` or deterministic `.haruquant` under CWD                        | tools/utils/settings.py      |
+| Default directories                        | `data`, `cache`, `audit` under HaruQuant home                                 | tools/utils/settings.py      |
+| Encryption key env var                     | `ENCRYPTION_KEY`                                                                  | tools/utils/security.py      |
+| Password hashing                           | Argon2id preferred; fail clearly unless approved fallback configured                | tools/utils/security.py      |
+| Production desktop notifications           | Disabled by default unless explicitly enabled                                       | tools/utils/notifications.py |
+| Production Event Bus critical queue policy | Fail-fast by default                                                                | tools/utils/event_bus.py     |
 
 ---
 
@@ -277,8 +277,8 @@ _No source checklist items mapped to this subgroup._
 
 #### Functional Requirements
 
-- [x] Implement `tools/__init__.py` first to establish a clean side-effect-free package.  _Source: 14. Implementation Priority Order, line 1327_
-- [x] `tools/__init__.py` exists and is side-effect free.  _Source: 15. Definition of Done, line 1354_
+- [X] Implement `tools/__init__.py` first to establish a clean side-effect-free package.  _Source: 14. Implementation Priority Order, line 1327_
+- [X] `tools/__init__.py` exists and is side-effect free.  _Source: 15. Definition of Done, line 1354_
 
 #### Non-Functional & Security Requirements
 
@@ -300,27 +300,27 @@ Public registry for the utilities domain. Owns approved exports and public API b
 
 #### Purpose & Scope
 
-- [x] The implementation is expected to be fresh and clean, with no backward-compatibility shims.  _Source: 13. Assumptions, line 1303_
+- [X] The implementation is expected to be fresh and clean, with no backward-compatibility shims.  _Source: 13. Assumptions, line 1303_
 
 #### Functional Requirements
 
-- [x] `tools/utils/__init__.py` must act as the public registry for the utility domain.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 147_
-- [x] Only intentionally imported names listed in `__all__` may be public.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 148_
-- [x] Support helpers may return native Python values when they are not agent-callable tools.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 151_
-- [x] Internal helpers must remain private unless explicitly intended for public import.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 154_
-- [x] No accidental public exports may exist.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 155_
-- [x] No compatibility shims, aliases, fallback import modules, or duplicate wrapper modules may exist.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 156_
-- [x] New public exports must be justified by real cross-domain reuse.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 157_
-- [x] Public exports may not be renamed or removed after v8 acceptance without a new versioned specification and registry review.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 158_
-- [x] Implement `tools/utils/__init__.py` only after modules exist and public names are finalized.  _Source: 14. Implementation Priority Order, line 1344_
-- [x] `tools/utils/__init__.py` exposes only approved public names.  _Source: 15. Definition of Done, line 1355_
+- [X] `tools/utils/__init__.py` must act as the public registry for the utility domain.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 147_
+- [X] Only intentionally imported names listed in `__all__` may be public.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 148_
+- [X] Support helpers may return native Python values when they are not agent-callable tools.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 151_
+- [X] Internal helpers must remain private unless explicitly intended for public import.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 154_
+- [X] No accidental public exports may exist.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 155_
+- [X] No compatibility shims, aliases, fallback import modules, or duplicate wrapper modules may exist.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 156_
+- [X] New public exports must be justified by real cross-domain reuse.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 157_
+- [X] Public exports may not be renamed or removed after v8 acceptance without a new versioned specification and registry review.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 158_
+- [X] Implement `tools/utils/__init__.py` only after modules exist and public names are finalized.  _Source: 14. Implementation Priority Order, line 1344_
+- [X] `tools/utils/__init__.py` exposes only approved public names.  _Source: 15. Definition of Done, line 1355_
 
 #### Non-Functional & Security Requirements
 
-- [x] `tools/utils/__init__.py` must not eagerly import pandas, cryptography, dotenv, broker SDKs, network clients, notification clients, Prometheus exporters, or other heavy optional dependencies unless absolutely necessary.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 689_
-- [x] Documentation must maintain compatibility review notes for future public API changes.  _Source: 12. Documentation Requirements, line 1289_
-- [x] Internal helpers are not accidentally exported.  _Source: 15. Definition of Done, line 1357_
-- [x] No compatibility shims, aliases, fallback import modules, or duplicate wrapper modules exist.  _Source: 15. Definition of Done, line 1358_
+- [X] `tools/utils/__init__.py` must not eagerly import pandas, cryptography, dotenv, broker SDKs, network clients, notification clients, Prometheus exporters, or other heavy optional dependencies unless absolutely necessary.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 689_
+- [X] Documentation must maintain compatibility review notes for future public API changes.  _Source: 12. Documentation Requirements, line 1289_
+- [X] Internal helpers are not accidentally exported.  _Source: 15. Definition of Done, line 1357_
+- [X] No compatibility shims, aliases, fallback import modules, or duplicate wrapper modules exist.  _Source: 15. Definition of Done, line 1358_
 
 #### Testing & Edge Cases
 
@@ -342,56 +342,56 @@ _No source checklist items mapped to this subgroup._
 
 #### Functional Requirements
 
-- [x] The logger must be exported as a support object and must not be treated as an official AI tool.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 152_
-- [x] Official AI tools must use structured logging.  _Source: 3. Functional Requirements > 3.3 Official AI Tools, line 181_
-- [x] The module must expose a project-wide `logger`.  _Source: 3. Functional Requirements > 3.5 Logging, line 205_
-- [x] The module must expose `get_logger(name: str | None = None)`.  _Source: 3. Functional Requirements > 3.5 Logging, line 206_
-- [x] The module must expose `configure_logging(level: str | int = "INFO")`.  _Source: 3. Functional Requirements > 3.5 Logging, line 207_
-- [x] Logging must use Python `logging`.  _Source: 3. Functional Requirements > 3.5 Logging, line 208_
-- [x] Logging must use structured JSON-compatible output for production runtime events.  _Source: 3. Functional Requirements > 3.5 Logging, line 209_
-- [x] Production logging must use a JSON-compatible structured formatter.  _Source: 3. Functional Requirements > 3.5 Logging, line 210_
-- [x] Local development console logging must support colorized human-readable output.  _Source: 3. Functional Requirements > 3.5 Logging, line 211_
-- [x] Human-readable console log lines must use the format `datetime | level | module.submodule.filename:function:line | message`.  _Source: 3. Functional Requirements > 3.5 Logging, line 212_
-- [x] Human-readable console timestamps must use the format `YYYY-MM-DD HH:MM:SS`.  _Source: 3. Functional Requirements > 3.5 Logging, line 213_
-- [x] Logging must include `timestamp`, `level`, `logger_name`, `message`, `event_name`, `module`, `function`, `request_id`, `workflow_id`, `correlation_id`, and `error_code` where available.  _Source: 3. Functional Requirements > 3.5 Logging, line 214_
-- [x] Human-readable console logging must include source line numbers where available.  _Source: 3. Functional Requirements > 3.5 Logging, line 215_
-- [x] Logging must support child loggers per module while preserving a stable root logger name.  _Source: 3. Functional Requirements > 3.5 Logging, line 216_
-- [x] Logging configuration must avoid duplicate handlers.  _Source: 3. Functional Requirements > 3.5 Logging, line 217_
-- [x] Logging configuration must happen only through an explicit configuration function.  _Source: 3. Functional Requirements > 3.5 Logging, line 218_
-- [x] Importing logger utilities must not force application-level logging configuration.  _Source: 3. Functional Requirements > 3.5 Logging, line 219_
-- [x] File logging must be opt-in and configured explicitly through runtime settings or `configure_logging`.  _Source: 3. Functional Requirements > 3.5 Logging, line 220_
-- [x] File logging must write only to configured log directories that are normalized through safe path handling.  _Source: 3. Functional Requirements > 3.5 Logging, line 221_
-- [x] File logging must use rotating log files when enabled.  _Source: 3. Functional Requirements > 3.5 Logging, line 222_
-- [x] Log rotation must support configurable maximum file size and maximum retained file count.  _Source: 3. Functional Requirements > 3.5 Logging, line 223_
-- [x] Log retention must support configurable deletion of old rotated log files.  _Source: 3. Functional Requirements > 3.5 Logging, line 224_
-- [x] Log retention deletion must be bounded to configured log directories and must not delete arbitrary files.  _Source: 3. Functional Requirements > 3.5 Logging, line 225_
-- [x] Log file writes, rotation, and retention deletion must degrade safely if the filesystem or logging sink fails.  _Source: 3. Functional Requirements > 3.5 Logging, line 226_
-- [x] Logging must avoid writing secrets.  _Source: 3. Functional Requirements > 3.5 Logging, line 227_
-- [x] Log-level configuration must be controlled by runtime settings.  _Source: 3. Functional Requirements > 3.5 Logging, line 228_
-- [x] Production files must log function/tool calls, validation failures, successful completions, recoverable warnings, and execution failures where applicable.  _Source: 3. Functional Requirements > 3.5 Logging, line 229_
-- [x] Official AI tool logs must distinguish start, completion, validation failure, recoverable warning, and execution failure lifecycle events.  _Source: 3. Functional Requirements > 3.5 Logging, line 230_
-- [x] Official AI tool logs must include request and workflow trace identifiers where available.  _Source: 3. Functional Requirements > 3.5 Logging, line 231_
-- [x] Event Bus logs must include publish, subscribe, delivery failure, retry, dead-letter, queue-full, and dropped-event events.  _Source: 3. Functional Requirements > 3.5 Logging, line 232_
-- [x] Notification logs must include routing decisions and delivery outcomes without exposing sensitive message bodies.  _Source: 3. Functional Requirements > 3.5 Logging, line 233_
-- [x] Auth logs must include sanitized auth validation and authorization decisions.  _Source: 3. Functional Requirements > 3.5 Logging, line 234_
-- [x] Observability logs must include metrics/export/health-check failures where detectable.  _Source: 3. Functional Requirements > 3.5 Logging, line 235_
-- [x] Production files must never log passwords, API keys, broker credentials, encryption keys, tokens, raw private payloads, full approval packets, notification provider credentials, authorization headers, or Telegram bot tokens.  _Source: 3. Functional Requirements > 3.5 Logging, line 236_
-- [x] Implement `tools/utils/logger.py` before modules that need production logging.  _Source: 14. Implementation Priority Order, line 1328_
+- [X] The logger must be exported as a support object and must not be treated as an official AI tool.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 152_
+- [X] Official AI tools must use structured logging.  _Source: 3. Functional Requirements > 3.3 Official AI Tools, line 181_
+- [X] The module must expose a project-wide `logger`.  _Source: 3. Functional Requirements > 3.5 Logging, line 205_
+- [X] The module must expose `get_logger(name: str | None = None)`.  _Source: 3. Functional Requirements > 3.5 Logging, line 206_
+- [X] The module must expose `configure_logging(level: str | int = "INFO")`.  _Source: 3. Functional Requirements > 3.5 Logging, line 207_
+- [X] Logging must use Python `logging`.  _Source: 3. Functional Requirements > 3.5 Logging, line 208_
+- [X] Logging must use structured JSON-compatible output for production runtime events.  _Source: 3. Functional Requirements > 3.5 Logging, line 209_
+- [X] Production logging must use a JSON-compatible structured formatter.  _Source: 3. Functional Requirements > 3.5 Logging, line 210_
+- [X] Local development console logging must support colorized human-readable output.  _Source: 3. Functional Requirements > 3.5 Logging, line 211_
+- [X] Human-readable console log lines must use the format `datetime | level | module.submodule.filename:function:line | message`.  _Source: 3. Functional Requirements > 3.5 Logging, line 212_
+- [X] Human-readable console timestamps must use the format `YYYY-MM-DD HH:MM:SS`.  _Source: 3. Functional Requirements > 3.5 Logging, line 213_
+- [X] Logging must include `timestamp`, `level`, `logger_name`, `message`, `event_name`, `module`, `function`, `request_id`, `workflow_id`, `correlation_id`, and `error_code` where available.  _Source: 3. Functional Requirements > 3.5 Logging, line 214_
+- [X] Human-readable console logging must include source line numbers where available.  _Source: 3. Functional Requirements > 3.5 Logging, line 215_
+- [X] Logging must support child loggers per module while preserving a stable root logger name.  _Source: 3. Functional Requirements > 3.5 Logging, line 216_
+- [X] Logging configuration must avoid duplicate handlers.  _Source: 3. Functional Requirements > 3.5 Logging, line 217_
+- [X] Logging configuration must happen only through an explicit configuration function.  _Source: 3. Functional Requirements > 3.5 Logging, line 218_
+- [X] Importing logger utilities must not force application-level logging configuration.  _Source: 3. Functional Requirements > 3.5 Logging, line 219_
+- [X] File logging must be opt-in and configured explicitly through runtime settings or `configure_logging`.  _Source: 3. Functional Requirements > 3.5 Logging, line 220_
+- [X] File logging must write only to configured log directories that are normalized through safe path handling.  _Source: 3. Functional Requirements > 3.5 Logging, line 221_
+- [X] File logging must use rotating log files when enabled.  _Source: 3. Functional Requirements > 3.5 Logging, line 222_
+- [X] Log rotation must support configurable maximum file size and maximum retained file count.  _Source: 3. Functional Requirements > 3.5 Logging, line 223_
+- [X] Log retention must support configurable deletion of old rotated log files.  _Source: 3. Functional Requirements > 3.5 Logging, line 224_
+- [X] Log retention deletion must be bounded to configured log directories and must not delete arbitrary files.  _Source: 3. Functional Requirements > 3.5 Logging, line 225_
+- [X] Log file writes, rotation, and retention deletion must degrade safely if the filesystem or logging sink fails.  _Source: 3. Functional Requirements > 3.5 Logging, line 226_
+- [X] Logging must avoid writing secrets.  _Source: 3. Functional Requirements > 3.5 Logging, line 227_
+- [X] Log-level configuration must be controlled by runtime settings.  _Source: 3. Functional Requirements > 3.5 Logging, line 228_
+- [X] Production files must log function/tool calls, validation failures, successful completions, recoverable warnings, and execution failures where applicable.  _Source: 3. Functional Requirements > 3.5 Logging, line 229_
+- [X] Official AI tool logs must distinguish start, completion, validation failure, recoverable warning, and execution failure lifecycle events.  _Source: 3. Functional Requirements > 3.5 Logging, line 230_
+- [X] Official AI tool logs must include request and workflow trace identifiers where available.  _Source: 3. Functional Requirements > 3.5 Logging, line 231_
+- [X] Event Bus logs must include publish, subscribe, delivery failure, retry, dead-letter, queue-full, and dropped-event events.  _Source: 3. Functional Requirements > 3.5 Logging, line 232_
+- [X] Notification logs must include routing decisions and delivery outcomes without exposing sensitive message bodies.  _Source: 3. Functional Requirements > 3.5 Logging, line 233_
+- [X] Auth logs must include sanitized auth validation and authorization decisions.  _Source: 3. Functional Requirements > 3.5 Logging, line 234_
+- [X] Observability logs must include metrics/export/health-check failures where detectable.  _Source: 3. Functional Requirements > 3.5 Logging, line 235_
+- [X] Production files must never log passwords, API keys, broker credentials, encryption keys, tokens, raw private payloads, full approval packets, notification provider credentials, authorization headers, or Telegram bot tokens.  _Source: 3. Functional Requirements > 3.5 Logging, line 236_
+- [X] Implement `tools/utils/logger.py` before modules that need production logging.  _Source: 14. Implementation Priority Order, line 1328_
 
 #### Non-Functional & Security Requirements
 
-- [x] Important events and recoverable failures must use structured logging.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 679_
-- [x] Immutable constants and logger objects are allowed.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 708_
-- [x] Logging must be thread-safe under concurrent tool execution.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 724_
-- [x] Logging overhead must be minimal for normal tool execution.  _Source: 4. Non-Functional Requirements > 4.6 Performance, line 766_
-- [x] Logging must degrade safely if a logging sink fails.  _Source: 4. Non-Functional Requirements > 4.7 Reliability and Degradation, line 772_
-- [x] Documentation must describe required log fields and optional trace fields.  _Source: 12. Documentation Requirements, line 1253_
-- [x] Local development logging supports colorized human-readable console output in the approved format.  _Source: 15. Definition of Done, line 1369_
+- [X] Important events and recoverable failures must use structured logging.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 679_
+- [X] Immutable constants and logger objects are allowed.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 708_
+- [X] Logging must be thread-safe under concurrent tool execution.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 724_
+- [X] Logging overhead must be minimal for normal tool execution.  _Source: 4. Non-Functional Requirements > 4.6 Performance, line 766_
+- [X] Logging must degrade safely if a logging sink fails.  _Source: 4. Non-Functional Requirements > 4.7 Reliability and Degradation, line 772_
+- [X] Documentation must describe required log fields and optional trace fields.  _Source: 12. Documentation Requirements, line 1253_
+- [X] Local development logging supports colorized human-readable console output in the approved format.  _Source: 15. Definition of Done, line 1369_
 
 #### Testing & Edge Cases
 
-- [x] Logging output must be deterministic enough for unit testing where log fields are asserted.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 716_
-- [x] Logger tests must verify colorized console output can be enabled and disabled deterministically.  _Source: 11. Testing Requirements, line 1145_
+- [X] Logging output must be deterministic enough for unit testing where log fields are asserted.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 716_
+- [X] Logger tests must verify colorized console output can be enabled and disabled deterministically.  _Source: 11. Testing Requirements, line 1145_
 
 ---
 
@@ -399,165 +399,165 @@ _No source checklist items mapped to this subgroup._
 
 Standard tool envelopes, metadata constants, side-effect flags, canonical JSON behavior, shared constants, and official tool contract helpers.
 
-**Related test / usage files:** `tests/unit/tools/utils/test_standard.py`, `tests/usage/tools/utils/standard.py`
+**Related test / usage files:** `tests/unit/tools/utils/test_standard.py`, `tests/usage/tools/utils.py`
 
 **Mapped source checklist items:** `144`
 
 #### Purpose & Scope
 
-- [ ] The utilities module must not own trading strategy logic.  _Source: 5. Business Rules, line 797_
-- [ ] The utilities module must not own broker execution logic.  _Source: 5. Business Rules, line 798_
-- [ ] The utilities module must not own risk-governor decisions.  _Source: 5. Business Rules, line 799_
-- [ ] The utilities module must not own portfolio allocation decisions.  _Source: 5. Business Rules, line 800_
-- [ ] The utilities module must not own application orchestration.  _Source: 5. Business Rules, line 801_
-- [ ] The utilities module must not become a dumping ground for unrelated helpers.  _Source: 5. Business Rules, line 802_
-- [ ] The utilities module must not export every internal helper as a public agent tool.  _Source: 5. Business Rules, line 803_
-- [ ] The utilities module must not hide external dependency behavior behind unclear convenience functions.  _Source: 5. Business Rules, line 804_
-- [ ] The utilities module must not perform live trading or live account mutation.  _Source: 5. Business Rules, line 805_
-- [ ] The utilities module must not make trading, risk, allocation, execution, or strategy acceptance decisions.  _Source: 5. Business Rules, line 806_
-- [ ] Utilities must not approve or reject trades.  _Source: 5. Business Rules, line 809_
-- [ ] Utilities must not recommend allocations.  _Source: 5. Business Rules, line 810_
-- [ ] Utilities must not decide strategy promotion.  _Source: 5. Business Rules, line 811_
-- [ ] Utilities must not approve risk changes.  _Source: 5. Business Rules, line 812_
-- [ ] Utilities must not place, close, modify, or cancel orders.  _Source: 5. Business Rules, line 813_
-- [ ] Utilities must not activate live systems.  _Source: 5. Business Rules, line 814_
-- [ ] Utilities must not override kill switches.  _Source: 5. Business Rules, line 815_
-- [ ] Modules requiring financial decisions must call the appropriate risk, portfolio, execution, strategy, or governance domain.  _Source: 5. Business Rules, line 816_
-- [ ] This is a domain-level requirements document for `docs/planning/DOMAIN.md`, not a sprint-specific requirements document.  _Source: 13. Assumptions, line 1302_
-- [ ] Support helpers remain native unless explicitly classified as official AI tools.  _Source: 13. Assumptions, line 1304_
-- [ ] Conditional AI tools remain support helpers unless direct agent use is approved.  _Source: 13. Assumptions, line 1305_
-- [ ] `tools.data` will own repair, resampling, enrichment, persistence, and cleaning workflows for market data.  _Source: 13. Assumptions, line 1306_
-- [ ] Optional dependencies may or may not be installed; importability must remain intact either way.  _Source: 13. Assumptions, line 1308_
-- [ ] No UI, broker runtime, database repository, or LLM framework dependency is required inside `tools.utils`.  _Source: 13. Assumptions, line 1311_
+- [X] The utilities module must not own trading strategy logic.  _Source: 5. Business Rules, line 797_
+- [X] The utilities module must not own broker execution logic.  _Source: 5. Business Rules, line 798_
+- [X] The utilities module must not own risk-governor decisions.  _Source: 5. Business Rules, line 799_
+- [X] The utilities module must not own portfolio allocation decisions.  _Source: 5. Business Rules, line 800_
+- [X] The utilities module must not own application orchestration.  _Source: 5. Business Rules, line 801_
+- [X] The utilities module must not become a dumping ground for unrelated helpers.  _Source: 5. Business Rules, line 802_
+- [X] The utilities module must not export every internal helper as a public agent tool.  _Source: 5. Business Rules, line 803_
+- [X] The utilities module must not hide external dependency behavior behind unclear convenience functions.  _Source: 5. Business Rules, line 804_
+- [X] The utilities module must not perform live trading or live account mutation.  _Source: 5. Business Rules, line 805_
+- [X] The utilities module must not make trading, risk, allocation, execution, or strategy acceptance decisions.  _Source: 5. Business Rules, line 806_
+- [X] Utilities must not approve or reject trades.  _Source: 5. Business Rules, line 809_
+- [X] Utilities must not recommend allocations.  _Source: 5. Business Rules, line 810_
+- [X] Utilities must not decide strategy promotion.  _Source: 5. Business Rules, line 811_
+- [X] Utilities must not approve risk changes.  _Source: 5. Business Rules, line 812_
+- [X] Utilities must not place, close, modify, or cancel orders.  _Source: 5. Business Rules, line 813_
+- [X] Utilities must not activate live systems.  _Source: 5. Business Rules, line 814_
+- [X] Utilities must not override kill switches.  _Source: 5. Business Rules, line 815_
+- [X] Modules requiring financial decisions must call the appropriate risk, portfolio, execution, strategy, or governance domain.  _Source: 5. Business Rules, line 816_
+- [X] This is a domain-level requirements document for `docs/planning/DOMAIN.md`, not a sprint-specific requirements document.  _Source: 13. Assumptions, line 1302_
+- [X] Support helpers remain native unless explicitly classified as official AI tools.  _Source: 13. Assumptions, line 1304_
+- [X] Conditional AI tools remain support helpers unless direct agent use is approved.  _Source: 13. Assumptions, line 1305_
+- [X] `tools.data` will own repair, resampling, enrichment, persistence, and cleaning workflows for market data.  _Source: 13. Assumptions, line 1306_
+- [X] Optional dependencies may or may not be installed; importability must remain intact either way.  _Source: 13. Assumptions, line 1308_
+- [X] No UI, broker runtime, database repository, or LLM framework dependency is required inside `tools.utils`.  _Source: 13. Assumptions, line 1311_
 
 #### Functional Requirements
 
-- [ ] Public names must be classified as either official AI tools or support objects/helpers.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 149_
-- [ ] Official AI tools must return the standard HaruQuant tool envelope.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 150_
-- [ ] Official AI tools must include tool metadata.  _Source: 3. Functional Requirements > 3.3 Official AI Tools, line 177_
-- [ ] Official AI tools must include risk and side-effect flags.  _Source: 3. Functional Requirements > 3.3 Official AI Tools, line 178_
-- [ ] Official AI tools must validate inputs.  _Source: 3. Functional Requirements > 3.3 Official AI Tools, line 179_
-- [ ] Official AI tools must not fail silently.  _Source: 3. Functional Requirements > 3.3 Official AI Tools, line 184_
-- [ ] Agents may call only approved official AI tools through approved tool attachment.  _Source: 3. Functional Requirements > 3.3 Official AI Tools, line 185_
-- [ ] Every official AI tool must return the top-level keys `status`, `message`, `data`, `error`, and `metadata`.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 189_
-- [ ] `status` must be either `success` or `error`.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 190_
-- [ ] `message` must be a string.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 191_
-- [ ] `error` must be either `None` or a mapping with `code` and `details`.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 192_
-- [ ] Standard response validation must reject missing top-level keys.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 194_
-- [ ] Standard response validation must reject missing metadata keys.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 195_
-- [ ] Standard response validation must reject malformed errors.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 197_
-- [ ] `get_execution_ms(start_time)` must calculate execution duration consistently for official tools.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 199_
-- [ ] `get_execution_ms(start_time)` must return milliseconds rounded to three decimals.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 201_
-- [ ] Official tools must not return unstructured `None`.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 681_
-- [ ] Official AI tools must return standard HaruQuant tool envelopes.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 866_
-- [ ] Official success responses must include `status="success"`, message, data, `error=None`, and metadata.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 867_
-- [ ] Data-quality issues must include code, severity, message, column, row count, and samples.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 870_
-- [ ] Canonical JSON serialization must return deterministic JSON strings.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 877_
-- [ ] Error helpers must return deterministic names and fallback messages.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 879_
-- [ ] Official AI tools must return standard error envelopes for expected validation failures.  _Source: 9. Error Handling Expectations, line 1011_
-- [ ] Circuit-open failures must return `CIRCUIT_OPEN` or provider-specific deterministic details.  _Source: 9. Error Handling Expectations, line 1035_
-- [ ] Error events must include sanitized details only.  _Source: 9. Error Handling Expectations, line 1041_
-- [ ] Every public function must document return value.  _Source: 12. Documentation Requirements, line 1241_
-- [ ] Documentation must include an operational runbook for critical utility-layer failures.  _Source: 12. Documentation Requirements, line 1293_
-- [ ] Implement `tools/utils/standard.py` before official AI tools.  _Source: 14. Implementation Priority Order, line 1329_
-- [ ] Implement usage examples for official AI tools and production primitives.  _Source: 14. Implementation Priority Order, line 1346_
-- [ ] Run CI quality gates before accepting the implementation.  _Source: 14. Implementation Priority Order, line 1347_
-- [ ] The target folder structure exists.  _Source: 15. Definition of Done, line 1353_
-- [ ] Public registry documentation classifies every official AI tool and support helper.  _Source: 15. Definition of Done, line 1356_
-- [ ] Official tools return standard envelopes.  _Source: 15. Definition of Done, line 1364_
-- [ ] Official tools include metadata constants.  _Source: 15. Definition of Done, line 1370_
-- [ ] Official tools include side-effect flags.  _Source: 15. Definition of Done, line 1371_
-- [ ] Official tools include `execution_ms`.  _Source: 15. Definition of Done, line 1373_
+- [X] Public names must be classified as either official AI tools or support objects/helpers.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 149_
+- [X] Official AI tools must return the standard HaruQuant tool envelope.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 150_
+- [X] Official AI tools must include tool metadata.  _Source: 3. Functional Requirements > 3.3 Official AI Tools, line 177_
+- [X] Official AI tools must include risk and side-effect flags.  _Source: 3. Functional Requirements > 3.3 Official AI Tools, line 178_
+- [X] Official AI tools must validate inputs.  _Source: 3. Functional Requirements > 3.3 Official AI Tools, line 179_
+- [X] Official AI tools must not fail silently.  _Source: 3. Functional Requirements > 3.3 Official AI Tools, line 184_
+- [X] Agents may call only approved official AI tools through approved tool attachment.  _Source: 3. Functional Requirements > 3.3 Official AI Tools, line 185_
+- [X] Every official AI tool must return the top-level keys `status`, `message`, `data`, `error`, and `metadata`.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 189_
+- [X] `status` must be either `success` or `error`.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 190_
+- [X] `message` must be a string.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 191_
+- [X] `error` must be either `None` or a mapping with `code` and `details`.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 192_
+- [X] Standard response validation must reject missing top-level keys.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 194_
+- [X] Standard response validation must reject missing metadata keys.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 195_
+- [X] Standard response validation must reject malformed errors.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 197_
+- [X] `get_execution_ms(start_time)` must calculate execution duration consistently for official tools.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 199_
+- [X] `get_execution_ms(start_time)` must return milliseconds rounded to three decimals.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 201_
+- [X] Official tools must not return unstructured `None`.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 681_
+- [X] Official AI tools must return standard HaruQuant tool envelopes.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 866_
+- [X] Official success responses must include `status="success"`, message, data, `error=None`, and metadata.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 867_
+- [X] Data-quality issues must include code, severity, message, column, row count, and samples.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 870_
+- [X] Canonical JSON serialization must return deterministic JSON strings.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 877_
+- [X] Error helpers must return deterministic names and fallback messages.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 879_
+- [X] Official AI tools must return standard error envelopes for expected validation failures.  _Source: 9. Error Handling Expectations, line 1011_
+- [X] Circuit-open failures must return `CIRCUIT_OPEN` or provider-specific deterministic details.  _Source: 9. Error Handling Expectations, line 1035_
+- [X] Error events must include sanitized details only.  _Source: 9. Error Handling Expectations, line 1041_
+- [X] Every public function must document return value.  _Source: 12. Documentation Requirements, line 1241_
+- [X] Documentation must include an operational runbook for critical utility-layer failures.  _Source: 12. Documentation Requirements, line 1293_
+- [X] Implement `tools/utils/standard.py` before official AI tools.  _Source: 14. Implementation Priority Order, line 1329_
+- [X] Implement usage examples for official AI tools and production primitives.  _Source: 14. Implementation Priority Order, line 1346_
+- [X] Run CI quality gates before accepting the implementation.  _Source: 14. Implementation Priority Order, line 1347_
+- [X] The target folder structure exists.  _Source: 15. Definition of Done, line 1353_
+- [X] Public registry documentation classifies every official AI tool and support helper.  _Source: 15. Definition of Done, line 1356_
+- [X] Official tools return standard envelopes.  _Source: 15. Definition of Done, line 1364_
+- [X] Official tools include metadata constants.  _Source: 15. Definition of Done, line 1370_
+- [X] Official tools include side-effect flags.  _Source: 15. Definition of Done, line 1371_
+- [X] Official tools include `execution_ms`.  _Source: 15. Definition of Done, line 1373_
 
 #### Non-Functional & Security Requirements
 
-- [ ] Every Python file must have a file-level docstring.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 673_
-- [ ] Every public function and class must have a useful docstring.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 674_
-- [ ] All public functions and methods must be typed.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 675_
-- [ ] Inputs must be validated where appropriate.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 676_
-- [ ] Output shapes must be explicit where applicable.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 677_
-- [ ] Error behavior must be deterministic.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 678_
-- [ ] Production logic must not use `print()`.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 680_
-- [ ] Utility functions must be safe for concurrent use unless explicitly documented otherwise.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 706_
-- [ ] Mutable module-level state must be avoided.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 707_
-- [ ] Caller-owned inputs must not be mutated unless documented in the function name and docstring.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 709_
-- [ ] Concurrency guarantees and limitations must be documented per component.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 725_
-- [ ] Optional dependencies must not break importability.  _Source: 4. Non-Functional Requirements > 4.4 Optional Dependencies, line 729_
-- [ ] Missing optional dependencies must fail only when the relevant feature is used.  _Source: 4. Non-Functional Requirements > 4.4 Optional Dependencies, line 730_
-- [ ] Missing optional dependency failures must be explicit.  _Source: 4. Non-Functional Requirements > 4.4 Optional Dependencies, line 731_
-- [ ] Optional dependency error messages must identify the missing dependency and required feature.  _Source: 4. Non-Functional Requirements > 4.4 Optional Dependencies, line 733_
-- [ ] Official AI tools must not raise expected validation errors to callers.  _Source: 9. Error Handling Expectations, line 1010_
-- [ ] Domain-specific errors must be mappable through `Error` inheritance or a compatible `code` attribute.  _Source: 9. Error Handling Expectations, line 1018_
-- [ ] Error helpers must not raise for unknown codes unless explicitly requested.  _Source: 9. Error Handling Expectations, line 1019_
-- [ ] Error messages must be human-readable and actionable.  _Source: 9. Error Handling Expectations, line 1020_
-- [ ] Event validation failures must map to `INVALID_EVENT`.  _Source: 9. Error Handling Expectations, line 1022_
-- [ ] Every Python file must start with a file-level docstring.  _Source: 12. Documentation Requirements, line 1233_
-- [ ] File-level docstrings must state purpose.  _Source: 12. Documentation Requirements, line 1234_
-- [ ] File-level docstrings must state whether the file contains official AI tools or support helpers.  _Source: 12. Documentation Requirements, line 1235_
-- [ ] File-level docstrings must list exported public functions/classes.  _Source: 12. Documentation Requirements, line 1236_
-- [ ] File-level docstrings must describe side effects, if any.  _Source: 12. Documentation Requirements, line 1237_
-- [ ] Every public function must document what it does.  _Source: 12. Documentation Requirements, line 1238_
-- [ ] Every public function must document when to use it.  _Source: 12. Documentation Requirements, line 1239_
-- [ ] Every public function must document arguments.  _Source: 12. Documentation Requirements, line 1240_
-- [ ] Every public function must document side effects, if any.  _Source: 12. Documentation Requirements, line 1243_
-- [ ] Official AI tool docstrings must be agent-facing.  _Source: 12. Documentation Requirements, line 1244_
-- [ ] Official AI tool docstrings must explain when an agent should use the tool.  _Source: 12. Documentation Requirements, line 1245_
-- [ ] Official AI tool docstrings must explain what the tool does not do.  _Source: 12. Documentation Requirements, line 1247_
-- [ ] Usage examples must demonstrate success and error handling.  _Source: 12. Documentation Requirements, line 1249_
-- [ ] Usage examples must use realistic inputs.  _Source: 12. Documentation Requirements, line 1250_
-- [ ] Documentation must describe safe metric-label rules and examples of rejected labels.  _Source: 12. Documentation Requirements, line 1285_
-- [ ] Documentation must describe which features are support helpers and which are official AI tools.  _Source: 12. Documentation Requirements, line 1287_
-- [ ] Documentation must describe which adapters are optional and lazy-loaded.  _Source: 12. Documentation Requirements, line 1290_
-- [ ] Every Python file has a file-level docstring.  _Source: 15. Definition of Done, line 1359_
-- [ ] Every public function/class has a useful docstring.  _Source: 15. Definition of Done, line 1360_
-- [ ] Public functions and methods are typed.  _Source: 15. Definition of Done, line 1361_
-- [ ] Inputs are validated where appropriate.  _Source: 15. Definition of Done, line 1362_
-- [ ] Errors are explicit and deterministic.  _Source: 15. Definition of Done, line 1363_
-- [ ] No production `print()` calls exist.  _Source: 15. Definition of Done, line 1366_
-- [ ] Data repair and cleaning workflows are explicitly excluded from `tools.utils` and reserved for `tools.data`.  _Source: 15. Definition of Done, line 1380_
-- [ ] Future domain-specific errors inherit from `Error` or expose a compatible `code` attribute.  _Source: 15. Definition of Done, line 1383_
-- [ ] Standard response builders can map `Error` subclasses generically without hardcoding every future domain error.  _Source: 15. Definition of Done, line 1384_
-- [ ] Usage examples exist for official AI tools.  _Source: 15. Definition of Done, line 1411_
-- [ ] Usage examples use realistic inputs.  _Source: 15. Definition of Done, line 1412_
-- [ ] Usage examples show success and error handling.  _Source: 15. Definition of Done, line 1413_
-- [ ] Full-project quality gate passes.  _Source: 15. Definition of Done, line 1421_
-- [ ] No unresolved open questions remain for the baseline production-ready utils module.  _Source: 15. Definition of Done, line 1424_
+- [X] Every Python file must have a file-level docstring.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 673_
+- [X] Every public function and class must have a useful docstring.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 674_
+- [X] All public functions and methods must be typed.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 675_
+- [X] Inputs must be validated where appropriate.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 676_
+- [X] Output shapes must be explicit where applicable.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 677_
+- [X] Error behavior must be deterministic.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 678_
+- [X] Production logic must not use `print()`.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 680_
+- [X] Utility functions must be safe for concurrent use unless explicitly documented otherwise.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 706_
+- [X] Mutable module-level state must be avoided.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 707_
+- [X] Caller-owned inputs must not be mutated unless documented in the function name and docstring.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 709_
+- [X] Concurrency guarantees and limitations must be documented per component.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 725_
+- [X] Optional dependencies must not break importability.  _Source: 4. Non-Functional Requirements > 4.4 Optional Dependencies, line 729_
+- [X] Missing optional dependencies must fail only when the relevant feature is used.  _Source: 4. Non-Functional Requirements > 4.4 Optional Dependencies, line 730_
+- [X] Missing optional dependency failures must be explicit.  _Source: 4. Non-Functional Requirements > 4.4 Optional Dependencies, line 731_
+- [X] Optional dependency error messages must identify the missing dependency and required feature.  _Source: 4. Non-Functional Requirements > 4.4 Optional Dependencies, line 733_
+- [X] Official AI tools must not raise expected validation errors to callers.  _Source: 9. Error Handling Expectations, line 1010_
+- [X] Domain-specific errors must be mappable through `Error` inheritance or a compatible `code` attribute.  _Source: 9. Error Handling Expectations, line 1018_
+- [X] Error helpers must not raise for unknown codes unless explicitly requested.  _Source: 9. Error Handling Expectations, line 1019_
+- [X] Error messages must be human-readable and actionable.  _Source: 9. Error Handling Expectations, line 1020_
+- [X] Event validation failures must map to `INVALID_EVENT`.  _Source: 9. Error Handling Expectations, line 1022_
+- [X] Every Python file must start with a file-level docstring.  _Source: 12. Documentation Requirements, line 1233_
+- [X] File-level docstrings must state purpose.  _Source: 12. Documentation Requirements, line 1234_
+- [X] File-level docstrings must state whether the file contains official AI tools or support helpers.  _Source: 12. Documentation Requirements, line 1235_
+- [X] File-level docstrings must list exported public functions/classes.  _Source: 12. Documentation Requirements, line 1236_
+- [X] File-level docstrings must describe side effects, if any.  _Source: 12. Documentation Requirements, line 1237_
+- [X] Every public function must document what it does.  _Source: 12. Documentation Requirements, line 1238_
+- [X] Every public function must document when to use it.  _Source: 12. Documentation Requirements, line 1239_
+- [X] Every public function must document arguments.  _Source: 12. Documentation Requirements, line 1240_
+- [X] Every public function must document side effects, if any.  _Source: 12. Documentation Requirements, line 1243_
+- [X] Official AI tool docstrings must be agent-facing.  _Source: 12. Documentation Requirements, line 1244_
+- [X] Official AI tool docstrings must explain when an agent should use the tool.  _Source: 12. Documentation Requirements, line 1245_
+- [X] Official AI tool docstrings must explain what the tool does not do.  _Source: 12. Documentation Requirements, line 1247_
+- [X] Usage examples must demonstrate success and error handling.  _Source: 12. Documentation Requirements, line 1249_
+- [X] Usage examples must use realistic inputs.  _Source: 12. Documentation Requirements, line 1250_
+- [X] Documentation must describe safe metric-label rules and examples of rejected labels.  _Source: 12. Documentation Requirements, line 1285_
+- [X] Documentation must describe which features are support helpers and which are official AI tools.  _Source: 12. Documentation Requirements, line 1287_
+- [X] Documentation must describe which adapters are optional and lazy-loaded.  _Source: 12. Documentation Requirements, line 1290_
+- [X] Every Python file has a file-level docstring.  _Source: 15. Definition of Done, line 1359_
+- [X] Every public function/class has a useful docstring.  _Source: 15. Definition of Done, line 1360_
+- [X] Public functions and methods are typed.  _Source: 15. Definition of Done, line 1361_
+- [X] Inputs are validated where appropriate.  _Source: 15. Definition of Done, line 1362_
+- [X] Errors are explicit and deterministic.  _Source: 15. Definition of Done, line 1363_
+- [X] No production `print()` calls exist.  _Source: 15. Definition of Done, line 1366_
+- [X] Data repair and cleaning workflows are explicitly excluded from `tools.utils` and reserved for `tools.data`.  _Source: 15. Definition of Done, line 1380_
+- [X] Future domain-specific errors inherit from `Error` or expose a compatible `code` attribute.  _Source: 15. Definition of Done, line 1383_
+- [X] Standard response builders can map `Error` subclasses generically without hardcoding every future domain error.  _Source: 15. Definition of Done, line 1384_
+- [X] Usage examples exist for official AI tools.  _Source: 15. Definition of Done, line 1411_
+- [X] Usage examples use realistic inputs.  _Source: 15. Definition of Done, line 1412_
+- [X] Usage examples show success and error handling.  _Source: 15. Definition of Done, line 1413_
+- [X] Full-project quality gate passes.  _Source: 15. Definition of Done, line 1421_
+- [X] No unresolved open questions remain for the baseline production-ready utils module.  _Source: 15. Definition of Done, line 1424_
 
 #### Testing & Edge Cases
 
-- [ ] The implementation must be compatible with Black, isort, Flake8, mypy, pytest, and coverage.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 684_
-- [ ] Shared caches are allowed only when explicitly specified, bounded, and tested.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 710_
-- [ ] Time-dependent helpers must support deterministic testing where practical.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 711_
-- [ ] ID-dependent and randomness-dependent helpers must support deterministic testing where practical.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 714_
-- [ ] The utilities module must not implement UI, database repositories, or backtest engines.  _Source: 5. Business Rules, line 807_
-- [ ] Negative prices must be reported.  _Source: 8. Edge Cases, line 935_
-- [ ] Zero prices must be reported.  _Source: 8. Edge Cases, line 936_
-- [ ] OHLC values outside high/low range must be reported.  _Source: 8. Edge Cases, line 938_
-- [ ] NaN and infinity values must be detected.  _Source: 8. Edge Cases, line 944_
-- [ ] Symbol verification must be marked `not_available` when no symbol column exists.  _Source: 8. Edge Cases, line 946_
-- [ ] Issue lists and issue samples must truncate when limits are reached.  _Source: 8. Edge Cases, line 948_
-- [ ] Repeated identical alerts must be deduplicated or throttled.  _Source: 8. Edge Cases, line 987_
-- [ ] High-cardinality metric labels must be rejected or normalized.  _Source: 8. Edge Cases, line 992_
-- [ ] Open circuit state must fail fast.  _Source: 8. Edge Cases, line 997_
-- [ ] Unit tests must exist for every utility module.  _Source: 11. Testing Requirements, line 1125_
-- [ ] Usage examples must exist for official AI tools.  _Source: 11. Testing Requirements, line 1126_
-- [ ] Minimum line coverage must be at least 80% for `tools.utils`.  _Source: 11. Testing Requirements, line 1127_
-- [ ] Tests must cover edge cases.  _Source: 11. Testing Requirements, line 1131_
-- [ ] Official AI tool tests must verify metadata correctness.  _Source: 11. Testing Requirements, line 1134_
-- [ ] Official AI tool tests must verify `execution_ms` existence.  _Source: 11. Testing Requirements, line 1136_
-- [ ] Data-quality tests must cover at least 15 distinct data-quality cases.  _Source: 11. Testing Requirements, line 1153_
-- [ ] CI must pass Black, isort, Flake8, mypy, pytest, and the coverage gate.  _Source: 11. Testing Requirements, line 1227_
-- [ ] Implement unit tests for every module.  _Source: 14. Implementation Priority Order, line 1345_
-- [ ] Unit tests exist for every module.  _Source: 15. Definition of Done, line 1403_
-- [ ] Official tools have metadata tests.  _Source: 15. Definition of Done, line 1405_
-- [ ] Edge case tests exist.  _Source: 15. Definition of Done, line 1407_
-- [ ] Coverage is at least 80%.  _Source: 15. Definition of Done, line 1410_
-- [ ] Black passes.  _Source: 15. Definition of Done, line 1415_
-- [ ] isort passes.  _Source: 15. Definition of Done, line 1416_
-- [ ] Flake8 passes.  _Source: 15. Definition of Done, line 1417_
-- [ ] mypy passes.  _Source: 15. Definition of Done, line 1418_
-- [ ] pytest passes.  _Source: 15. Definition of Done, line 1419_
-- [ ] Coverage gate passes.  _Source: 15. Definition of Done, line 1420_
+- [X] The implementation must be compatible with Black, isort, Flake8, mypy, pytest, and coverage.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 684_
+- [X] Shared caches are allowed only when explicitly specified, bounded, and tested.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 710_
+- [X] Time-dependent helpers must support deterministic testing where practical.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 711_
+- [X] ID-dependent and randomness-dependent helpers must support deterministic testing where practical.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 714_
+- [X] The utilities module must not implement UI, database repositories, or backtest engines.  _Source: 5. Business Rules, line 807_
+- [X] Negative prices must be reported.  _Source: 8. Edge Cases, line 935_
+- [X] Zero prices must be reported.  _Source: 8. Edge Cases, line 936_
+- [X] OHLC values outside high/low range must be reported.  _Source: 8. Edge Cases, line 938_
+- [X] NaN and infinity values must be detected.  _Source: 8. Edge Cases, line 944_
+- [X] Symbol verification must be marked `not_available` when no symbol column exists.  _Source: 8. Edge Cases, line 946_
+- [X] Issue lists and issue samples must truncate when limits are reached.  _Source: 8. Edge Cases, line 948_
+- [X] Repeated identical alerts must be deduplicated or throttled.  _Source: 8. Edge Cases, line 987_
+- [X] High-cardinality metric labels must be rejected or normalized.  _Source: 8. Edge Cases, line 992_
+- [X] Open circuit state must fail fast.  _Source: 8. Edge Cases, line 997_
+- [X] Unit tests must exist for every utility module.  _Source: 11. Testing Requirements, line 1125_
+- [X] Usage examples must exist for official AI tools.  _Source: 11. Testing Requirements, line 1126_
+- [X] Minimum line coverage must be at least 80% for `tools.utils`.  _Source: 11. Testing Requirements, line 1127_
+- [X] Tests must cover edge cases.  _Source: 11. Testing Requirements, line 1131_
+- [X] Official AI tool tests must verify metadata correctness.  _Source: 11. Testing Requirements, line 1134_
+- [X] Official AI tool tests must verify `execution_ms` existence.  _Source: 11. Testing Requirements, line 1136_
+- [X] Data-quality tests must cover at least 15 distinct data-quality cases.  _Source: 11. Testing Requirements, line 1153_
+- [X] CI must pass Black, isort, Flake8, mypy, pytest, and the coverage gate.  _Source: 11. Testing Requirements, line 1227_
+- [X] Implement unit tests for every module.  _Source: 14. Implementation Priority Order, line 1345_
+- [X] Unit tests exist for every module.  _Source: 15. Definition of Done, line 1403_
+- [X] Official tools have metadata tests.  _Source: 15. Definition of Done, line 1405_
+- [X] Edge case tests exist.  _Source: 15. Definition of Done, line 1407_
+- [X] Coverage is at least 80%.  _Source: 15. Definition of Done, line 1410_
+- [X] Black passes.  _Source: 15. Definition of Done, line 1415_
+- [X] isort passes.  _Source: 15. Definition of Done, line 1416_
+- [X] Flake8 passes.  _Source: 15. Definition of Done, line 1417_
+- [X] mypy passes.  _Source: 15. Definition of Done, line 1418_
+- [X] pytest passes.  _Source: 15. Definition of Done, line 1419_
+- [X] Coverage gate passes.  _Source: 15. Definition of Done, line 1420_
 
 ---
 
@@ -565,7 +565,7 @@ Standard tool envelopes, metadata constants, side-effect flags, canonical JSON b
 
 Typed HaruQuant exceptions, deterministic error-code registry, and safe exception-to-envelope mapping.
 
-**Related test / usage files:** `tests/unit/tools/utils/test_errors.py`
+**Related test / usage files:** `tests/unit/tools/utils/test_errors.py`, `tests/usage/tools/utils.py`
 
 **Mapped source checklist items:** `50`
 
@@ -1843,138 +1843,138 @@ Prometheus-compatible metrics, Grafana expectations, health snapshots, clock dri
 
 ### 11.1 Checklist Count by Expected File
 
-| Expected File | Mapped Checklist Items |
-| --- | --- |
-| tools/__init__.py | 2 |
-| tools/utils/__init__.py | 15 |
-| tools/utils/logger.py | 44 |
-| tools/utils/standard.py | 144 |
-| tools/utils/errors.py | 50 |
-| tools/utils/identity.py | 37 |
-| tools/utils/normalization.py | 41 |
-| tools/utils/paths.py | 22 |
-| tools/utils/dataframe_tools.py | 31 |
-| tools/utils/data_quality.py | 68 |
-| tools/utils/schema_validation.py | 94 |
-| tools/utils/security.py | 83 |
-| tools/utils/settings.py | 51 |
-| tools/utils/auth.py | 83 |
-| tools/utils/event_bus.py | 151 |
-| tools/utils/error_routing.py | 34 |
-| tools/utils/notifications.py | 109 |
-| tools/utils/observability.py | 104 |
+| Expected File                    | Mapped Checklist Items |
+| -------------------------------- | ---------------------- |
+| tools/__init__.py          | 2                      |
+| tools/utils/__init__.py    | 15                     |
+| tools/utils/logger.py            | 44                     |
+| tools/utils/standard.py          | 144                    |
+| tools/utils/errors.py            | 50                     |
+| tools/utils/identity.py          | 37                     |
+| tools/utils/normalization.py     | 41                     |
+| tools/utils/paths.py             | 22                     |
+| tools/utils/dataframe_tools.py   | 31                     |
+| tools/utils/data_quality.py      | 68                     |
+| tools/utils/schema_validation.py | 94                     |
+| tools/utils/security.py          | 83                     |
+| tools/utils/settings.py          | 51                     |
+| tools/utils/auth.py              | 83                     |
+| tools/utils/event_bus.py         | 151                    |
+| tools/utils/error_routing.py     | 34                     |
+| tools/utils/notifications.py     | 109                    |
+| tools/utils/observability.py     | 104                    |
 
 ### 11.2 Source Section Count Audit
 
-| Original Source Section | Extracted Checklist Items |
-| --- | --- |
-| 3. Functional Requirements > 3.1 Module Foundation and Scope | 30 |
-| 3. Functional Requirements > 3.2 Public API and Registry | 12 |
-| 3. Functional Requirements > 3.3 Official AI Tools | 24 |
-| 3. Functional Requirements > 3.4 Standard Tool Response | 13 |
-| 3. Functional Requirements > 3.5 Logging | 32 |
-| 3. Functional Requirements > 3.6 Time and Clock Handling | 21 |
-| 3. Functional Requirements > 3.7 Authentication and Authorization | 13 |
-| 3. Functional Requirements > 3.8 Error Utilities | 14 |
-| 3. Functional Requirements > 3.9 Identity and Traceability | 18 |
-| 3. Functional Requirements > 3.10 Path Utilities | 11 |
-| 3. Functional Requirements > 3.11 Dataframe Utilities | 19 |
-| 3. Functional Requirements > 3.12 OHLCV Data Quality | 47 |
-| 3. Functional Requirements > 3.13 Schema Validation | 40 |
-| 3. Functional Requirements > 3.14 Security Utilities | 38 |
-| 3. Functional Requirements > 3.15 Runtime Settings | 29 |
-| 3. Functional Requirements > 3.16 Event Bus and Pub/Sub | 48 |
-| 3. Functional Requirements > 3.17 Error Routing and Alerts | 15 |
-| 3. Functional Requirements > 3.18 Notifications | 25 |
-| 3. Functional Requirements > 3.19 Observability, Metrics, and Health | 36 |
-| 3. Functional Requirements > 3.20 Circuit Breakers | 10 |
-| 4. Non-Functional Requirements > 4.1 Code Quality | 12 |
-| 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects | 15 |
-| 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State | 20 |
-| 4. Non-Functional Requirements > 4.4 Optional Dependencies | 8 |
-| 4. Non-Functional Requirements > 4.5 Memory, Response Size, and Backpressure | 12 |
-| 4. Non-Functional Requirements > 4.6 Performance | 14 |
-| 4. Non-Functional Requirements > 4.7 Reliability and Degradation | 8 |
-| 4. Non-Functional Requirements > 4.8 Observability Non-Functional Requirements | 9 |
-| 5. Business Rules | 33 |
-| 6. Inputs and Outputs > 6.1 Inputs | 26 |
-| 6. Inputs and Outputs > 6.2 Outputs | 22 |
-| 7. User Roles | 15 |
-| 8. Edge Cases | 91 |
-| 9. Error Handling Expectations | 36 |
-| 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions | 16 |
-| 10. Security Requirements | 51 |
-| 11. Testing Requirements | 103 |
-| 12. Documentation Requirements | 64 |
-| 13. Assumptions | 20 |
-| 14. Implementation Priority Order | 21 |
-| 15. Definition of Done | 72 |
+| Original Source Section                                                         | Extracted Checklist Items |
+| ------------------------------------------------------------------------------- | ------------------------- |
+| 3. Functional Requirements > 3.1 Module Foundation and Scope                    | 30                        |
+| 3. Functional Requirements > 3.2 Public API and Registry                        | 12                        |
+| 3. Functional Requirements > 3.3 Official AI Tools                              | 24                        |
+| 3. Functional Requirements > 3.4 Standard Tool Response                         | 13                        |
+| 3. Functional Requirements > 3.5 Logging                                        | 32                        |
+| 3. Functional Requirements > 3.6 Time and Clock Handling                        | 21                        |
+| 3. Functional Requirements > 3.7 Authentication and Authorization               | 13                        |
+| 3. Functional Requirements > 3.8 Error Utilities                                | 14                        |
+| 3. Functional Requirements > 3.9 Identity and Traceability                      | 18                        |
+| 3. Functional Requirements > 3.10 Path Utilities                                | 11                        |
+| 3. Functional Requirements > 3.11 Dataframe Utilities                           | 19                        |
+| 3. Functional Requirements > 3.12 OHLCV Data Quality                            | 47                        |
+| 3. Functional Requirements > 3.13 Schema Validation                             | 40                        |
+| 3. Functional Requirements > 3.14 Security Utilities                            | 38                        |
+| 3. Functional Requirements > 3.15 Runtime Settings                              | 29                        |
+| 3. Functional Requirements > 3.16 Event Bus and Pub/Sub                         | 48                        |
+| 3. Functional Requirements > 3.17 Error Routing and Alerts                      | 15                        |
+| 3. Functional Requirements > 3.18 Notifications                                 | 25                        |
+| 3. Functional Requirements > 3.19 Observability, Metrics, and Health            | 36                        |
+| 3. Functional Requirements > 3.20 Circuit Breakers                              | 10                        |
+| 4. Non-Functional Requirements > 4.1 Code Quality                               | 12                        |
+| 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects   | 15                        |
+| 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State | 20                        |
+| 4. Non-Functional Requirements > 4.4 Optional Dependencies                      | 8                         |
+| 4. Non-Functional Requirements > 4.5 Memory, Response Size, and Backpressure    | 12                        |
+| 4. Non-Functional Requirements > 4.6 Performance                                | 14                        |
+| 4. Non-Functional Requirements > 4.7 Reliability and Degradation                | 8                         |
+| 4. Non-Functional Requirements > 4.8 Observability Non-Functional Requirements  | 9                         |
+| 5. Business Rules                                                               | 33                        |
+| 6. Inputs and Outputs > 6.1 Inputs                                              | 26                        |
+| 6. Inputs and Outputs > 6.2 Outputs                                             | 22                        |
+| 7. User Roles                                                                   | 15                        |
+| 8. Edge Cases                                                                   | 91                        |
+| 9. Error Handling Expectations                                                  | 36                        |
+| 9. Error Handling Expectations > 9.1 Approved Error-Code Registry Additions     | 16                        |
+| 10. Security Requirements                                                       | 51                        |
+| 11. Testing Requirements                                                        | 103                       |
+| 12. Documentation Requirements                                                  | 64                        |
+| 13. Assumptions                                                                 | 20                        |
+| 14. Implementation Priority Order                                               | 21                        |
+| 15. Definition of Done                                                          | 72                        |
 
 ### 11.3 Subgroup Count Audit
 
-| Expected File | Subgroup | Mapped Checklist Items |
-| --- | --- | --- |
-| tools/__init__.py | Functional Requirements | 2 |
-| tools/utils/__init__.py | Purpose & Scope | 1 |
-| tools/utils/__init__.py | Functional Requirements | 10 |
-| tools/utils/__init__.py | Non-Functional & Security Requirements | 4 |
-| tools/utils/logger.py | Functional Requirements | 35 |
-| tools/utils/logger.py | Non-Functional & Security Requirements | 7 |
-| tools/utils/logger.py | Testing & Edge Cases | 2 |
-| tools/utils/standard.py | Purpose & Scope | 24 |
-| tools/utils/standard.py | Functional Requirements | 36 |
-| tools/utils/standard.py | Non-Functional & Security Requirements | 51 |
-| tools/utils/standard.py | Testing & Edge Cases | 33 |
-| tools/utils/errors.py | Functional Requirements | 21 |
-| tools/utils/errors.py | Non-Functional & Security Requirements | 24 |
-| tools/utils/errors.py | Testing & Edge Cases | 5 |
-| tools/utils/identity.py | Functional Requirements | 25 |
-| tools/utils/identity.py | Non-Functional & Security Requirements | 4 |
-| tools/utils/identity.py | Testing & Edge Cases | 8 |
-| tools/utils/normalization.py | Functional Requirements | 26 |
-| tools/utils/normalization.py | Non-Functional & Security Requirements | 7 |
-| tools/utils/normalization.py | Testing & Edge Cases | 8 |
-| tools/utils/paths.py | Functional Requirements | 14 |
-| tools/utils/paths.py | Non-Functional & Security Requirements | 1 |
-| tools/utils/paths.py | Testing & Edge Cases | 7 |
-| tools/utils/dataframe_tools.py | Functional Requirements | 21 |
-| tools/utils/dataframe_tools.py | Non-Functional & Security Requirements | 4 |
-| tools/utils/dataframe_tools.py | Testing & Edge Cases | 6 |
-| tools/utils/data_quality.py | Purpose & Scope | 2 |
-| tools/utils/data_quality.py | Functional Requirements | 52 |
-| tools/utils/data_quality.py | Non-Functional & Security Requirements | 3 |
-| tools/utils/data_quality.py | Testing & Edge Cases | 11 |
-| tools/utils/schema_validation.py | Purpose & Scope | 1 |
-| tools/utils/schema_validation.py | Functional Requirements | 62 |
-| tools/utils/schema_validation.py | Non-Functional & Security Requirements | 12 |
-| tools/utils/schema_validation.py | Testing & Edge Cases | 19 |
-| tools/utils/security.py | Purpose & Scope | 2 |
-| tools/utils/security.py | Functional Requirements | 45 |
-| tools/utils/security.py | Non-Functional & Security Requirements | 23 |
-| tools/utils/security.py | Testing & Edge Cases | 13 |
-| tools/utils/settings.py | Functional Requirements | 37 |
-| tools/utils/settings.py | Non-Functional & Security Requirements | 5 |
-| tools/utils/settings.py | Testing & Edge Cases | 9 |
-| tools/utils/auth.py | Purpose & Scope | 34 |
-| tools/utils/auth.py | Functional Requirements | 20 |
-| tools/utils/auth.py | Non-Functional & Security Requirements | 12 |
-| tools/utils/auth.py | Testing & Edge Cases | 17 |
-| tools/utils/event_bus.py | Purpose & Scope | 7 |
-| tools/utils/event_bus.py | Functional Requirements | 55 |
-| tools/utils/event_bus.py | Non-Functional & Security Requirements | 48 |
-| tools/utils/event_bus.py | Testing & Edge Cases | 41 |
-| tools/utils/error_routing.py | Purpose & Scope | 3 |
-| tools/utils/error_routing.py | Functional Requirements | 19 |
-| tools/utils/error_routing.py | Non-Functional & Security Requirements | 6 |
-| tools/utils/error_routing.py | Testing & Edge Cases | 6 |
-| tools/utils/notifications.py | Purpose & Scope | 12 |
-| tools/utils/notifications.py | Functional Requirements | 33 |
-| tools/utils/notifications.py | Non-Functional & Security Requirements | 37 |
-| tools/utils/notifications.py | Testing & Edge Cases | 27 |
-| tools/utils/observability.py | Purpose & Scope | 10 |
-| tools/utils/observability.py | Functional Requirements | 52 |
-| tools/utils/observability.py | Non-Functional & Security Requirements | 24 |
-| tools/utils/observability.py | Testing & Edge Cases | 18 |
+| Expected File                    | Subgroup                               | Mapped Checklist Items |
+| -------------------------------- | -------------------------------------- | ---------------------- |
+| tools/__init__.py          | Functional Requirements                | 2                      |
+| tools/utils/__init__.py    | Purpose & Scope                        | 1                      |
+| tools/utils/__init__.py    | Functional Requirements                | 10                     |
+| tools/utils/__init__.py    | Non-Functional & Security Requirements | 4                      |
+| tools/utils/logger.py            | Functional Requirements                | 35                     |
+| tools/utils/logger.py            | Non-Functional & Security Requirements | 7                      |
+| tools/utils/logger.py            | Testing & Edge Cases                   | 2                      |
+| tools/utils/standard.py          | Purpose & Scope                        | 24                     |
+| tools/utils/standard.py          | Functional Requirements                | 36                     |
+| tools/utils/standard.py          | Non-Functional & Security Requirements | 51                     |
+| tools/utils/standard.py          | Testing & Edge Cases                   | 33                     |
+| tools/utils/errors.py            | Functional Requirements                | 21                     |
+| tools/utils/errors.py            | Non-Functional & Security Requirements | 24                     |
+| tools/utils/errors.py            | Testing & Edge Cases                   | 5                      |
+| tools/utils/identity.py          | Functional Requirements                | 25                     |
+| tools/utils/identity.py          | Non-Functional & Security Requirements | 4                      |
+| tools/utils/identity.py          | Testing & Edge Cases                   | 8                      |
+| tools/utils/normalization.py     | Functional Requirements                | 26                     |
+| tools/utils/normalization.py     | Non-Functional & Security Requirements | 7                      |
+| tools/utils/normalization.py     | Testing & Edge Cases                   | 8                      |
+| tools/utils/paths.py             | Functional Requirements                | 14                     |
+| tools/utils/paths.py             | Non-Functional & Security Requirements | 1                      |
+| tools/utils/paths.py             | Testing & Edge Cases                   | 7                      |
+| tools/utils/dataframe_tools.py   | Functional Requirements                | 21                     |
+| tools/utils/dataframe_tools.py   | Non-Functional & Security Requirements | 4                      |
+| tools/utils/dataframe_tools.py   | Testing & Edge Cases                   | 6                      |
+| tools/utils/data_quality.py      | Purpose & Scope                        | 2                      |
+| tools/utils/data_quality.py      | Functional Requirements                | 52                     |
+| tools/utils/data_quality.py      | Non-Functional & Security Requirements | 3                      |
+| tools/utils/data_quality.py      | Testing & Edge Cases                   | 11                     |
+| tools/utils/schema_validation.py | Purpose & Scope                        | 1                      |
+| tools/utils/schema_validation.py | Functional Requirements                | 62                     |
+| tools/utils/schema_validation.py | Non-Functional & Security Requirements | 12                     |
+| tools/utils/schema_validation.py | Testing & Edge Cases                   | 19                     |
+| tools/utils/security.py          | Purpose & Scope                        | 2                      |
+| tools/utils/security.py          | Functional Requirements                | 45                     |
+| tools/utils/security.py          | Non-Functional & Security Requirements | 23                     |
+| tools/utils/security.py          | Testing & Edge Cases                   | 13                     |
+| tools/utils/settings.py          | Functional Requirements                | 37                     |
+| tools/utils/settings.py          | Non-Functional & Security Requirements | 5                      |
+| tools/utils/settings.py          | Testing & Edge Cases                   | 9                      |
+| tools/utils/auth.py              | Purpose & Scope                        | 34                     |
+| tools/utils/auth.py              | Functional Requirements                | 20                     |
+| tools/utils/auth.py              | Non-Functional & Security Requirements | 12                     |
+| tools/utils/auth.py              | Testing & Edge Cases                   | 17                     |
+| tools/utils/event_bus.py         | Purpose & Scope                        | 7                      |
+| tools/utils/event_bus.py         | Functional Requirements                | 55                     |
+| tools/utils/event_bus.py         | Non-Functional & Security Requirements | 48                     |
+| tools/utils/event_bus.py         | Testing & Edge Cases                   | 41                     |
+| tools/utils/error_routing.py     | Purpose & Scope                        | 3                      |
+| tools/utils/error_routing.py     | Functional Requirements                | 19                     |
+| tools/utils/error_routing.py     | Non-Functional & Security Requirements | 6                      |
+| tools/utils/error_routing.py     | Testing & Edge Cases                   | 6                      |
+| tools/utils/notifications.py     | Purpose & Scope                        | 12                     |
+| tools/utils/notifications.py     | Functional Requirements                | 33                     |
+| tools/utils/notifications.py     | Non-Functional & Security Requirements | 37                     |
+| tools/utils/notifications.py     | Testing & Edge Cases                   | 27                     |
+| tools/utils/observability.py     | Purpose & Scope                        | 10                     |
+| tools/utils/observability.py     | Functional Requirements                | 52                     |
+| tools/utils/observability.py     | Non-Functional & Security Requirements | 24                     |
+| tools/utils/observability.py     | Testing & Edge Cases                   | 18                     |
 
 ---
 

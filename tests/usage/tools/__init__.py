@@ -1,1 +1,1 @@
-"""Usage tests/examples for tools."""
+"""Usage examples for tools."""

@@ -284,15 +284,17 @@ def configure_logging(  # noqa: PLR0913
         root_l.removeHandler(h)
         h.close()
 
-    # Formatter setup
+    # Formatter setup: console may be colorized, but file logs must remain plain.
     if use_json:
-        formatter: logging.Formatter = JSONFormatter()
+        console_formatter: logging.Formatter = JSONFormatter()
+        file_formatter: logging.Formatter = JSONFormatter()
     else:
-        formatter = ColorConsoleFormatter(use_color=use_color)
+        console_formatter = ColorConsoleFormatter(use_color=use_color)
+        file_formatter = ColorConsoleFormatter(use_color=False)
 
     # Console handler
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(formatter)
+    console_handler.setFormatter(console_formatter)
     root_l.addHandler(console_handler)
 
     # Multi-file routing under log directory
@@ -317,7 +319,7 @@ def configure_logging(  # noqa: PLR0913
                     backupCount=backup_count,
                     encoding="utf-8",
                 )
-                file_handler.setFormatter(formatter)
+                file_handler.setFormatter(file_formatter)
                 file_handler.addFilter(LogFilter(target))
                 root_l.addHandler(file_handler)
         except (OSError, PermissionError) as e:

@@ -7,6 +7,8 @@ All notable HaruQuantAI project changes should be recorded here.
 | ID       | Functionality | Notes                                     |
 | -------- | ------------- | ----------------------------------------- |
 | TODO-002 | Utils Registry | Public registry for utility domain, side-effect free. |
+| TODO-003 | Utils Standard Envelope | Standard tool response builders, metadata, validation, canonical JSON, and timing helpers. |
+| TODO-004 | Utils Standard Diagnostics | Diagnostic issue schemas, circuit-open envelopes, sanitized error events, metric-label checks, and bounded dedupe helpers. |
 
 ## Added
 
@@ -14,6 +16,14 @@ All notable HaruQuantAI project changes should be recorded here.
 | -------- | ---------------------------- | ---------------------------------------- |
 | DONE-001 | Implementation Documentation | Documentation bootstrap for HaruQuantAI. |
 | DONE-002 | Logger                       | Structured JSON production logs, color console logs, rotating file safety. |
+
+## Fixed
+
+| ID       | Functionality | Notes                                                   |
+| -------- | ------------- | ------------------------------------------------------- |
+| FIX-001  | Logger        | Keep ANSI color formatting on terminal logs only, not file logs. |
+| FIX-002  | Logger        | Correct path resolution in tests/usage/tools/utils.py and export trace context functions from tools.utils. |
+| FIX-003  | Test Coverage | Point pytest, coverage, Ruff, and mypy configuration at `tools.utils` after removing `src/app`. |
 
 ## Decisions
 
