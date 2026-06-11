@@ -30,23 +30,40 @@ from tools.utils.logger import (  # noqa: E402
 
 def run_example() -> None:
     """Run logging system usage demonstrations."""
-    # Demonstrate logging with the default imported root logger
-    logger.debug("This is a debug message using the default root logger")
-
     # Obtain a logger instance
     log = get_logger("usage_example")
 
-    # 1. Local human-readable development console logging (default)
+    # 1. Local human-readable development console logging with color and file
     print("--- 1. Configuring Local Development Console Logging ---")
-    configure_logging(level="DEBUG", use_json=False, use_color=False)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        dev_log_file = Path(tmpdir) / "dev_app.log"
+        configure_logging(
+            level="DEBUG",
+            use_json=False,
+            use_color=True,
+            log_file_path=dev_log_file,
+        )
 
-    log.debug("This is a debug message")
-    log.info("This is an info message")
-    log.warning("This is a warning message")
+        # Log debug message using the default imported root logger
+        logger.debug("This is a debug message using the default root logger")
 
-    # Set thread trace context
-    set_trace_context(request_id="req-abc-999", workflow_id="wf-xyz-888")
-    log.info("Message with trace identifiers active")
+        log.debug("This is a debug message")
+        log.info("This is an info message")
+        log.warning("This is a warning message")
+
+        # Set thread trace context
+        set_trace_context(request_id="req-abc-999", workflow_id="wf-xyz-888")
+        log.info("Message with trace identifiers active")
+
+        # Verify file creation and output
+        if dev_log_file.exists():
+            print(f"Success: Dev log file created at {dev_log_file}")
+            print("Dev File Content:")
+            print(dev_log_file.read_text(encoding="utf-8").strip())
+
+        # Reset logging configuration to close the file handler before exiting block
+        # (This is necessary to release file lock on Windows)
+        configure_logging(level="INFO", use_json=False, use_color=True)
 
     # 2. Production Structured JSON logging
     print("\n--- 2. Configuring Production JSON Logging ---")
