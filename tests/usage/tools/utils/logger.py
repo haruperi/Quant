@@ -30,6 +30,9 @@ from tools.utils.logger import (  # noqa: E402
 
 def run_example() -> None:
     """Run logging system usage demonstrations."""
+    # Demonstrate logging with the default imported root logger
+    logger.debug("This is a debug message using the default root logger")
+
     # Obtain a logger instance
     log = get_logger("usage_example")
 
@@ -40,9 +43,6 @@ def run_example() -> None:
     log.debug("This is a debug message")
     log.info("This is an info message")
     log.warning("This is a warning message")
-
-    # Demonstrate logging with the default imported root logger
-    logger.debug("This is a debug message using the default root logger")
 
     # Set thread trace context
     set_trace_context(request_id="req-abc-999", workflow_id="wf-xyz-888")
