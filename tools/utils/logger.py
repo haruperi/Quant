@@ -7,7 +7,6 @@ against logging sensitive credentials or secrets.
 
 import json
 import logging
-import os
 import re
 import sys
 import threading
@@ -91,7 +90,7 @@ def redact_message(msg: str) -> str:
         return f"{match.group(1)}[REDACTED]"
 
     pattern = re.compile(
-        r"((?:pass(?:word)?|api_?key|token|credential|secret|private_?key|bot_?token|authorization)\s*[:=]\s*)[^\s,;&'\"]+",
+        r"((?:pass(?:word)?|api_?key|token|credential|secret|private_?key|bot_token|authorization)\s*[:=]\s*)[^\s,;&'\"]+",
         re.IGNORECASE,
     )
     msg = pattern.sub(replacement, msg)
@@ -161,7 +160,30 @@ class ColorConsoleFormatter(logging.Formatter):
             "%Y-%m-%d %H:%M:%S"
         )
         level = record.levelname
-        mod_func = f"{record.name}.{record.module}:{record.funcName}:{record.lineno}"
+
+        # Format module path hierarchy: module.submodule.filename
+        # (e.g. tools.utils.logger). Resolve relative to project root.
+        module_path = record.name
+        if record.pathname:
+            normalized_path = Path(record.pathname).resolve()
+            parts = normalized_path.parts
+            if "tools" in parts:
+                idx = parts.index("tools")
+                module_parts = list(parts[idx:])
+                module_parts[-1] = normalized_path.stem
+                module_path = ".".join(module_parts)
+            elif "src" in parts:
+                idx = parts.index("src")
+                module_parts = list(parts[idx + 1 :])
+                module_parts[-1] = normalized_path.stem
+                module_path = ".".join(module_parts)
+            elif "tests" in parts:
+                idx = parts.index("tests")
+                module_parts = list(parts[idx:])
+                module_parts[-1] = normalized_path.stem
+                module_path = ".".join(module_parts)
+
+        mod_func = f"{module_path}.{record.funcName}:{record.lineno}"
         msg = redact_message(record.getMessage())
 
         # Redact extra fields if present
@@ -172,9 +194,9 @@ class ColorConsoleFormatter(logging.Formatter):
             wf = trace["workflow_id"] or "-"
             trace_str = f" | req:{req} wf:{wf}"
 
-        is_win = sys.platform == "win32"
-        has_force_color = os.environ.get("FORCE_COLOR") is not None
-        if (self.use_color and not is_win) or has_force_color:
+        # Windows supports ANSI color escape sequences since Windows 10
+        # and PowerShell handles them perfectly, so we allow colorized logs.
+        if self.use_color:
             color = self.COLORS.get(level, "")
             level_str = f"{color}{level:<8}{self.RESET}"
         else:
