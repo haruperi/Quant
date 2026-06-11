@@ -648,49 +648,49 @@ _No source checklist items mapped to this subgroup._
 
 #### Functional Requirements
 
-- [ ] Official AI tools must include `request_id: str | None = None`.  _Source: 3. Functional Requirements > 3.3 Official AI Tools, line 176_
-- [ ] `metadata` must include `tool_name`, `tool_version`, `tool_category`, `tool_risk_level`, `request_id`, `execution_ms`, `read_only`, `writes_file`, `modifies_database`, `places_trade`, and `requires_network`.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 193_
-- [ ] Standard response validation must reject invalid statuses.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 196_
-- [ ] The module must provide `generate_id`.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 297_
-- [ ] The module must provide `generate_prefixed_id`.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 298_
-- [ ] The module must provide `generate_request_id`.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 299_
-- [ ] The module must provide `generate_workflow_id`.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 300_
-- [ ] The module must provide `generate_correlation_id` or equivalent correlation ID support.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 301_
-- [ ] The module must provide `generate_event_id` or equivalent event ID support.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 302_
-- [ ] The module must provide `validate_request_id`.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 303_
-- [ ] The module must provide `validate_workflow_id`.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 304_
-- [ ] The module must provide `ensure_version`.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 305_
-- [ ] IDs must be string-safe.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 306_
-- [ ] IDs must be safe for logs, filenames where practical, audit records, tool metadata, events, notifications, and metrics after cardinality controls.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 307_
-- [ ] IDs must not contain secrets or raw user-provided text.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 308_
-- [ ] Prefix validation must reject empty or unsafe prefixes.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 309_
-- [ ] Generated IDs must be collision-resistant.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 310_
-- [ ] Generated IDs must use UUID4, ULID-like generation, or an equivalently collision-resistant approach unless deterministic IDs are explicitly required.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 311_
-- [ ] Request IDs and workflow IDs must be suitable for logs, audit records, tool responses, and agent handoffs.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 312_
-- [ ] ID validation must be deterministic and must not perform external lookups.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 313_
-- [ ] `ensure_version(None)` must return the configured default.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 314_
-- [ ] Official AI tools must accept optional `request_id`.  _Source: 6. Inputs and Outputs > 6.1 Inputs, line 837_
-- [ ] Identity helpers must accept prefixes and version strings.  _Source: 6. Inputs and Outputs > 6.1 Inputs, line 850_
-- [ ] Implement `tools/utils/identity.py` before request/workflow/event trace helpers are needed.  _Source: 14. Implementation Priority Order, line 1331_
-- [ ] Official tools accept `request_id`.  _Source: 15. Definition of Done, line 1372_
+- [X] Official AI tools must include `request_id: str | None = None`.  _Source: 3. Functional Requirements > 3.3 Official AI Tools, line 176_
+- [X] `metadata` must include `tool_name`, `tool_version`, `tool_category`, `tool_risk_level`, `request_id`, `execution_ms`, `read_only`, `writes_file`, `modifies_database`, `places_trade`, and `requires_network`.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 193_
+- [X] Standard response validation must reject invalid statuses.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 196_
+- [X] The module must provide `generate_id`.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 297_
+- [X] The module must provide `generate_prefixed_id`.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 298_
+- [X] The module must provide `generate_request_id`.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 299_
+- [X] The module must provide `generate_workflow_id`.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 300_
+- [X] The module must provide `generate_correlation_id` or equivalent correlation ID support.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 301_
+- [X] The module must provide `generate_event_id` or equivalent event ID support.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 302_
+- [X] The module must provide `validate_request_id`.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 303_
+- [X] The module must provide `validate_workflow_id`.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 304_
+- [X] The module must provide `ensure_version`.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 305_
+- [X] IDs must be string-safe.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 306_
+- [X] IDs must be safe for logs, filenames where practical, audit records, tool metadata, events, notifications, and metrics after cardinality controls.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 307_
+- [X] IDs must not contain secrets or raw user-provided text.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 308_
+- [X] Prefix validation must reject empty or unsafe prefixes.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 309_
+- [X] Generated IDs must be collision-resistant.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 310_
+- [X] Generated IDs must use UUID4, ULID-like generation, or an equivalently collision-resistant approach unless deterministic IDs are explicitly required.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 311_
+- [X] Request IDs and workflow IDs must be suitable for logs, audit records, tool responses, and agent handoffs.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 312_
+- [X] ID validation must be deterministic and must not perform external lookups.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 313_
+- [X] `ensure_version(None)` must return the configured default.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 314_
+- [X] Official AI tools must accept optional `request_id`.  _Source: 6. Inputs and Outputs > 6.1 Inputs, line 837_
+- [X] Identity helpers must accept prefixes and version strings.  _Source: 6. Inputs and Outputs > 6.1 Inputs, line 850_
+- [X] Implement `tools/utils/identity.py` before request/workflow/event trace helpers are needed.  _Source: 14. Implementation Priority Order, line 1331_
+- [X] Official tools accept `request_id`.  _Source: 15. Definition of Done, line 1372_
 
 #### Non-Functional & Security Requirements
 
-- [ ] The implementation must avoid avoidable circular imports.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 683_
-- [ ] Large data-quality validations must avoid unnecessary deep copies.  _Source: 4. Non-Functional Requirements > 4.6 Performance, line 757_
-- [ ] Usage examples must use `request_id` where applicable.  _Source: 12. Documentation Requirements, line 1251_
-- [ ] Usage examples use `request_id` where applicable.  _Source: 15. Definition of Done, line 1414_
+- [X] The implementation must avoid avoidable circular imports.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 683_
+- [X] Large data-quality validations must avoid unnecessary deep copies.  _Source: 4. Non-Functional Requirements > 4.6 Performance, line 757_
+- [X] Usage examples must use `request_id` where applicable.  _Source: 12. Documentation Requirements, line 1251_
+- [X] Usage examples use `request_id` where applicable.  _Source: 15. Definition of Done, line 1414_
 
 #### Testing & Edge Cases
 
-- [ ] Empty or unsafe ID prefixes must fail validation.  _Source: 8. Edge Cases, line 913_
-- [ ] `ensure_version(None)` must return the default.  _Source: 8. Edge Cases, line 914_
-- [ ] Invalid datetime inputs must fail clearly.  _Source: 8. Edge Cases, line 915_
-- [ ] Invalid high-low relationships must be reported.  _Source: 8. Edge Cases, line 937_
-- [ ] Tests must cover invalid inputs.  _Source: 11. Testing Requirements, line 1130_
-- [ ] Official AI tool tests must verify request ID propagation.  _Source: 11. Testing Requirements, line 1135_
-- [ ] Identity tests must verify ID uniqueness, prefix validation, and version defaulting.  _Source: 11. Testing Requirements, line 1148_
-- [ ] Invalid input tests exist.  _Source: 15. Definition of Done, line 1406_
+- [X] Empty or unsafe ID prefixes must fail validation.  _Source: 8. Edge Cases, line 913_
+- [X] `ensure_version(None)` must return the default.  _Source: 8. Edge Cases, line 914_
+- [X] Invalid datetime inputs must fail clearly.  _Source: 8. Edge Cases, line 915_
+- [X] Invalid high-low relationships must be reported.  _Source: 8. Edge Cases, line 937_
+- [X] Tests must cover invalid inputs.  _Source: 11. Testing Requirements, line 1130_
+- [X] Official AI tool tests must verify request ID propagation.  _Source: 11. Testing Requirements, line 1135_
+- [X] Identity tests must verify ID uniqueness, prefix validation, and version defaulting.  _Source: 11. Testing Requirements, line 1148_
+- [X] Invalid input tests exist.  _Source: 15. Definition of Done, line 1406_
 
 ---
 

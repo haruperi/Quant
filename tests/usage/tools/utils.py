@@ -26,12 +26,17 @@ from tools.utils import (  # noqa: E402
     configure_logging,
     error_response,
     exception_to_error_payload,
+    generate_correlation_id,
+    generate_event_id,
+    generate_request_id,
+    generate_workflow_id,
     get_logger,
     logger,
     message_for,
     set_trace_context,
     success_response,
     validate_ohlcv_records,
+    validate_request_id,
     validate_standard_response,
 )
 
@@ -183,7 +188,31 @@ def example_03_error_utilities() -> None:
     print(message_for(payload["code"]))
 
 
+def example_04_identity_utilities() -> None:
+    """Demonstrate trace ID generation and request ID propagation."""
+    request_id = validate_request_id(generate_request_id())
+    identity_payload = {
+        "request_id": request_id,
+        "workflow_id": generate_workflow_id(),
+        "correlation_id": generate_correlation_id(),
+        "event_id": generate_event_id(),
+    }
+    metadata = build_metadata(
+        tool_name="identity_usage",
+        execution_ms=0,
+        request_id=request_id,
+    )
+    response = success_response(
+        message="Identity helpers generated trace IDs.",
+        data=identity_payload,
+        metadata=metadata,
+    )
+    validate_standard_response(response)
+    print(canonical_json(response))
+
+
 if __name__ == "__main__":
     example_01_logger()
     example_02_standard_response()
     example_03_error_utilities()
+    example_04_identity_utilities()
