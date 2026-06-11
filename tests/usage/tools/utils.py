@@ -6,6 +6,7 @@ This script demonstrates how to import, configure, and use the structured logger
 import sys
 import tempfile
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Add the project root to sys.path to allow direct execution without PYTHONPATH issues
@@ -26,18 +27,22 @@ from tools.utils import (  # noqa: E402
     configure_logging,
     error_response,
     exception_to_error_payload,
+    format_utc_timestamp,
     generate_correlation_id,
     generate_event_id,
     generate_request_id,
     generate_workflow_id,
     get_logger,
+    is_stale,
     logger,
     message_for,
+    normalize_timestamp,
     set_trace_context,
     success_response,
     validate_ohlcv_records,
     validate_request_id,
     validate_standard_response,
+    validate_timestamp_sequence,
 )
 
 
@@ -211,8 +216,35 @@ def example_04_identity_utilities() -> None:
     print(canonical_json(response))
 
 
+def example_05_normalization_utilities() -> None:
+    """Demonstrate UTC-first timestamp normalization helpers."""
+    normalized = normalize_timestamp(
+        "2026-06-11T12:30:00+02:00",
+        assumed_timezone="UTC",
+    )
+    print(format_utc_timestamp(normalized))
+
+    now = datetime(2026, 6, 11, 10, 45, tzinfo=UTC)
+    issues = validate_timestamp_sequence(
+        [
+            "2026-06-11T10:00:00Z",
+            "2026-06-11T10:00:00Z",
+            "2026-06-11T09:59:00Z",
+        ],
+    )
+    print(
+        canonical_json(
+            {
+                "is_stale": is_stale(normalized, max_age_seconds=60, now=now),
+                "timestamp_issues": issues,
+            },
+        ),
+    )
+
+
 if __name__ == "__main__":
     example_01_logger()
     example_02_standard_response()
     example_03_error_utilities()
     example_04_identity_utilities()
+    example_05_normalization_utilities()

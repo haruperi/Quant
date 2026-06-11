@@ -708,53 +708,53 @@ _No source checklist items mapped to this subgroup._
 
 #### Functional Requirements
 
-- [ ] Official AI tools must measure execution timing.  _Source: 3. Functional Requirements > 3.3 Official AI Tools, line 180_
-- [ ] `get_execution_ms(start_time)` must use a monotonic clock source such as `time.perf_counter()`.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 200_
-- [ ] The module must define `DEFAULT_TIMEZONE = "UTC"`.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 240_
-- [ ] The module must provide datetime parsing.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 241_
-- [ ] The module must provide timestamp normalization.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 242_
-- [ ] The module must provide UTC conversion.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 243_
-- [ ] The module must provide naive UTC conversion.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 244_
-- [ ] The module must provide UTC timestamp formatting with trailing `Z`.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 245_
-- [ ] The module must provide timezone normalization for pandas-like series or timestamp columns.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 246_
-- [ ] The module must provide stale-data checks.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 247_
-- [ ] Timezone behavior must be explicit.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 248_
-- [ ] Naive datetimes must be handled deterministically using an explicit assumed timezone.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 249_
-- [ ] ISO strings must parse consistently.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 250_
-- [ ] Time-dependent helpers must support injected `now` values or injected clock objects where practical.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 251_
-- [ ] Invalid datetimes must fail clearly.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 252_
-- [ ] Helpers must not use the local machine timezone implicitly.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 253_
-- [ ] Wall-clock timestamps must be UTC-aware.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 254_
-- [ ] Execution timing must use monotonic timers.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 255_
-- [ ] The system must distinguish wall-clock timestamps from monotonic durations.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 256_
-- [ ] Distributed workflow timestamp validation must surface clock-drift risk where relevant.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 257_
-- [ ] Event envelopes must include event creation time and event processing time where applicable.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 258_
-- [ ] Notification diagnostics must include created, routed, sent, and failed timestamps where applicable.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 259_
-- [ ] Health checks should include clock-drift status where supported by runtime environment.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 260_
-- [ ] Timestamp helpers must accept datetime-like values and explicit timezone assumptions.  _Source: 6. Inputs and Outputs > 6.1 Inputs, line 851_
-- [ ] Timestamp formatting must return UTC ISO strings ending in `Z`.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 878_
-- [ ] Implement `tools/utils/normalization.py` before data quality, settings, freshness checks, and event timestamp validation.  _Source: 14. Implementation Priority Order, line 1332_
+- [X] Official AI tools must measure execution timing.  _Source: 3. Functional Requirements > 3.3 Official AI Tools, line 180_
+- [X] `get_execution_ms(start_time)` must use a monotonic clock source such as `time.perf_counter()`.  _Source: 3. Functional Requirements > 3.4 Standard Tool Response, line 200_
+- [X] The module must define `DEFAULT_TIMEZONE = "UTC"`.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 240_
+- [X] The module must provide datetime parsing.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 241_
+- [X] The module must provide timestamp normalization.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 242_
+- [X] The module must provide UTC conversion.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 243_
+- [X] The module must provide naive UTC conversion.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 244_
+- [X] The module must provide UTC timestamp formatting with trailing `Z`.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 245_
+- [X] The module must provide timezone normalization for pandas-like series or timestamp columns.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 246_
+- [X] The module must provide stale-data checks.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 247_
+- [X] Timezone behavior must be explicit.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 248_
+- [X] Naive datetimes must be handled deterministically using an explicit assumed timezone.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 249_
+- [X] ISO strings must parse consistently.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 250_
+- [X] Time-dependent helpers must support injected `now` values or injected clock objects where practical.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 251_
+- [X] Invalid datetimes must fail clearly.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 252_
+- [X] Helpers must not use the local machine timezone implicitly.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 253_
+- [X] Wall-clock timestamps must be UTC-aware.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 254_
+- [X] Execution timing must use monotonic timers.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 255_
+- [X] The system must distinguish wall-clock timestamps from monotonic durations.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 256_
+- [X] Distributed workflow timestamp validation must surface clock-drift risk where relevant.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 257_
+- [X] Event envelopes must include event creation time and event processing time where applicable.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 258_
+- [X] Notification diagnostics must include created, routed, sent, and failed timestamps where applicable.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 259_
+- [X] Health checks should include clock-drift status where supported by runtime environment.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 260_
+- [X] Timestamp helpers must accept datetime-like values and explicit timezone assumptions.  _Source: 6. Inputs and Outputs > 6.1 Inputs, line 851_
+- [X] Timestamp formatting must return UTC ISO strings ending in `Z`.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 878_
+- [X] Implement `tools/utils/normalization.py` before data quality, settings, freshness checks, and event timestamp validation.  _Source: 14. Implementation Priority Order, line 1332_
 
 #### Non-Functional & Security Requirements
 
-- [ ] Importing `tools.utils` must be lightweight.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 688_
-- [ ] Heavy dependencies must be imported inside the specific submodule or function that needs them.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 690_
-- [ ] Importing any `tools.utils` module must not open network connections.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 696_
-- [ ] Importing any `tools.utils` module must not initialize broker clients.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 697_
-- [ ] Importing any `tools.utils` module must not run validation jobs.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 701_
-- [ ] Documentation must describe UTC-first time policy.  _Source: 12. Documentation Requirements, line 1254_
-- [ ] Documentation must describe monotonic execution timing policy.  _Source: 12. Documentation Requirements, line 1255_
+- [X] Importing `tools.utils` must be lightweight.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 688_
+- [X] Heavy dependencies must be imported inside the specific submodule or function that needs them.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 690_
+- [X] Importing any `tools.utils` module must not open network connections.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 696_
+- [X] Importing any `tools.utils` module must not initialize broker clients.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 697_
+- [X] Importing any `tools.utils` module must not run validation jobs.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 701_
+- [X] Documentation must describe UTC-first time policy.  _Source: 12. Documentation Requirements, line 1254_
+- [X] Documentation must describe monotonic execution timing policy.  _Source: 12. Documentation Requirements, line 1255_
 
 #### Testing & Edge Cases
 
-- [ ] Importing `tools.utils` must be safe in tests, CLI scripts, FastAPI startup, and agent runtime initialization.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 692_
-- [ ] Naive datetimes must be normalized using the explicit assumed timezone.  _Source: 8. Edge Cases, line 916_
-- [ ] Stale checks must be deterministic when `now` is injected.  _Source: 8. Edge Cases, line 917_
-- [ ] Unparseable datetimes must be reported.  _Source: 8. Edge Cases, line 928_
-- [ ] Non-monotonic timestamps must be reported.  _Source: 8. Edge Cases, line 929_
-- [ ] Duplicate timestamps must be reported.  _Source: 8. Edge Cases, line 930_
-- [ ] Stale data must fail deterministically.  _Source: 8. Edge Cases, line 957_
-- [ ] Normalization tests must verify ISO parsing, naive timezone assumptions, UTC conversion, and stale checks.  _Source: 11. Testing Requirements, line 1149_
+- [X] Importing `tools.utils` must be safe in tests, CLI scripts, FastAPI startup, and agent runtime initialization.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 692_
+- [X] Naive datetimes must be normalized using the explicit assumed timezone.  _Source: 8. Edge Cases, line 916_
+- [X] Stale checks must be deterministic when `now` is injected.  _Source: 8. Edge Cases, line 917_
+- [X] Unparseable datetimes must be reported.  _Source: 8. Edge Cases, line 928_
+- [X] Non-monotonic timestamps must be reported.  _Source: 8. Edge Cases, line 929_
+- [X] Duplicate timestamps must be reported.  _Source: 8. Edge Cases, line 930_
+- [X] Stale data must fail deterministically.  _Source: 8. Edge Cases, line 957_
+- [X] Normalization tests must verify ISO parsing, naive timezone assumptions, UTC conversion, and stale checks.  _Source: 11. Testing Requirements, line 1149_
 
 ---
 

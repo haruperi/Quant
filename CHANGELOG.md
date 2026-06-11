@@ -11,6 +11,7 @@ All notable HaruQuantAI project changes should be recorded here.
 | TODO-004 | Utils Standard Diagnostics | Diagnostic issue schemas, circuit-open envelopes, sanitized error events, metric-label checks, and bounded dedupe helpers. |
 | TODO-005 | Utils Errors | Typed HaruQuant exceptions, deterministic error-code registry, and safe exception-to-envelope mapping. |
 | TODO-006 | Utils Identity | Collision-resistant trace IDs, prefix validation, version defaulting, and request propagation helpers. |
+| TODO-007 | Utils Normalization | UTC-first timestamp parsing, formatting, stale checks, sequence diagnostics, and clock-drift helpers. |
 
 ## Added
 
