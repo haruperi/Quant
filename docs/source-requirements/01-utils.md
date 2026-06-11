@@ -277,8 +277,8 @@ _No source checklist items mapped to this subgroup._
 
 #### Functional Requirements
 
-- [ ] Implement `tools/__init__.py` first to establish a clean side-effect-free package.  _Source: 14. Implementation Priority Order, line 1327_
-- [ ] `tools/__init__.py` exists and is side-effect free.  _Source: 15. Definition of Done, line 1354_
+- [x] Implement `tools/__init__.py` first to establish a clean side-effect-free package.  _Source: 14. Implementation Priority Order, line 1327_
+- [x] `tools/__init__.py` exists and is side-effect free.  _Source: 15. Definition of Done, line 1354_
 
 #### Non-Functional & Security Requirements
 
@@ -300,27 +300,27 @@ Public registry for the utilities domain. Owns approved exports and public API b
 
 #### Purpose & Scope
 
-- [ ] The implementation is expected to be fresh and clean, with no backward-compatibility shims.  _Source: 13. Assumptions, line 1303_
+- [x] The implementation is expected to be fresh and clean, with no backward-compatibility shims.  _Source: 13. Assumptions, line 1303_
 
 #### Functional Requirements
 
-- [ ] `tools/utils/__init__.py` must act as the public registry for the utility domain.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 147_
-- [ ] Only intentionally imported names listed in `__all__` may be public.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 148_
-- [ ] Support helpers may return native Python values when they are not agent-callable tools.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 151_
-- [ ] Internal helpers must remain private unless explicitly intended for public import.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 154_
-- [ ] No accidental public exports may exist.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 155_
-- [ ] No compatibility shims, aliases, fallback import modules, or duplicate wrapper modules may exist.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 156_
-- [ ] New public exports must be justified by real cross-domain reuse.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 157_
-- [ ] Public exports may not be renamed or removed after v8 acceptance without a new versioned specification and registry review.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 158_
-- [ ] Implement `tools/utils/__init__.py` only after modules exist and public names are finalized.  _Source: 14. Implementation Priority Order, line 1344_
-- [ ] `tools/utils/__init__.py` exposes only approved public names.  _Source: 15. Definition of Done, line 1355_
+- [x] `tools/utils/__init__.py` must act as the public registry for the utility domain.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 147_
+- [x] Only intentionally imported names listed in `__all__` may be public.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 148_
+- [x] Support helpers may return native Python values when they are not agent-callable tools.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 151_
+- [x] Internal helpers must remain private unless explicitly intended for public import.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 154_
+- [x] No accidental public exports may exist.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 155_
+- [x] No compatibility shims, aliases, fallback import modules, or duplicate wrapper modules may exist.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 156_
+- [x] New public exports must be justified by real cross-domain reuse.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 157_
+- [x] Public exports may not be renamed or removed after v8 acceptance without a new versioned specification and registry review.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 158_
+- [x] Implement `tools/utils/__init__.py` only after modules exist and public names are finalized.  _Source: 14. Implementation Priority Order, line 1344_
+- [x] `tools/utils/__init__.py` exposes only approved public names.  _Source: 15. Definition of Done, line 1355_
 
 #### Non-Functional & Security Requirements
 
-- [ ] `tools/utils/__init__.py` must not eagerly import pandas, cryptography, dotenv, broker SDKs, network clients, notification clients, Prometheus exporters, or other heavy optional dependencies unless absolutely necessary.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 689_
-- [ ] Documentation must maintain compatibility review notes for future public API changes.  _Source: 12. Documentation Requirements, line 1289_
-- [ ] Internal helpers are not accidentally exported.  _Source: 15. Definition of Done, line 1357_
-- [ ] No compatibility shims, aliases, fallback import modules, or duplicate wrapper modules exist.  _Source: 15. Definition of Done, line 1358_
+- [x] `tools/utils/__init__.py` must not eagerly import pandas, cryptography, dotenv, broker SDKs, network clients, notification clients, Prometheus exporters, or other heavy optional dependencies unless absolutely necessary.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 689_
+- [x] Documentation must maintain compatibility review notes for future public API changes.  _Source: 12. Documentation Requirements, line 1289_
+- [x] Internal helpers are not accidentally exported.  _Source: 15. Definition of Done, line 1357_
+- [x] No compatibility shims, aliases, fallback import modules, or duplicate wrapper modules exist.  _Source: 15. Definition of Done, line 1358_
 
 #### Testing & Edge Cases
 
