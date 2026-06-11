@@ -8,7 +8,13 @@ import tempfile
 from pathlib import Path
 
 # Add the project root to sys.path to allow direct execution without PYTHONPATH issues
-project_root = str(Path(__file__).resolve().parent.parent.parent.parent)
+# __file__ is tests/usage/tools/utils/logger.py
+# parent is tests/usage/tools/utils
+# parent.parent is tests/usage/tools
+# parent.parent.parent is tests/usage
+# parent.parent.parent.parent is tests
+# parent.parent.parent.parent.parent is root (Quant)
+project_root = str(Path(__file__).resolve().parent.parent.parent.parent.parent)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
