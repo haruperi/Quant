@@ -53,17 +53,17 @@
 
 ## 5. Tool Function Standard
 
-- **Core Principle**: Only functions exposed in `tools/<domain>/__init__.py` (`__all__`) are Official AI Tools. Internal helpers (`_name`) are exempt from full standard but must be typed/documented.
+- **Core Principle**: Only functions exposed in `agentic/tools/<domain>/__init__.py` (`__all__`) are Official AI Tools.
 - **Imports Rule**: Agents must import from the domain, never deep:
 
-  - ✅ `from tools.data import get_market_data`
-  - ❌ `from tools.data.market_data import get_market_data`
+  - ✅ `from agentic.tools.data import get_market_data`
+  - ❌ `from agentic.tools.data.market_data import get_market_data`
 - **Mandatory Structure - Tool Template & Schema**:
 
   1. **Metadata**: `TOOL_NAME`, `TOOL_VERSION`, `TOOL_CATEGORY`, `TOOL_RISK_LEVEL` (low/medium/high/critical), `REQUIRES_APPROVAL`, `READS`, `WRITES`, `TRADES`, `REQUIRES_NETWORK`.
   2. **Signature**: Outward-facing tools must accept `request_id: str | None = None` for traceability.
   3. **Validation**: Validate inputs first. Return `INVALID_INPUT` schema if failed.
-  4. **Execution**: `try/except` block. Log `called`, `success`, or `exception` via `from tools.utils import logger`. Include `request_id`.
+  4. **Execution**: `try/except` block. Log `called`, `success`, or `exception` via `from services.utils import logger`. Include `request_id`.
   5. **Standard Return Schema** Tools must **never** return `None` or raw exceptions. Always return this exact dictionary structure:
 
   ```json
@@ -139,11 +139,11 @@ Update active docs whenever project meaning changes:
 
 ## 10. Final Checklist (Must be satisfied before finishing)
 
-- [ ] Scope was strictly followed.
-- [ ] Required docs were read; no requirements/rules were invented.
-- [ ] Code quality standards (types, docstrings, logging, error handling) applied.
-- [ ] Tools/Agents follow their respective compressed standards (schemas, metadata, imports).
-- [ ] No secrets or live side effects introduced.
-- [ ] Affected active docs (`ARCHITECTURE.md`, `CHANGELOG.md`) updated.
-- [ ] Validation/tests and usage examples run and passed.
-- [ ] Rollback path identified and reported.
+- [X] Scope was strictly followed.
+- [X] Required docs were read; no requirements/rules were invented.
+- [X] Code quality standards (types, docstrings, logging, error handling) applied.
+- [X] Tools/Agents follow their respective compressed standards (schemas, metadata, imports).
+- [X] No secrets or live side effects introduced.
+- [X] Affected active docs (`ARCHITECTURE.md`, `CHANGELOG.md`) updated.
+- [X] Validation/tests and usage examples run and passed.
+- [X] Rollback path identified and reported.

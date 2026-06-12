@@ -40,6 +40,9 @@ All notable HaruQuantAI project changes should be recorded here.
 | FIX-003 | Test Coverage | Point pytest, coverage, Ruff, and mypy configuration at `tools.utils` after removing `src/app`.        |
 | FIX-004 | Utils Tool Standard Audit | Added `TOOL_FUNCTION_STANDARDIZATION_AUDIT.md`, fixed `redact_payload` invalid input handling, and expanded utility test coverage. |
 | FIX-005 | Utils Function Audit Remediation | Tightened official utils wrappers to fail closed with standard envelopes, added registry source grouping, and expanded wrapper usage/tests. |
+| FIX-006 | Logger Migration | Fully migrated logger implementation to `app/utils/logger.py` and deleted the deprecated `tools/utils/logger.py` shim. |
+| FIX-007 | Security Migration | Moved security helper logic to `app/core/security.py`, resolved circular imports using `TYPE_CHECKING` guards, and relocated unit tests. |
+| FIX-008 | Utilities Relocation | Relocated standard utility modules to `app/utils/`, deleted the deprecated settings module (`tools/utils/settings.py`), and removed the deprecated `tools/` folder. |
 
 ## Decisions
 

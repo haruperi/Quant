@@ -8,7 +8,7 @@ requires-python = ">=3.14"
 # Target Python version rules
 target-version = "py313"
 line-length = 88
-src = ["tools", "tests"]
+src = ["app", "tests"]
 
 [tool.ruff.lint]
 # 1. ENABLING ALL REQUESTED RULE GROUPS
@@ -114,7 +114,7 @@ addopts = [
     "-ra",
     "--strict-markers",
     "--strict-config",
-    "--cov=tools.utils",
+    "--cov=app.utils",
     "--cov-report=term-missing",
     "--cov-report=html",
     "--cov-fail-under=80"
@@ -122,7 +122,7 @@ addopts = [
 
 [tool.coverage.run]
 branch = true
-source = ["tools/utils"]
+source = ["app/utils"]
 
 [tool.coverage.report]
 show_missing = true
@@ -138,7 +138,7 @@ exclude_lines = [
 python_version = "3.14"
 strict = true
 mypy_path = "."
-packages = ["tools.utils"]
+packages = ["app.utils"]
 warn_unused_configs = true
 warn_return_any = true
 warn_unused_ignores = true

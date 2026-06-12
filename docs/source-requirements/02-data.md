@@ -2,8 +2,9 @@
 
 **Source file:** `02-data.md`
 **Target module:** `tools/data/`
-**Status:** Restructured implementation-oriented requirements map
-**Mapping policy:** Every unchecked checklist requirement from the source file is mapped exactly once to the expected implementation or test/documentation file. No compatibility aliases are introduced.
+**Status:** DRY implementation-oriented requirements map using `tools.utils` as the shared foundation
+**Mapping policy:** Every unchecked checklist requirement from the source file must be mapped exactly once to either a compact data-domain implementation file, a compact data-domain test file, documentation, or the explicit `tools.utils` coverage bucket in Section 7.0. No compatibility aliases are introduced.
+**Requirement accounting note:** This document currently contains 704 visible unchecked checklist items: 703 source-tagged extracted items plus 1 local anti-duplication requirement. The owner has identified 861 unchecked task requirements as the target count. Implementation must not start until the extraction is reconciled to 861 without dropping any requirement; missing extracted items must be added to the appropriate compact data file or the `tools.utils` coverage bucket.
 
 ## 1. Global & Common Context
 
@@ -16,6 +17,7 @@ The module is a greenfield rebuild. It preserves current data-domain capabilitie
 
 ### 1.2 Assumptions
 - The data module remains a clean, greenfield rebuild.
+- Data is a thin domain layer over `tools.utils`; it must not duplicate shared utility primitives.
 - Phase 1 keeps public streaming subscription tools out of scope while retaining internal feed support and feed status inspection.
 - SQLite is the default single-node persistence backend, while the persistence abstraction remains TSDB-ready.
 - Local and synthetic sources can be production-ready first; external/broker sources remain staging until evidence promotes them.
@@ -47,6 +49,7 @@ The module is a greenfield rebuild. It preserves current data-domain capabilitie
 - Data-module audit logs, request IDs, quality reports, side-effect metadata, feed diagnostics, and production sign-off requirements.
 
 ### 1.5 Does Not Own
+- The module does not own logger setup, standard response builders, error base classes, deterministic error mapping, ID helpers, UTC timestamp helpers, safe path helpers, canonical JSON, redaction, generic schema validation, settings loading, auth helpers, Event Bus primitives, notification routing, observability helpers, or generic metric helpers. These are imported from `tools.utils`.
 - The module does not place trades, close positions, modify orders, mutate broker account state, change terminal settings, override risk settings, or perform execution actions.
 - The module does not own trading strategy logic, backtesting engine logic, analytics scoring, risk approval, portfolio allocation, strategy promotion, live activation, or governance approval.
 - The module does not expose raw pandas DataFrames, NumPy arrays, SDK clients, sockets, stream handles, broker clients, database clients, credential loaders, or internal cache/persistence helpers through official AI tools.
@@ -90,29 +93,29 @@ Public capabilities are agent-safe orchestration surfaces. Internal adapters, re
 ## 2. Global API Contracts Matrix
 | Tool / Surface | Expected file | Risk | Side effects | Notes |
 |---|---|---:|---|---|
-| `get_market_data` | `tools/data/__init__.py` → gateway/contracts/normalization/quality/cache | Low | Read-only | Fetch normalized historical OHLCV. |
-| `get_tick_data` | `tools/data/__init__.py` → gateway/contracts/normalization/quality/cache | Low | Read-only | Fetch normalized historical ticks. |
-| `get_spread_data` | `tools/data/__init__.py` → gateway/contracts/normalization/quality/cache | Low | Read-only | Fetch or derive spread records. |
-| `get_symbol_metadata` | `tools/data/__init__.py` → gateway/registry/sources | Low | Read-only | Symbol and asset metadata. |
-| `list_symbols` | `tools/data/__init__.py` → registry/sources | Low | Read-only | Includes symbol-discovery-only sources. |
-| `get_data_availability` | `tools/data/__init__.py` → gateway/cache/quality/contracts | Low | Read-only | Ranges, gaps, completeness, readiness. |
-| `get_market_hours` | `tools/data/__init__.py` → timeframes | Low | Read-only | Phase 1 current configured hours only. |
-| `get_trading_sessions` | `tools/data/__init__.py` → timeframes | Low | Read-only | Normalized session windows. |
-| `get_historical_volume` | `tools/data/__init__.py` → gateway/contracts | Low | Read-only | Volume records or summaries. |
-| `save_market_data` | `tools/data/__init__.py` → storage/persistence/licensing | Medium | File/database write | Atomic storage with manifests. |
-| `load_local_dataset` | `tools/data/__init__.py` → storage/sources/csv/parquet | Low | Read-only | Load local CSV/Parquet into records. |
+| `get_market_data` | `tools/data/__init__.py` -> `gateway.py`/`models.py`/`cache.py` + `tools.utils` | Low | Read-only | Fetch normalized historical OHLCV. |
+| `get_tick_data` | `tools/data/__init__.py` -> `gateway.py`/`models.py`/`cache.py` + `tools.utils` | Low | Read-only | Fetch normalized historical ticks. |
+| `get_spread_data` | `tools/data/__init__.py` -> `gateway.py`/`models.py`/`cache.py` + `tools.utils` | Low | Read-only | Fetch or derive spread records. |
+| `get_symbol_metadata` | `tools/data/__init__.py` -> `gateway.py`/`sources.py`/`models.py` | Low | Read-only | Symbol and asset metadata. |
+| `list_symbols` | `tools/data/__init__.py` -> `sources.py` | Low | Read-only | Includes symbol-discovery-only sources. |
+| `get_data_availability` | `tools/data/__init__.py` -> `gateway.py`/`cache.py`/`models.py` + `tools.utils` | Low | Read-only | Ranges, gaps, completeness, readiness. |
+| `get_market_hours` | `tools/data/__init__.py` -> `timeframes.py` | Low | Read-only | Phase 1 current configured hours only. |
+| `get_trading_sessions` | `tools/data/__init__.py` -> `timeframes.py` | Low | Read-only | Normalized session windows. |
+| `get_historical_volume` | `tools/data/__init__.py` -> `gateway.py`/`models.py` | Low | Read-only | Volume records or summaries. |
+| `save_market_data` | `tools/data/__init__.py` -> `storage.py`/`licensing.py` + `tools.utils` | Medium | File/database write | Atomic storage with manifests. |
+| `load_local_dataset` | `tools/data/__init__.py` -> `storage.py`/`sources.py` | Low | Read-only | Load local CSV/Parquet into records. |
 | `resample_ohlcv` | `tools/data/__init__.py` → transforms | Low | Read-only | Resampling with explicit policies. |
 | `align_multitimeframe_data` | `tools/data/__init__.py` → transforms | Low | Read-only | Anti-lookahead by default. |
-| `generate_synthetic_ticks` | `tools/data/__init__.py` → generators | Low | Read-only unless persisted separately | Deterministic with seed. |
-| `generate_synthetic_bars` | `tools/data/__init__.py` → generators | Low | Read-only unless persisted separately | GBM in Phase 1. |
+| `generate_synthetic_ticks` | `tools/data/__init__.py` -> `transforms.py` | Low | Read-only unless persisted separately | Deterministic with seed. |
+| `generate_synthetic_bars` | `tools/data/__init__.py` -> `transforms.py` | Low | Read-only unless persisted separately | GBM in Phase 1. |
 | `aggregate_ticks_to_bars` | `tools/data/__init__.py` → transforms | Low | Read-only | Tick-to-bar aggregation. |
-| `label_market_data` | `tools/data/__init__.py` → labeling | Low | Read-only | Deterministic labels only. |
-| `create_data_update_job` | `tools/data/__init__.py` → scheduler/persistence | Medium | Database write | Create persisted job definition. |
-| `start_data_update_job` | `tools/data/__init__.py` → scheduler/persistence/recovery | Medium | Database/process state write | Start recurring job only. |
-| `stop_data_update_job` | `tools/data/__init__.py` → scheduler/persistence | Medium | Database/process state write | Stop/disable scheduled execution. |
-| `run_data_update_job_once` | `tools/data/__init__.py` → scheduler/gateway/storage | Medium | Database/file writes possible | Immediate one-time run. |
-| `get_data_update_job_status` | `tools/data/__init__.py` → scheduler/persistence | Low | Read-only | Status inspection. |
-| `get_feed_status` | `tools/data/__init__.py` → feeds/persistence | Low | Read-only | Feed observability only. |
+| `label_market_data` | `tools/data/__init__.py` -> `transforms.py` | Low | Read-only | Deterministic labels only. |
+| `create_data_update_job` | `tools/data/__init__.py` -> `scheduler.py` + `tools.utils` | Medium | Database write | Create persisted job definition. |
+| `start_data_update_job` | `tools/data/__init__.py` -> `scheduler.py` + `tools.utils` | Medium | Database/process state write | Start recurring job only. |
+| `stop_data_update_job` | `tools/data/__init__.py` -> `scheduler.py` + `tools.utils` | Medium | Database/process state write | Stop/disable scheduled execution. |
+| `run_data_update_job_once` | `tools/data/__init__.py` -> `scheduler.py`/`gateway.py`/`storage.py` | Medium | Database/file writes possible | Immediate one-time run. |
+| `get_data_update_job_status` | `tools/data/__init__.py` -> `scheduler.py` | Low | Read-only | Status inspection. |
+| `get_feed_status` | `tools/data/__init__.py` -> `feeds.py` | Low | Read-only | Feed observability only. |
 | `clear_data_cache` | `tools/data/__init__.py` → cache | Medium | Cache delete when not dry-run | Defaults to dry-run. |
 
 ## 3. Configuration Defaults
@@ -136,50 +139,35 @@ Public capabilities are agent-safe orchestration surfaces. Internal adapters, re
 | Source readiness | `csv`, `parquet`, `synthetic` production; MT5, cTrader, Dukascopy, Binance discovery, real-time feed gateway staging |
 
 ## 4. Target Folder Structure
+The data module must stay intentionally small. Files named in the original map
+for responses, errors, settings, validation, normalization, security, audit, and
+observability are not separate data files; those requirements are covered by
+imports from `tools.utils` and tracked in Section 7.0.
+
 ```text
 tools/
   data/
     __init__.py
-    contracts.py
-    responses.py
-    errors.py
+    models.py
     limits.py
-    settings.py
     timeframes.py
-    validation.py
-    quality.py
-    normalization.py
     precision.py
     cache.py
     storage.py
-    persistence.py
-    recovery.py
     gateway.py
-    registry.py
     licensing.py
-    audit.py
-    security.py
+    sources.py
     feeds.py
     transforms.py
-    generators.py
-    labeling.py
     scheduler.py
-    sources/
-      base.py
-      csv.py
-      parquet.py
-      mt5.py
-      ctrader.py
-      dukascopy.py
-      binance.py
 
 tests/
   unit/tools/data/
     test_public_exports.py
-    test_contracts_and_responses.py
-    test_validation_quality.py
+    test_models_and_public_contracts.py
+    test_quality_and_transforms.py
     test_cache_storage_persistence.py
-    test_gateway_sources.py
+    test_gateway_and_sources.py
     test_feeds_scheduler.py
   integration/tools/data/
     test_downstream_contracts.py
@@ -188,25 +176,31 @@ docs/planning/
   DOMAIN.md
 ```
 
+If a generic helper is missing from `tools.utils`, it must be added to
+`tools.utils` with unit tests under `tests/unit/tools/utils/` and then imported
+by `tools.data`. It must not be reimplemented inside `tools.data`.
+
 ## 5. Architecture Class Diagrams
 ```mermaid
 flowchart LR
   Tools[Official AI Tools
-__init__.py] --> Validate[validation.py]
-  Tools --> Responses[responses.py]
+__init__.py] --> Utils[tools.utils shared foundation]
   Tools --> Gateway[gateway.py]
-  Gateway --> Registry[registry.py]
-  Registry --> Sources[sources/*]
-  Sources --> Normalization[normalization.py]
-  Normalization --> Quality[quality.py]
-  Quality --> Contracts[contracts.py]
+  Gateway --> Models[models.py]
+  Gateway --> Sources[sources.py]
+  Sources --> Models
+  Gateway --> Utils
+  Sources --> Utils
   Gateway --> Cache[cache.py]
   Gateway --> Storage[storage.py]
-  Storage --> Persistence[persistence.py]
+  Cache --> Utils
+  Storage --> Utils
   Scheduler[scheduler.py] --> Gateway
-  Feeds[feeds.py] --> Persistence
-  Recovery[recovery.py] --> Persistence
-  Audit[audit.py] -. request_id/logs .-> Tools
+  Scheduler --> Utils
+  Feeds[feeds.py] --> Gateway
+  Feeds --> Utils
+  Transforms[transforms.py] --> Models
+  Transforms --> Utils
 ```
 
 ```mermaid
@@ -215,24 +209,24 @@ classDiagram
   class MarketDataResponse
   class SourceAdapterProtocol
   class DataGateway
-  class SourceRegistry
   class CacheStore
-  class PersistenceStore
   class FeedState
   class DataUpdateJob
+  class ToolsUtilsFoundation
 
   DataGateway --> DataRequest
-  DataGateway --> SourceRegistry
-  SourceRegistry --> SourceAdapterProtocol
+  DataGateway --> SourceAdapterProtocol
   SourceAdapterProtocol --> MarketDataResponse
   DataGateway --> CacheStore
-  DataGateway --> PersistenceStore
-  FeedState --> PersistenceStore
-  DataUpdateJob --> PersistenceStore
+  DataGateway --> ToolsUtilsFoundation
+  CacheStore --> ToolsUtilsFoundation
+  FeedState --> ToolsUtilsFoundation
+  DataUpdateJob --> ToolsUtilsFoundation
 ```
 
 ## 6. General / Cross-Cutting Non-Functional Requirements
 - Official tools remain thin, typed orchestration boundaries.
+- Official tools import shared infrastructure from `tools.utils`; data-domain code must not duplicate utility primitives.
 - Internal adapters may use pandas, NumPy, SDKs, sockets, clients, and databases, but none may cross official AI-tool boundaries.
 - All official responses must be JSON-serializable and use the standard HaruQuantAI envelope.
 - All high-cardinality, credential-bearing, or raw source objects must remain internal.
@@ -240,8 +234,38 @@ classDiagram
 - Request IDs must propagate through tools, logs, adapters, cache, scheduler, feed state, persistence, and audit records where feasible.
 - External calls must use explicit timeouts, bounded retries, rate limits, and circuit breakers.
 - Crash recovery, cache invalidation, source readiness, precision, licensing, and data quality must fail visibly rather than silently masking risk.
+- Allowed duplication is none unless unavoidable and justified in a code comment and final evidence report.
+- Missing generic helpers must be added to `tools.utils` first, with unit tests, then imported by `tools.data`.
 
-## 7. Requirements by Expected Implementation File
+## 7. Requirements by Compact Target
+### 7.0 Requirements Covered by `tools.utils` Shared Foundation
+
+**Expected responsibility:** Shared utility implementation that data must import rather than duplicate.
+**Mapped checklist count:** Utility-covered requirements are accounted here as a coverage bucket and remain traceable to the source-mapped checklist items below. This section prevents silent deletion when compacting the data file plan.
+
+The following requirement families belong to `tools.utils` and must be imported by `tools.data`:
+
+| Requirement family | `tools.utils` source of truth | Data-domain rule |
+|---|---|---|
+| Logger setup and logger access | `logger`, `get_logger`, `configure_logging` | Import from `tools.utils`; no `tools/data/logger.py`. |
+| Standard response envelopes | `success_response`, `error_response`, `response_from_exception`, `validate_standard_response` | Official data tools wrap data payloads with utils builders. |
+| Standard metadata and timing | `build_metadata`, `get_execution_ms` | Use utils metadata and timing for every official tool. |
+| Error base classes and deterministic mapping | `Error`, `ValidationError`, `DataError`, `ExternalServiceError`, `SecurityError`, `normalize_error_code`, `exception_to_error_payload` | Data may define data-specific constants or thin subclasses only when generic utils codes are insufficient. |
+| Request, workflow, correlation, causation, event, and idempotency IDs | `generate_request_id`, `generate_workflow_id`, `generate_correlation_id`, `generate_causation_id`, `generate_event_id`, `generate_idempotency_id`, validators | Data must not implement its own ID format. |
+| Version helpers and canonical JSON | `ensure_version`, `canonical_json`, `stable_identifier` | Cache keys, manifests, idempotency, and source fingerprints reuse utils. |
+| UTC timestamp and stale-data helpers | `normalize_timestamp`, `normalize_timestamp_sequence`, `format_utc_timestamp`, `is_stale`, `check_clock_drift` | Data-specific market-session logic may exist, but UTC normalization is imported. |
+| Safe path helpers | `normalize_path`, `ensure_dir`, `ensure_parent_dir` | Storage and cache paths are thin policy layers over utils path safety. |
+| Redaction and secret handling | `redact_text`, `redact_mapping`, `redact_payload`, `classify_secret_key` | Source credentials and errors must be sanitized through utils. |
+| Generic schema and numeric validation | `validate_input_schema`, `validate_output_schema`, `validate_mapping_schema`, `validate_required_fields`, `validate_numeric_range` | Data validation adds domain rules only after generic utils checks. |
+| Runtime settings loading | `RuntimeSettings`, `load_runtime_settings`, `default_haruquant_home` | Data settings are a thin projection of shared runtime settings plus data-specific constants. |
+| Auth and permission checks | `AuthContext`, `authorize_action`, `require_authorization`, `validate_auth_context` | Governed data writes/scheduler actions call utils auth helpers. |
+| Event Bus primitives | `EventEnvelope`, `InMemoryEventBus`, `build_event_envelope`, `publish_event` | Data audit/feed/job events use utils event envelopes. |
+| Notification routing | `NotificationRouter`, `route_notification`, `broadcast_notification` | Data does not implement a notification stack. |
+| Observability and metrics | `MetricRegistry`, `record_metric`, `record_tool_call_metric`, `build_health_snapshot`, `CircuitBreaker` | Data exposes data-specific metric names only; registry/circuit primitives come from utils. |
+| Dataframe and OHLCV diagnostics | `dataframe_columns`, `serialize_dataframe_records`, `validate_ohlcv_quality`, `inspect_ohlcv_quality`, `validate_ohlcv_records` | Data may add source-specific quality policy but must reuse utils diagnostics first. |
+
+Checklist items currently mapped to former data files such as `responses.py`, `errors.py`, `settings.py`, `validation.py`, `normalization.py`, `security.py`, and `audit.py` are therefore implementation requirements to import and apply `tools.utils`, not instructions to create duplicate files.
+
 ### 7.1 `docs/planning/DOMAIN.md`
 
 **Expected responsibility:** Domain requirements, assumptions, open questions, source-readiness notes, production sign-off, and documentation artifacts.
@@ -401,9 +425,9 @@ classDiagram
 
 - [ ] Missing license metadata shall fail closed with `LICENSE_RESTRICTION` for storage, scheduler, export, validation, risk, and execution-bound workflows. <!-- source: Functional Requirements / Source Metadata and Licensing, line 195 -->
 
-### 7.3 `tools/data/contracts.py`
+### 7.3 `tools/data/models.py`
 
-**Expected responsibility:** Canonical request/response data contracts for OHLCV, ticks, spreads, jobs, feeds, sessions, metadata, and availability.
+**Expected responsibility:** Data-specific request/response models for OHLCV, ticks, spreads, jobs, feeds, sessions, metadata, availability, source readiness, cache manifests, and persistence records. Generic response envelopes, metadata builders, ID schemas, UTC timestamp helpers, and validation primitives are imported from `tools.utils`.
 **Mapped checklist count:** 24
 
 #### Functional Requirements
@@ -439,9 +463,9 @@ classDiagram
 - [ ] Authentication failure shall return `AUTHENTICATION_FAILED`. <!-- source: Edge Cases / n/a, line 698 -->
 - [ ] Open circuit breaker shall return `CIRCUIT_BREAKER_OPEN`. <!-- source: Edge Cases / n/a, line 704 -->
 
-### 7.4 `tools/data/responses.py`
+### 7.4 `tools.utils` Response Builders Used by Data
 
-**Expected responsibility:** Standard HaruQuantAI response-envelope assembly and metadata/side-effect flags.
+**Expected responsibility:** Do not create `tools/data/responses.py`. These checklist items require official data tools to call `tools.utils.success_response`, `tools.utils.error_response`, `tools.utils.response_from_exception`, `tools.utils.build_metadata`, `tools.utils.get_execution_ms`, and `tools.utils.validate_standard_response`.
 **Mapped checklist count:** 9
 
 #### Functional Requirements
@@ -462,9 +486,9 @@ classDiagram
 
 - [ ] Missing required asset metadata shall return `MISSING_ASSET_METADATA`. <!-- source: Edge Cases / n/a, line 702 -->
 
-### 7.5 `tools/data/errors.py`
+### 7.5 `tools.utils` Error Primitives plus Data Error Policy
 
-**Expected responsibility:** Deterministic data-domain error code registry and exception mapping (inheriting and reusing from `tools/utils/errors.py`).
+**Expected responsibility:** Do not create a duplicate data error framework. Data-specific error codes and thin subclasses are allowed only when generic `tools.utils` error codes are insufficient; all base classes, normalization, exception-to-payload mapping, and redaction-safe details come from `tools.utils`.
 **Mapped checklist count:** 25
 
 #### Functional Requirements
@@ -535,9 +559,9 @@ classDiagram
 - [ ] Excessive request limit shall return `LIMIT_EXCEEDED`. <!-- source: Edge Cases / n/a, line 678 -->
 - [ ] Rate limit shall return or log `RATE_LIMIT_EXCEEDED`. <!-- source: Edge Cases / n/a, line 703 -->
 
-### 7.7 `tools/data/settings.py`
+### 7.7 `tools.utils` Settings Used by Data
 
-**Expected responsibility:** Data-module configuration defaults and runtime settings integration.
+**Expected responsibility:** Do not create duplicate settings loaders. Data-specific constants may live in `tools/data/limits.py` or `tools/data/models.py`; runtime loading must use `tools.utils.load_runtime_settings` and related helpers.
 **Mapped checklist count:** 2
 
 #### Functional Requirements
@@ -569,9 +593,9 @@ classDiagram
 - [ ] Until a historical calendar provider is approved, historical market-hour reconstruction shall return `UNSUPPORTED_OPERATION` and disclose `historical_hours_supported=false` in metadata. <!-- source: Functional Requirements / Historical Market Hours, line 202 -->
 - [ ] Historical market-hour reconstruction shall return `UNSUPPORTED_OPERATION` unless an approved calendar provider supports it. <!-- source: Functional Requirements / Market Hours, Sessions, and Historical Volume, line 428 -->
 
-### 7.9 `tools/data/validation.py`
+### 7.9 `tools.utils` Validation Primitives Used by Data
 
-**Expected responsibility:** Input, schema, path, workflow-context, capability, request, and contract validation.
+**Expected responsibility:** Do not create a generic validation module. Data-specific validation belongs beside the data logic it protects and must compose `tools.utils.validate_input_schema`, `validate_mapping_schema`, `validate_required_fields`, and `validate_numeric_range`.
 **Mapped checklist count:** 5
 
 #### Functional Requirements
@@ -585,9 +609,9 @@ classDiagram
 - [ ] Start shall be before end. <!-- source: Non-Functional Requirements / Common Inputs, line 579 -->
 - [ ] Official tools shall not use `UNKNOWN_ERROR` for expected unsupported capabilities. <!-- source: Non-Functional Requirements / Error Handling Expectations, line 628 -->
 
-### 7.10 `tools/data/quality.py`
+### 7.10 Data Quality Policy over `tools.utils` Diagnostics
 
-**Expected responsibility:** Data quality validation, gap/overlap checks, anomaly detection, and quality reports.
+**Expected responsibility:** Data quality policy is implemented in `gateway.py`, `models.py`, or `transforms.py` as thin data-domain logic over `tools.utils.validate_ohlcv_quality`, `inspect_ohlcv_quality`, `validate_ohlcv_records`, UTC helpers, and stale-data helpers.
 **Mapped checklist count:** 10
 
 #### Functional Requirements
@@ -609,9 +633,9 @@ classDiagram
 
 - [ ] Timestamp overlap with no safe policy shall return `TIMESTAMP_OVERLAP`. <!-- source: Edge Cases / n/a, line 691 -->
 
-### 7.11 `tools/data/normalization.py`
+### 7.11 Data Normalization Policy over `tools.utils` UTC Helpers
 
-**Expected responsibility:** Source-to-canonical normalization for bars, ticks, spreads, symbol metadata, schemas, versions, and metadata preservation.
+**Expected responsibility:** Do not create a generic normalization module. Data-specific source normalization belongs in `sources.py`, `gateway.py`, or `transforms.py`; timestamp normalization and sequence checks are imported from `tools.utils`.
 **Mapped checklist count:** 13
 
 #### Functional Requirements
@@ -752,9 +776,9 @@ classDiagram
 - [ ] Unsafe path shall return `PATH_NOT_ALLOWED`. <!-- source: Edge Cases / n/a, line 682 -->
 - [ ] Missing local file shall return `FILE_NOT_FOUND`. <!-- source: Edge Cases / n/a, line 683 -->
 
-### 7.15 `tools/data/persistence.py`
+### 7.15 Persistence Requirements in `storage.py`, `cache.py`, and `scheduler.py`
 
-**Expected responsibility:** SQLite-backed persistence abstraction, database transactions, migrations, connection handling, idempotency, and state storage.
+**Expected responsibility:** Do not create a standalone persistence module in Phase 1. Persistence requirements are implemented inside the compact owning modules: cache metadata in `cache.py`, storage manifests/checkpoints in `storage.py`, and job/feed state in `scheduler.py`/`feeds.py`, all using `tools.utils` IDs, canonical JSON, logging, errors, Event Bus, redaction, and observability helpers.
 **Mapped checklist count:** 40
 
 #### Functional Requirements
@@ -806,9 +830,9 @@ classDiagram
 - [ ] Database write failure shall return `DB_WRITE_FAILED`. <!-- source: Edge Cases / n/a, line 710 -->
 - [ ] Persistence failure shall return `DATABASE_ERROR`. <!-- source: Edge Cases / n/a, line 711 -->
 
-### 7.16 `tools/data/recovery.py`
+### 7.16 Recovery Requirements in `scheduler.py` and `storage.py`
 
-**Expected responsibility:** Crash recovery, leases, stale locks, checkpoints, and resumable backfill recovery policy.
+**Expected responsibility:** Do not create a standalone recovery module in Phase 1. Recovery requirements are implemented where state is owned: scheduler leases and checkpoints in `scheduler.py`, storage quarantine and atomic writes in `storage.py`, and feed recovery state in `feeds.py`, using `tools.utils` logging, errors, IDs, Event Bus, and observability.
 **Mapped checklist count:** 14
 
 #### Functional Requirements
@@ -854,9 +878,9 @@ classDiagram
 - [ ] `fallback_sources` shall be optional and shall default to empty. <!-- source: Non-Functional Requirements / Common Inputs, line 576 -->
 - [ ] Broker/data gateway errors shall preserve requested source, actual source where known, adapter readiness, capability declaration, and circuit breaker state. <!-- source: Non-Functional Requirements / Error Handling Expectations, line 631 -->
 
-### 7.18 `tools/data/registry.py`
+### 7.18 Source Registry Requirements in `tools/data/sources.py`
 
-**Expected responsibility:** Internal source registry, source readiness manifest, license manifest, adapter lookup, and capability declarations.
+**Expected responsibility:** Source registry, source readiness manifest, adapter lookup, and capability declarations live in `sources.py`. The registry remains internal and is never exported as an official AI tool.
 **Mapped checklist count:** 5
 
 #### Functional Requirements
@@ -887,9 +911,9 @@ classDiagram
 - [ ] `fallback_sources` shall be validated against source readiness, capability declarations, and license policy before use. <!-- source: Non-Functional Requirements / Common Inputs, line 577 -->
 - [ ] Spread outputs shall include records or summaries, record count, symbol, source, start, end, quality report, source metadata, license metadata, and precision metadata. <!-- source: Non-Functional Requirements / Data Outputs, line 616 -->
 
-### 7.20 `tools/data/audit.py`
+### 7.20 Audit Requirements Using `tools.utils` Logging and Event Bus
 
-**Expected responsibility:** Request ID propagation, structured audit events, sign-off evidence, migration logs, circuit-breaker logs, and recovery logs.
+**Expected responsibility:** Do not create a duplicate audit module. Request ID propagation, structured logs, sanitized events, circuit-breaker logs, and recovery logs use `tools.utils.logger`, `build_event_envelope`, `publish_event`, `build_error_event`, redaction, and observability helpers.
 **Mapped checklist count:** 3
 
 #### Non-Functional & Security Requirements
@@ -901,9 +925,9 @@ classDiagram
 
 - [ ] Source revision mismatch shall return or log `DATA_SOURCE_REVISION_DETECTED`. <!-- source: Edge Cases / n/a, line 687 -->
 
-### 7.21 `tools/data/security.py`
+### 7.21 Security Requirements Using `tools.utils` Redaction/Auth/Paths
 
-**Expected responsibility:** Credential boundary, secret redaction, safe path security, and no-leak guarantees.
+**Expected responsibility:** Do not create duplicate security helpers. Credential boundaries, redaction, safe path checks, auth decisions, and no-leak guarantees use `tools.utils` redaction, auth, errors, settings, and path helpers; data-specific code only declares source-specific policy.
 **Mapped checklist count:** 7
 
 #### Non-Functional & Security Requirements
@@ -919,9 +943,9 @@ classDiagram
 
 - [ ] Missing credentials shall return `CREDENTIALS_MISSING`. <!-- source: Edge Cases / n/a, line 697 -->
 
-### 7.22 `tools/data/sources/base.py`
+### 7.22 Source Adapter Protocol in `tools/data/sources.py`
 
-**Expected responsibility:** Common internal source adapter protocol and source capability/readiness contracts.
+**Expected responsibility:** Keep the source adapter protocol, capability declarations, readiness model, credential boundary, source metadata, and deterministic adapter errors in `sources.py`; do not create a `sources/` folder until complexity earns it.
 **Mapped checklist count:** 19
 
 #### Functional Requirements
@@ -949,9 +973,9 @@ classDiagram
 - [ ] Adapter errors shall preserve safe source context and request ID. <!-- source: Non-Functional Requirements / Error Handling Expectations, line 630 -->
 - [ ] Broker adapters shall never place trades, close positions, modify account state, or change terminal settings. <!-- source: Non-Functional Requirements / Security Requirements, line 663 -->
 
-### 7.23 `tools/data/sources/csv.py`
+### 7.23 CSV Source Adapter in `tools/data/sources.py`
 
-**Expected responsibility:** CSV source adapter for loading/saving normalized records with strict path and timestamp handling.
+**Expected responsibility:** Implement the CSV source adapter in `sources.py` as a thin local adapter over `tools.utils` path, dataframe, timestamp, schema, and redaction helpers.
 **Mapped checklist count:** 8
 
 #### Functional Requirements
@@ -965,9 +989,9 @@ classDiagram
 - [ ] `save_market_data` shall save validated normalized records to CSV or Parquet. <!-- source: Functional Requirements / Storage, Databases, and Persistence, line 380 -->
 - [ ] `load_local_dataset` shall load CSV or Parquet datasets into normalized records. <!-- source: Functional Requirements / Storage, Databases, and Persistence, line 381 -->
 
-### 7.24 `tools/data/sources/parquet.py`
+### 7.24 Parquet Source Adapter in `tools/data/sources.py`
 
-**Expected responsibility:** Parquet source adapter for loading/saving normalized records and preserving schema metadata.
+**Expected responsibility:** Implement the Parquet source adapter in `sources.py` as a thin local adapter over `tools.utils` path, dataframe, timestamp, schema, and redaction helpers.
 **Mapped checklist count:** 7
 
 #### Functional Requirements
@@ -983,9 +1007,9 @@ classDiagram
 
 - [ ] Loading 100,000 local Parquet records should target under 2 seconds. <!-- source: Non-Functional Requirements / Performance and Scalability, line 534 -->
 
-### 7.25 `tools/data/sources/mt5.py`
+### 7.25 MT5 Source Adapter in `tools/data/sources.py`
 
-**Expected responsibility:** Read-only MT5 source adapter, credential resolution, connection lifecycle, symbol metadata, bars, and ticks.
+**Expected responsibility:** Implement MT5 adapter behavior in `sources.py` for Phase 1, with optional SDK import lazily loaded inside the adapter path. It must reuse `tools.utils` redaction, logging, errors, auth, and observability helpers.
 **Mapped checklist count:** 6
 
 #### Functional Requirements
@@ -1000,9 +1024,9 @@ classDiagram
 - [ ] MT5 source shall support secure credential resolution from environment/config. <!-- source: Functional Requirements / Source-Specific Capabilities, line 366 -->
 - [ ] MT5 credential resolution shall remain inside the adapter/client layer. <!-- source: Non-Functional Requirements / Security Requirements, line 651 -->
 
-### 7.26 `tools/data/sources/ctrader.py`
+### 7.26 cTrader Source Adapter in `tools/data/sources.py`
 
-**Expected responsibility:** Read-only cTrader adapter boundary and normalization layer.
+**Expected responsibility:** Implement cTrader adapter behavior in `sources.py` for Phase 1, with SDK/client objects kept internal and redacted/logged through `tools.utils`.
 **Mapped checklist count:** 5
 
 #### Functional Requirements
@@ -1016,9 +1040,9 @@ classDiagram
 
 - [ ] cTrader client construction shall remain internal. <!-- source: Non-Functional Requirements / Security Requirements, line 652 -->
 
-### 7.27 `tools/data/sources/dukascopy.py`
+### 7.27 Dukascopy Source Adapter in `tools/data/sources.py`
 
-**Expected responsibility:** Dukascopy instrument discovery, historical/live-capability representation, HTTP handling, retries, and normalization.
+**Expected responsibility:** Implement Dukascopy adapter behavior in `sources.py` for Phase 1, with historical/live capability declarations and deterministic unavailable-source behavior using `tools.utils`.
 **Mapped checklist count:** 6
 
 #### Purpose & Scope
@@ -1036,9 +1060,9 @@ classDiagram
 
 - [ ] Dukascopy client internals shall remain internal. <!-- source: Non-Functional Requirements / Security Requirements, line 653 -->
 
-### 7.28 `tools/data/sources/binance.py`
+### 7.28 Binance Discovery Adapter in `tools/data/sources.py`
 
-**Expected responsibility:** Binance/exchange symbol-discovery-only adapter.
+**Expected responsibility:** Implement Binance symbol-discovery-only behavior in `sources.py` for Phase 1; it remains a capability-restricted data adapter and never exposes trading behavior.
 **Mapped checklist count:** 3
 
 #### Functional Requirements
@@ -1145,9 +1169,9 @@ classDiagram
 
 - [ ] Quality reports shall be included for fetched, loaded, generated, resampled, aggregated, and backfilled data. <!-- source: Non-Functional Requirements / Reliability and Data Quality, line 512 -->
 
-### 7.31 `tools/data/generators.py`
+### 7.31 Synthetic Generation in `tools/data/transforms.py`
 
-**Expected responsibility:** Deterministic synthetic tick/bar generation.
+**Expected responsibility:** Do not create a separate generators module in Phase 1. Deterministic synthetic tick/bar generation lives in `transforms.py` with data-specific logic only; shared timing, logging, validation, IDs, and response helpers come from `tools.utils`.
 **Mapped checklist count:** 13
 
 #### Functional Requirements
@@ -1169,9 +1193,9 @@ classDiagram
 
 - [ ] Generating 100,000 synthetic ticks should target under 3 seconds. <!-- source: Non-Functional Requirements / Performance and Scalability, line 537 -->
 
-### 7.32 `tools/data/labeling.py`
+### 7.32 Historical Labeling in `tools/data/transforms.py`
 
-**Expected responsibility:** Deterministic historical labeling without predictive-value claims.
+**Expected responsibility:** Do not create a separate labeling module in Phase 1. Deterministic historical labels live in `transforms.py` and must not claim predictive value.
 **Mapped checklist count:** 10
 
 #### Functional Requirements
@@ -1259,9 +1283,9 @@ classDiagram
 - [ ] Duplicate ingestion no-op behavior shall be tested. <!-- source: Tests Required / Database and Persistence Tests, line 792 -->
 - [ ] Conflicting ingestion key behavior shall be tested. <!-- source: Tests Required / Database and Persistence Tests, line 793 -->
 
-### 7.35 `tests/unit/tools/data/test_validation_quality.py`
+### 7.35 `tests/unit/tools/data/test_quality_and_transforms.py`
 
-**Expected responsibility:** Tests for validation, quality checks, edge cases, and deterministic data-content errors.
+**Expected responsibility:** Tests for data-specific validation policy, quality checks, transforms, synthetic generation, labeling, edge cases, and deterministic data-content errors. Generic validation helper tests remain under `tests/unit/tools/utils/`.
 **Mapped checklist count:** 18
 
 #### Testing & Edge Cases
@@ -1314,9 +1338,9 @@ classDiagram
 - [ ] Storage tests shall cover metadata preservation. <!-- source: Tests Required / Integration and Acceptance Tests, line 832 -->
 - [ ] Production tests shall cover source revision detection and cache invalidation. <!-- source: Tests Required / Integration and Acceptance Tests, line 839 -->
 
-### 7.37 `tests/unit/tools/data/test_gateway_sources.py`
+### 7.37 `tests/unit/tools/data/test_gateway_and_sources.py`
 
-**Expected responsibility:** Tests for gateway routing, source registry, adapters, fallback, readiness, and source error mapping.
+**Expected responsibility:** Tests for gateway routing, internal source registry behavior, adapters in `sources.py`, fallback, readiness, and source error mapping.
 **Mapped checklist count:** 17
 
 #### Testing & Edge Cases
@@ -1401,53 +1425,47 @@ classDiagram
 
 ## 8. Integrity Verification
 
-- Source unchecked checklist count: **703**
-- Mapped checklist count: **703**
+- Current visible unchecked checklist count in this file: **704**
+- Current source-tagged extracted checklist count in this file: **703**
+- Current compact target mapped checklist count in this file: **704**
+- Owner-identified unchecked task requirement target: **861**
+- Pending reconciliation delta before implementation: **157**
 - Duplicate mapped checklist entries by source line/text: **0**
-- Result: **PASS — every source checklist item is mapped exactly once.**
+- Result: **CONDITIONALLY PASSING MAP / BLOCKED FOR IMPLEMENTATION** — every currently extracted source checklist item plus the local anti-duplication requirement is mapped exactly once, but the source extraction must be reconciled to the owner-identified 861 unchecked requirements before data implementation begins.
 
-### 8.1 Mapped Count by File
-| File | Count |
+### 8.1 Mapped Count by Compact Target
+| Target | Count |
 |---|---:|
 | `docs/planning/DOMAIN.md` | 103 |
+| `tools.utils` shared foundation coverage bucket | 74 |
 | `tools/data/__init__.py` | 25 |
-| `tools/data/contracts.py` | 24 |
-| `tools/data/responses.py` | 9 |
-| `tools/data/errors.py` | 24 |
+| `tools/data/models.py` | 24 |
 | `tools/data/limits.py` | 20 |
-| `tools/data/settings.py` | 2 |
 | `tools/data/timeframes.py` | 10 |
-| `tools/data/validation.py` | 5 |
-| `tools/data/quality.py` | 10 |
-| `tools/data/normalization.py` | 13 |
 | `tools/data/precision.py` | 9 |
 | `tools/data/cache.py` | 41 |
 | `tools/data/storage.py` | 27 |
-| `tools/data/persistence.py` | 40 |
-| `tools/data/recovery.py` | 14 |
+| `tools/data/storage.py`/`cache.py`/`scheduler.py` persistence requirements | 40 |
+| `tools/data/scheduler.py`/`storage.py`/`feeds.py` recovery requirements | 14 |
 | `tools/data/gateway.py` | 9 |
-| `tools/data/registry.py` | 5 |
+| `tools/data/sources.py` | 59 |
 | `tools/data/licensing.py` | 6 |
-| `tools/data/audit.py` | 3 |
-| `tools/data/security.py` | 7 |
-| `tools/data/sources/base.py` | 19 |
-| `tools/data/sources/csv.py` | 8 |
-| `tools/data/sources/parquet.py` | 7 |
-| `tools/data/sources/mt5.py` | 6 |
-| `tools/data/sources/ctrader.py` | 5 |
-| `tools/data/sources/dukascopy.py` | 6 |
-| `tools/data/sources/binance.py` | 3 |
 | `tools/data/feeds.py` | 58 |
-| `tools/data/transforms.py` | 12 |
-| `tools/data/generators.py` | 13 |
-| `tools/data/labeling.py` | 10 |
+| `tools/data/transforms.py` | 35 |
 | `tools/data/scheduler.py` | 39 |
 | `tests/unit/tools/data/test_public_exports.py` | 11 |
-| `tests/unit/tools/data/test_validation_quality.py` | 18 |
+| `tests/unit/tools/data/test_quality_and_transforms.py` | 18 |
 | `tests/unit/tools/data/test_cache_storage_persistence.py` | 21 |
-| `tests/unit/tools/data/test_gateway_sources.py` | 17 |
+| `tests/unit/tools/data/test_gateway_and_sources.py` | 17 |
 | `tests/unit/tools/data/test_feeds_scheduler.py` | 19 |
 | `tests/integration/tools/data/test_downstream_contracts.py` | 25 |
+
+The compact target total is **704** for the visible unchecked items currently
+present in this file: **703** source-tagged items plus **1** local
+anti-duplication requirement. The owner-identified target is **861** unchecked
+requirements; the missing **157** must be restored from the source extraction
+before implementation starts and then mapped into this compact table without
+creating duplicate utility files.
 
 ### 8.2 Source Count by Original Section
 | Original section | Count |
