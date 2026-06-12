@@ -3,8 +3,11 @@
 This module exports approved public names only. It is import-safe and
 side-effect free: importing it does not configure logging, read configuration
 files, open network connections, or import heavy optional dependencies.
+
+Export groups below are organized by implementation source file.
 """
 
+# auth.py exports
 from tools.utils.auth import (
     AuthContext,
     AuthorizationDecision,
@@ -13,6 +16,8 @@ from tools.utils.auth import (
     require_authorization,
     validate_auth_context,
 )
+
+# data_quality.py exports
 from tools.utils.data_quality import (
     QualityIssue,
     QualityProfile,
@@ -20,6 +25,8 @@ from tools.utils.data_quality import (
     prepare_ohlcv_data,
     validate_ohlcv_quality,
 )
+
+# dataframe_tools.py exports
 from tools.utils.dataframe_tools import (
     OHLC_COLUMNS,
     OHLCV_COLUMNS,
@@ -34,7 +41,11 @@ from tools.utils.dataframe_tools import (
     parameter_combinations,
     serialize_dataframe_records,
 )
+
+# error_routing.py exports
 from tools.utils.error_routing import ErrorRouter, ErrorRouteResult, route_error
+
+# errors.py exports
 from tools.utils.errors import (
     APPROVED_ERROR_CODES,
     ConfigurationError,
@@ -53,6 +64,8 @@ from tools.utils.errors import (
     raise_for_invalid_code,
     validate_error_payload,
 )
+
+# event_bus.py exports
 from tools.utils.event_bus import (
     EventEnvelope,
     InMemoryEventBus,
@@ -60,6 +73,8 @@ from tools.utils.event_bus import (
     build_event_envelope,
     publish_event,
 )
+
+# identity.py exports
 from tools.utils.identity import (
     DEFAULT_VERSION,
     ID_PREFIXES,
@@ -76,6 +91,8 @@ from tools.utils.identity import (
     validate_request_id,
     validate_workflow_id,
 )
+
+# logger.py exports
 from tools.utils.logger import (
     clear_trace_context,
     configure_logging,
@@ -83,6 +100,8 @@ from tools.utils.logger import (
     logger,
     set_trace_context,
 )
+
+# normalization.py exports
 from tools.utils.normalization import (
     DEFAULT_TIMEZONE,
     UTC,
@@ -100,6 +119,8 @@ from tools.utils.normalization import (
     utc_now,
     validate_timestamp_sequence,
 )
+
+# notifications.py exports
 from tools.utils.notifications import (
     FakeNotificationAdapter,
     NotificationMessage,
@@ -109,6 +130,8 @@ from tools.utils.notifications import (
     render_notification,
     route_notification,
 )
+
+# observability.py exports
 from tools.utils.observability import (
     GRAFANA_DASHBOARD_EXPECTATIONS,
     CircuitBreaker,
@@ -121,7 +144,11 @@ from tools.utils.observability import (
     record_metric,
     record_tool_call_metric,
 )
+
+# paths.py exports
 from tools.utils.paths import ensure_dir, ensure_parent_dir, normalize_path
+
+# schema_validation.py exports
 from tools.utils.schema_validation import (
     ValidationResult,
     validate_approval_packet,
@@ -137,6 +164,8 @@ from tools.utils.schema_validation import (
     validate_schema_version,
     validation_failed_paths,
 )
+
+# security.py exports
 from tools.utils.security import (
     SENSITIVE_KEY_PATTERN,
     classify_secret_key,
@@ -150,6 +179,8 @@ from tools.utils.security import (
     redact_value,
     verify_password,
 )
+
+# settings.py exports
 from tools.utils.settings import (
     DEFAULT_ENVIRONMENT,
     DEFAULT_LOG_LEVEL,
@@ -157,6 +188,8 @@ from tools.utils.settings import (
     default_haruquant_home,
     load_runtime_settings,
 )
+
+# standard.py exports
 from tools.utils.standard import (
     AlertDeduplicator,
     DataQualityIssue,

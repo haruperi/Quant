@@ -1,4 +1,14 @@
-"""Schema validation helpers and official read-only validation tools."""
+"""Schema validation helpers and official read-only validation tools.
+
+Exported AI Tools:
+    - validate_input_schema: Official low-risk read-only input schema validator.
+    - validate_output_schema: Official low-risk read-only output schema validator.
+    - validate_handoff_payload: Official low-risk read-only handoff payload validator.
+    - validate_evidence_pack: Official low-risk read-only evidence pack validator.
+    - validate_approval_packet: Official low-risk read-only approval packet validator.
+    - validate_registry_entry: Official low-risk read-only registry entry validator.
+    - validate_data_freshness: Official low-risk read-only data freshness validator.
+"""
 
 from __future__ import annotations
 
@@ -8,6 +18,7 @@ from collections.abc import Mapping, Sequence
 from typing import Literal, TypedDict
 
 from tools.utils.errors import ValidationError
+from tools.utils.logger import logger
 from tools.utils.standard import (
     StandardResponse,
     build_metadata,
@@ -18,6 +29,13 @@ from tools.utils.standard import (
 TOOL_VERSION = "1.0.0"
 TOOL_CATEGORY = "utils"
 TOOL_RISK_LEVEL: Literal["low"] = "low"
+REQUIRES_APPROVAL = False
+READS = False
+WRITES = False
+UPDATES = False
+DELETES = False
+TRADES = False
+REQUIRES_NETWORK = False
 SEMVER_PART_COUNT = 3
 
 
@@ -88,6 +106,8 @@ def validate_required_fields(
     required_fields: Sequence[str],
 ) -> ValidationResult:
     """Validate that required fields are present and non-``None``."""
+    if not isinstance(payload, Mapping):
+        raise ValidationError("payload must be a mapping.", code="INVALID_INPUT")
     missing = [field for field in required_fields if field not in payload]
     null_fields = [field for field in required_fields if payload.get(field) is None]
     if missing or null_fields:
@@ -154,6 +174,10 @@ def validate_mapping_schema(
     Supported schema keys are ``required``, ``allowed``, ``schema_version`` and
     ``compatible_versions``.
     """
+    if not isinstance(payload, Mapping):
+        raise ValidationError("payload must be a mapping.", code="INVALID_INPUT")
+    if not isinstance(schema, Mapping):
+        raise ValidationError("schema must be a mapping.", code="INVALID_INPUT")
     required = _string_sequence(schema.get("required", ()), "required")
     allowed = _string_sequence(schema.get("allowed", tuple(payload.keys())), "allowed")
     required_result = validate_required_fields(payload, required)
@@ -213,6 +237,11 @@ def _tool_response(
     start_time: float,
 ) -> StandardResponse:
     """Wrap a native validation result in the standard tool schema."""
+    logger.info(
+        "%s called",
+        tool_name,
+        extra={"event_name": "tool_called", "request_id": request_id},
+    )
     metadata = build_metadata(
         tool_name=tool_name,
         start_time=start_time,
@@ -220,14 +249,29 @@ def _tool_response(
         tool_category=TOOL_CATEGORY,
         tool_risk_level=TOOL_RISK_LEVEL,
         request_id=request_id,
-        reads=False,
+        reads=READS,
+        writes=WRITES,
+        updates=UPDATES,
+        deletes=DELETES,
+        trades=TRADES,
+        requires_network=REQUIRES_NETWORK,
     )
     if result["valid"]:
+        logger.info(
+            "%s completed successfully",
+            tool_name,
+            extra={"event_name": "tool_success", "request_id": request_id},
+        )
         return success_response(
             message=result["message"],
             data=result,
             metadata=metadata,
         )
+    logger.warning(
+        "%s validation failed",
+        tool_name,
+        extra={"event_name": "tool_validation_failed", "request_id": request_id},
+    )
     return error_response(
         message=result["message"],
         code=result["code"],
@@ -236,19 +280,130 @@ def _tool_response(
     )
 
 
+def _tool_failure_response(
+    *,
+    tool_name: str,
+    exception: Exception,
+    request_id: str | None,
+    start_time: float,
+) -> StandardResponse:
+    """Return a fail-closed standard envelope for wrapper failures."""
+    event_name = (
+        "tool_validation_failed"
+        if isinstance(exception, ValidationError | TypeError)
+        else "tool_exception"
+    )
+    if event_name == "tool_validation_failed":
+        logger.warning(
+            "%s failed",
+            tool_name,
+            extra={"event_name": event_name, "request_id": request_id},
+        )
+    else:
+        logger.exception(
+            "%s failed",
+            tool_name,
+            extra={"event_name": event_name, "request_id": request_id},
+        )
+    metadata = build_metadata(
+        tool_name=tool_name,
+        start_time=start_time,
+        tool_version=TOOL_VERSION,
+        tool_category=TOOL_CATEGORY,
+        tool_risk_level=TOOL_RISK_LEVEL,
+        request_id=request_id,
+        reads=READS,
+        writes=WRITES,
+        updates=UPDATES,
+        deletes=DELETES,
+        trades=TRADES,
+        requires_network=REQUIRES_NETWORK,
+    )
+    code = getattr(exception, "code", "TOOL_EXECUTION_FAILED")
+    return error_response(
+        message=f"{tool_name} failed.",
+        code=code,
+        details=f"{exception.__class__.__name__}: {exception}",
+        metadata=metadata,
+    )
+
+
+def _run_schema_tool(  # noqa: PLR0913
+    *,
+    tool_name: str,
+    payload: Mapping[str, object],
+    request_id: str | None,
+    start_time: float,
+    schema: Mapping[str, object] | None = None,
+    reject_extra: bool = False,
+) -> StandardResponse:
+    """Run a schema validator and map every failure to a standard envelope."""
+    try:
+        active_schema = schema
+        if active_schema is None:
+            active_schema = {
+                "required": (),
+                "allowed": tuple(payload),
+            }
+        return _tool_response(
+            tool_name=tool_name,
+            result=validate_mapping_schema(
+                payload,
+                active_schema,
+                reject_extra=reject_extra,
+            ),
+            request_id=request_id,
+            start_time=start_time,
+        )
+    except (TypeError, ValidationError) as exc:
+        return _tool_failure_response(
+            tool_name=tool_name,
+            exception=exc,
+            request_id=request_id,
+            start_time=start_time,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return _tool_failure_response(
+            tool_name=tool_name,
+            exception=exc,
+            request_id=request_id,
+            start_time=start_time,
+        )
+
+
 def validate_input_schema(
     payload: Mapping[str, object],
     schema: Mapping[str, object],
     *,
     request_id: str | None = None,
 ) -> StandardResponse:
-    """Official low-risk read-only input schema validator."""
+    """Official low-risk read-only input schema validator.
+
+    Use this tool before consuming externally supplied input payloads.
+
+    Args:
+        payload: Candidate input mapping.
+        schema: Simple mapping schema with required, allowed, schema_version,
+            and compatible_versions keys.
+        request_id: Optional trace request identifier.
+
+    Returns:
+        Standard tool response envelope.
+
+    Errors:
+        INVALID_INPUT, VALIDATION_FAILED, or TOOL_EXECUTION_FAILED.
+
+    Side effects:
+        Emits structured logs only.
+    """
     start = time.perf_counter()
-    return _tool_response(
+    return _run_schema_tool(
         tool_name="validate_input_schema",
-        result=validate_mapping_schema(payload, schema),
+        payload=payload,
+        schema=schema,
         request_id=request_id,
         start_time=start,
+        reject_extra=True,
     )
 
 
@@ -258,13 +413,33 @@ def validate_output_schema(
     *,
     request_id: str | None = None,
 ) -> StandardResponse:
-    """Official low-risk read-only output schema validator."""
+    """Official low-risk read-only output schema validator.
+
+    Use this tool before handing tool or agent output to another workflow.
+
+    Args:
+        payload: Candidate output mapping.
+        schema: Simple mapping schema with required, allowed, schema_version,
+            and compatible_versions keys.
+        request_id: Optional trace request identifier.
+
+    Returns:
+        Standard tool response envelope.
+
+    Errors:
+        INVALID_INPUT, VALIDATION_FAILED, or TOOL_EXECUTION_FAILED.
+
+    Side effects:
+        Emits structured logs only.
+    """
     start = time.perf_counter()
-    return _tool_response(
+    return _run_schema_tool(
         tool_name="validate_output_schema",
-        result=validate_mapping_schema(payload, schema),
+        payload=payload,
+        schema=schema,
         request_id=request_id,
         start_time=start,
+        reject_extra=True,
     )
 
 
@@ -273,14 +448,30 @@ def validate_handoff_payload(
     *,
     request_id: str | None = None,
 ) -> StandardResponse:
-    """Official low-risk read-only handoff payload validator."""
+    """Official low-risk read-only handoff payload validator.
+
+    Args:
+        payload: Handoff mapping requiring request_id and workflow_id.
+        request_id: Optional trace request identifier.
+
+    Returns:
+        Standard tool response envelope.
+
+    Errors:
+        INVALID_INPUT, VALIDATION_FAILED, or TOOL_EXECUTION_FAILED.
+
+    Side effects:
+        Emits structured logs only.
+    """
     start = time.perf_counter()
-    schema = {"required": ("request_id", "workflow_id"), "allowed": tuple(payload)}
-    return _tool_response(
+    schema = {"required": ("request_id", "workflow_id"), "allowed": ()}
+    return _run_schema_tool(
         tool_name="validate_handoff_payload",
-        result=validate_mapping_schema(payload, schema, reject_extra=False),
+        payload=payload,
+        schema=schema,
         request_id=request_id,
         start_time=start,
+        reject_extra=False,
     )
 
 
@@ -289,14 +480,30 @@ def validate_evidence_pack(
     *,
     request_id: str | None = None,
 ) -> StandardResponse:
-    """Official low-risk read-only evidence pack validator."""
+    """Official low-risk read-only evidence pack validator.
+
+    Args:
+        payload: Evidence mapping requiring an evidence field.
+        request_id: Optional trace request identifier.
+
+    Returns:
+        Standard tool response envelope.
+
+    Errors:
+        INVALID_INPUT, VALIDATION_FAILED, or TOOL_EXECUTION_FAILED.
+
+    Side effects:
+        Emits structured logs only.
+    """
     start = time.perf_counter()
-    schema = {"required": ("evidence",), "allowed": tuple(payload)}
-    return _tool_response(
+    schema = {"required": ("evidence",), "allowed": ()}
+    return _run_schema_tool(
         tool_name="validate_evidence_pack",
-        result=validate_mapping_schema(payload, schema, reject_extra=False),
+        payload=payload,
+        schema=schema,
         request_id=request_id,
         start_time=start,
+        reject_extra=False,
     )
 
 
@@ -305,14 +512,30 @@ def validate_approval_packet(
     *,
     request_id: str | None = None,
 ) -> StandardResponse:
-    """Official low-risk read-only approval packet validator."""
+    """Official low-risk read-only approval packet validator.
+
+    Args:
+        payload: Approval mapping requiring approval_id and action.
+        request_id: Optional trace request identifier.
+
+    Returns:
+        Standard tool response envelope.
+
+    Errors:
+        INVALID_INPUT, VALIDATION_FAILED, or TOOL_EXECUTION_FAILED.
+
+    Side effects:
+        Emits structured logs only.
+    """
     start = time.perf_counter()
-    schema = {"required": ("approval_id", "action"), "allowed": tuple(payload)}
-    return _tool_response(
+    schema = {"required": ("approval_id", "action"), "allowed": ()}
+    return _run_schema_tool(
         tool_name="validate_approval_packet",
-        result=validate_mapping_schema(payload, schema, reject_extra=False),
+        payload=payload,
+        schema=schema,
         request_id=request_id,
         start_time=start,
+        reject_extra=False,
     )
 
 
@@ -321,14 +544,30 @@ def validate_registry_entry(
     *,
     request_id: str | None = None,
 ) -> StandardResponse:
-    """Official low-risk read-only registry entry validator."""
+    """Official low-risk read-only registry entry validator.
+
+    Args:
+        payload: Registry mapping requiring name and version.
+        request_id: Optional trace request identifier.
+
+    Returns:
+        Standard tool response envelope.
+
+    Errors:
+        INVALID_INPUT, VALIDATION_FAILED, or TOOL_EXECUTION_FAILED.
+
+    Side effects:
+        Emits structured logs only.
+    """
     start = time.perf_counter()
-    schema = {"required": ("name", "version"), "allowed": tuple(payload)}
-    return _tool_response(
+    schema = {"required": ("name", "version"), "allowed": ()}
+    return _run_schema_tool(
         tool_name="validate_registry_entry",
-        result=validate_mapping_schema(payload, schema, reject_extra=False),
+        payload=payload,
+        schema=schema,
         request_id=request_id,
         start_time=start,
+        reject_extra=False,
     )
 
 
@@ -337,14 +576,30 @@ def validate_data_freshness(
     *,
     request_id: str | None = None,
 ) -> StandardResponse:
-    """Official low-risk read-only data freshness validator."""
+    """Official low-risk read-only data freshness validator.
+
+    Args:
+        payload: Freshness mapping requiring timestamp.
+        request_id: Optional trace request identifier.
+
+    Returns:
+        Standard tool response envelope.
+
+    Errors:
+        INVALID_INPUT, VALIDATION_FAILED, or TOOL_EXECUTION_FAILED.
+
+    Side effects:
+        Emits structured logs only.
+    """
     start = time.perf_counter()
-    schema = {"required": ("timestamp",), "allowed": tuple(payload)}
-    return _tool_response(
+    schema = {"required": ("timestamp",), "allowed": ()}
+    return _run_schema_tool(
         tool_name="validate_data_freshness",
-        result=validate_mapping_schema(payload, schema, reject_extra=False),
+        payload=payload,
+        schema=schema,
         request_id=request_id,
         start_time=start,
+        reject_extra=False,
     )
 
 

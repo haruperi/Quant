@@ -49,3 +49,13 @@ def test_validate_auth_context_official_response() -> None:
 
     assert response["status"] == "success"
     assert invalid["status"] == "error"
+
+
+def test_validate_auth_context_rejects_malformed_payload_shape() -> None:
+    """Malformed auth payloads return checklist-approved standard errors."""
+    response = validate_auth_context(["not", "a", "mapping"])  # type: ignore[arg-type]
+
+    assert response["status"] == "error"
+    assert response["error"] is not None
+    assert response["error"]["code"] == "INVALID_INPUT"
+    assert response["metadata"]["tool_name"] == "validate_auth_context"

@@ -1,4 +1,8 @@
-"""Authentication context and deterministic authorization helpers."""
+"""Authentication context and deterministic authorization helpers.
+
+Exported AI Tools:
+    - validate_auth_context: Official low-risk read-only auth context validator.
+"""
 
 from __future__ import annotations
 
@@ -9,12 +13,25 @@ from typing import Literal
 
 from tools.utils.errors import SecurityError, ValidationError
 from tools.utils.identity import validate_request_id, validate_workflow_id
+from tools.utils.logger import logger
 from tools.utils.standard import (
     StandardResponse,
     build_metadata,
     error_response,
     success_response,
 )
+
+TOOL_NAME = "validate_auth_context"
+TOOL_VERSION = "1.0.0"
+TOOL_CATEGORY = "utils"
+TOOL_RISK_LEVEL: Literal["low"] = "low"
+REQUIRES_APPROVAL = False
+READS = False
+WRITES = False
+UPDATES = False
+DELETES = False
+TRADES = False
+REQUIRES_NETWORK = False
 
 PrincipalType = Literal["owner", "operator", "service", "agent", "viewer"]
 DecisionStatus = Literal["allowed", "denied"]
@@ -125,14 +142,45 @@ def validate_auth_context(
     *,
     request_id: str | None = None,
 ) -> StandardResponse:
-    """Official low-risk read-only auth context validator."""
+    """Official low-risk read-only auth context validator.
+
+    Use this tool to validate an auth context payload (e.g. principal_id, type, roles).
+
+    Args:
+        payload (dict[str, object]): The auth context payload to validate.
+        request_id (str | None, optional): Optional trace request ID.
+
+    Returns:
+        StandardResponse: Standard tool response envelope.
+
+    Errors:
+        INVALID_INPUT: The payload is missing required auth fields or uses
+            malformed collection values.
+        PERMISSION_DENIED: The auth context violates security validation.
+        TOOL_EXECUTION_FAILED: An unexpected validation runtime failure occurred.
+
+    Side effects:
+        Emits structured tool call, validation failure, success, and exception
+        logs. It does not mutate auth state or grant permissions.
+    """
     start = time.perf_counter()
+    logger.info(
+        "validate_auth_context called",
+        extra={"event_name": "tool_called", "request_id": request_id},
+    )
     metadata = build_metadata(
-        tool_name="validate_auth_context",
-        start_time=start,
+        tool_name=TOOL_NAME,
+        tool_version=TOOL_VERSION,
+        tool_category=TOOL_CATEGORY,
+        tool_risk_level=TOOL_RISK_LEVEL,
         request_id=request_id,
-        tool_category="utils",
-        tool_risk_level="low",
+        reads=READS,
+        writes=WRITES,
+        updates=UPDATES,
+        deletes=DELETES,
+        trades=TRADES,
+        requires_network=REQUIRES_NETWORK,
+        start_time=start,
     )
     try:
         build_auth_context(
@@ -149,11 +197,31 @@ def validate_auth_context(
                 else None
             ),
         )
+        logger.info(
+            "validate_auth_context completed",
+            extra={"event_name": "tool_success", "request_id": request_id},
+        )
     except (KeyError, TypeError, ValidationError, SecurityError) as exc:
+        logger.warning(
+            "validate_auth_context validation failed",
+            extra={"event_name": "tool_validation_failed", "request_id": request_id},
+        )
+        code = getattr(exc, "code", "INVALID_INPUT")
         return error_response(
             message="Auth context is invalid.",
-            code=getattr(exc, "code", "INVALID_AUTH_CONTEXT"),
+            code=code,
             details=str(exc),
+            metadata=metadata,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "validate_auth_context raised exception",
+            extra={"event_name": "tool_exception", "request_id": request_id},
+        )
+        return error_response(
+            message="Auth context validation failed.",
+            code="TOOL_EXECUTION_FAILED",
+            details=f"{exc.__class__.__name__}: {exc}",
             metadata=metadata,
         )
     return success_response(

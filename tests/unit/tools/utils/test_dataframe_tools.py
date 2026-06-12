@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Iterator
+from datetime import UTC, datetime
 
+import pytest
 from tools.utils import (
     align_dataframe_datetime,
     bar_to_record,
     chunked,
+    compare_dataframes,
+    compare_ohlc,
     compare_ohlcv,
     dataframe_columns,
     dataframe_tools,
@@ -15,6 +20,7 @@ from tools.utils import (
     parameter_combinations,
     serialize_dataframe_records,
 )
+from tools.utils.errors import ConfigurationError, ValidationError
 
 
 class FakeSeries(list[object]):
@@ -25,7 +31,7 @@ class FakeTimestamp:
     """Placeholder timestamp type for ``isinstance`` checks."""
 
 
-class FakeIndex(list[int]):
+class FakeIndex(list[object]):
     """Tiny index with pandas-like equality."""
 
     @property
@@ -85,7 +91,9 @@ class FakeDataFrame:
 
     def copy(self, *, deep: bool = True) -> FakeDataFrame:  # noqa: ARG002
         """Return a copied frame."""
-        return FakeDataFrame(self.rows)
+        copied = FakeDataFrame(self.rows)
+        copied.index = FakeIndex(self.index)
+        return copied
 
     def __getitem__(self, column: str) -> FakeSeries:
         """Return a column as a fake series."""
@@ -132,9 +140,9 @@ class FakePandas:
         return value is not None
 
     @staticmethod
-    def DatetimeIndex(values: list[object]) -> list[object]:  # noqa: N802
+    def DatetimeIndex(values: list[object]) -> FakeIndex:  # noqa: N802
         """Return values as a fake datetime index."""
-        return values
+        return FakeIndex(values)
 
     @staticmethod
     def to_datetime(
@@ -204,3 +212,94 @@ def test_dataframe_comparison_and_combinatorics() -> None:
         {"a": 2, "b": "x"},
     ]
     assert bar_to_record({"open": 1, "close": 2}) == {"close": 2, "open": 1}
+
+
+def test_dataframe_helpers_reject_invalid_inputs() -> None:
+    """Dataframe helpers raise deterministic validation errors."""
+    _patch_pandas()
+    frame = FakeDataFrame([{"open": 1.0, "high": 2.0}])
+    other = FakeDataFrame([{"open": 1.0, "high": 2.0}])
+    other.index = FakeIndex([99])
+
+    with pytest.raises(ValidationError, match="DataFrame"):
+        dataframe_columns(object())
+    with pytest.raises(ValidationError, match="missing required columns"):
+        align_dataframe_datetime(frame, timestamp_column="timestamp")
+    with pytest.raises(ValidationError, match="greater than zero"):
+        chunked([1, 2], size=0)
+    with pytest.raises(ValidationError, match="non-empty sequence"):
+        parameter_combinations({"fast": []})
+    with pytest.raises(ValidationError, match="non-negative"):
+        compare_dataframes(frame, frame, tolerance=-0.1)
+    with pytest.raises(ValidationError, match="indexes do not align"):
+        compare_dataframes(frame, other)
+    with pytest.raises(ValidationError, match="bar must be a mapping"):
+        bar_to_record(["not", "mapping"])  # type: ignore[arg-type]
+
+
+def test_dataframe_serialization_handles_index_dates_and_nonfinite_values() -> None:
+    """Serialization converts date-like and non-finite values into JSON-safe data."""
+    _patch_pandas()
+    timestamp = datetime(2026, 6, 11, 10, 0, tzinfo=UTC)
+    frame = FakeDataFrame(
+        [
+            {
+                "timestamp": timestamp,
+                "nested": {"bad": math.inf},
+                "items": [1, math.nan],
+                "open": 1.0,
+            },
+        ],
+    )
+
+    records = serialize_dataframe_records(
+        frame,
+        timestamp_columns=("timestamp",),
+        include_index=True,
+        index_name="row",
+    )
+    bar = bar_to_record({"timestamp": timestamp, "value": math.nan})
+
+    assert records == [
+        {
+            "timestamp": "2026-06-11T10:00:00Z",
+            "nested": {"bad": None},
+            "items": [1, None],
+            "open": 1.0,
+            "row": 0,
+        },
+    ]
+    assert bar["timestamp"] == "2026-06-11T10:00:00Z"
+    assert bar["value"] is None
+
+
+def test_dataframe_comparison_tolerance_and_nan_handling() -> None:
+    """Comparison supports OHLC subsets, tolerance, and NaN equality."""
+    _patch_pandas()
+    left = FakeDataFrame(
+        [{"open": 1.0, "high": 2.0, "low": 0.5, "close": math.nan, "volume": 1}],
+    )
+    right = FakeDataFrame(
+        [{"open": 1.01, "high": 2.0, "low": 0.5, "close": math.nan, "volume": 1}],
+    )
+
+    assert compare_ohlc(left, right, tolerance=0.02)["equal"] is True
+    assert compare_ohlc(left, right, tolerance=0.001)["equal"] is False
+
+
+def test_pandas_import_failure_is_reported(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Lazy pandas import failures produce configuration errors."""
+    import importlib
+
+    module = importlib.reload(dataframe_tools)
+    real_import = module.importlib.import_module
+
+    def fail_for_pandas(name: str) -> object:
+        if name == "pandas":
+            raise ImportError("missing pandas")
+        return real_import(name)
+
+    monkeypatch.setattr(module.importlib, "import_module", fail_for_pandas)
+
+    with pytest.raises(ConfigurationError, match="pandas is required"):
+        module._pandas()

@@ -57,6 +57,7 @@ from tools.utils import (  # noqa: E402
     parameter_combinations,
     record_metric,
     redact_mapping,
+    redact_payload,
     render_notification,
     route_error,
     set_trace_context,
@@ -64,6 +65,7 @@ from tools.utils import (  # noqa: E402
     validate_auth_context,
     validate_input_schema,
     validate_ohlcv_records,
+    validate_output_schema,
     validate_request_id,
     validate_standard_response,
     validate_timestamp_sequence,
@@ -335,6 +337,20 @@ def example_08_schema_validation() -> None:
     )
     validate_standard_response(schema_response)
     print(canonical_json(schema_response))
+    output_response = validate_output_schema(
+        {"result": "ready"},
+        {"required": ("result",), "allowed": ("result",)},
+        request_id="req-usage-schema-output",
+    )
+    invalid_response = validate_input_schema(
+        {"name": "demo"},
+        {"required": "name"},
+        request_id="req-usage-schema-invalid",
+    )
+    validate_standard_response(output_response)
+    validate_standard_response(invalid_response)
+    print(canonical_json(output_response))
+    print(canonical_json(invalid_response))
 
 
 def example_09_data_quality() -> None:
@@ -370,6 +386,12 @@ def example_10_security() -> None:
             },
         ),
     )
+    redaction_response = redact_payload(
+        {"authorization": "Bearer placeholder", "safe": "ok"},
+        request_id="req-usage-redact",
+    )
+    validate_standard_response(redaction_response)
+    print(canonical_json(redaction_response))
 
 
 def example_11_settings() -> None:

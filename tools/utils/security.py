@@ -13,6 +13,7 @@ from collections.abc import Mapping
 from typing import Any, Literal
 
 from tools.utils.errors import ConfigurationError, SecurityError, ValidationError
+from tools.utils.logger import logger
 from tools.utils.standard import (
     StandardResponse,
     build_metadata,
@@ -20,7 +21,18 @@ from tools.utils.standard import (
     success_response,
 )
 
+TOOL_NAME = "redact_payload"
 TOOL_VERSION = "1.0.0"
+TOOL_CATEGORY = "utils"
+TOOL_RISK_LEVEL: Literal["low"] = "low"
+REQUIRES_APPROVAL = False
+READS = False
+WRITES = False
+UPDATES = False
+DELETES = False
+TRADES = False
+REQUIRES_NETWORK = False
+
 MIN_PASSWORD_HASH_ITERATIONS = 100_000
 SENSITIVE_KEY_PATTERN = re.compile(
     r"(password|passphrase|token|secret|credential|api_?key|authorization|private)",
@@ -61,6 +73,16 @@ def redact_value(value: object) -> object:
     if isinstance(value, list | tuple | set):
         return [redact_value(item) for item in value]
     return value
+
+
+def _validate_redactable_payload(payload: object) -> Mapping[str, object] | str:
+    """Return a supported redaction payload or raise validation."""
+    if not isinstance(payload, str | Mapping):
+        raise ValidationError(
+            "payload must be a mapping or string.",
+            code="INVALID_INPUT",
+        )
+    return payload
 
 
 def hash_password(
@@ -147,21 +169,54 @@ def redact_payload(
     *,
     request_id: str | None = None,
 ) -> StandardResponse:
-    """Official low-risk read-only redaction tool for approved workflows."""
+    """Official low-risk read-only redaction tool for approved workflows.
+
+    Use this tool to redact sensitive keys (like passwords, keys, tokens) from payloads.
+
+    Args:
+        payload (Mapping[str, object] | str): The payload or text to redact.
+        request_id (str | None, optional): Optional trace request ID.
+
+    Returns:
+        StandardResponse: Standard tool response envelope.
+
+    Errors:
+        INVALID_INPUT: Payload is not a mapping or string.
+        PERMISSION_DENIED: Redaction security validation fails.
+        TOOL_EXECUTION_FAILED: Unexpected redaction runtime failure.
+
+    Side effects:
+        Emits structured tool logs only.
+    """
     start = time.perf_counter()
+    logger.info(
+        "redact_payload called",
+        extra={"event_name": "tool_called", "request_id": request_id},
+    )
     metadata = build_metadata(
-        tool_name="redact_payload",
-        start_time=start,
+        tool_name=TOOL_NAME,
         tool_version=TOOL_VERSION,
-        tool_category="utils",
-        tool_risk_level="low",
+        tool_category=TOOL_CATEGORY,
+        tool_risk_level=TOOL_RISK_LEVEL,
         request_id=request_id,
+        reads=READS,
+        writes=WRITES,
+        updates=UPDATES,
+        deletes=DELETES,
+        trades=TRADES,
+        requires_network=REQUIRES_NETWORK,
+        start_time=start,
     )
     try:
+        redaction_payload = _validate_redactable_payload(payload)
         data = (
-            redact_text(payload)
-            if isinstance(payload, str)
-            else redact_mapping(payload)
+            redact_text(redaction_payload)
+            if isinstance(redaction_payload, str)
+            else redact_mapping(redaction_payload)
+        )
+        logger.info(
+            "redact_payload completed",
+            extra={"event_name": "tool_success", "request_id": request_id},
         )
         return success_response(
             message="Payload redacted.",
@@ -169,10 +224,25 @@ def redact_payload(
             metadata=metadata,
         )
     except (SecurityError, ValidationError) as exc:
+        logger.warning(
+            "redact_payload failed",
+            extra={"event_name": "tool_validation_failed", "request_id": request_id},
+        )
         return error_response(
             message="Payload redaction failed.",
             code=exc.code,
             details=str(exc),
+            metadata=metadata,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "redact_payload raised exception",
+            extra={"event_name": "tool_exception", "request_id": request_id},
+        )
+        return error_response(
+            message="Payload redaction failed.",
+            code="TOOL_EXECUTION_FAILED",
+            details=f"{exc.__class__.__name__}: {exc}",
             metadata=metadata,
         )
 
