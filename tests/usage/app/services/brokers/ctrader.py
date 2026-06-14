@@ -50,6 +50,7 @@ def run_ctrader_demo() -> None:
                     8: "NZD",
                     9: "SGD",
                     10: "HKD",
+                    15: "EUR",
                 }
                 currency = asset_map.get(
                     trader.depositAssetId, f"Asset ID {trader.depositAssetId}"
