@@ -15,6 +15,7 @@ from ctrader_open_api.messages.OpenApiMessages_pb2 import (  # type: ignore[impo
     ProtoOAAccountAuthReq,
     ProtoOAApplicationAuthReq,
     ProtoOAGetAccountListByAccessTokenReq,
+    ProtoOATraderReq,
 )
 from ctrader_open_api.messages.OpenApiModelMessages_pb2 import (  # type: ignore[import-untyped, unused-ignore]
     ProtoOAPayloadType,
@@ -59,6 +60,30 @@ class BaseMockClient:
         pass
 
 
+class SuccessMockClient(BaseMockClient):
+    """Mock cTrader client that successfully handshakes and authenticates."""
+
+    def send(self, msg: Any) -> None:
+        if isinstance(msg, ProtoOAApplicationAuthReq) and self.message_cb:
+            self.message_cb(
+                self,
+                MockMessage(ProtoOAPayloadType.PROTO_OA_APPLICATION_AUTH_RES),
+            )
+        elif isinstance(msg, ProtoOAGetAccountListByAccessTokenReq) and self.message_cb:
+            self.message_cb(
+                self,
+                MockMessage(
+                    ProtoOAPayloadType.PROTO_OA_GET_ACCOUNTS_BY_ACCESS_TOKEN_RES
+                ),
+            )
+        elif isinstance(msg, ProtoOAAccountAuthReq) and self.message_cb:
+            self.message_cb(
+                self, MockMessage(ProtoOAPayloadType.PROTO_OA_ACCOUNT_AUTH_RES)
+            )
+        elif isinstance(msg, ProtoOATraderReq) and self.message_cb:
+            self.message_cb(self, MockMessage(ProtoOAPayloadType.PROTO_OA_TRADER_RES))
+
+
 def test_ctrader_client_initialization_defaults() -> None:
     """Test CTraderClient initialization fallback to settings defaults."""
     client = CTraderClient()
@@ -90,31 +115,9 @@ def test_ctrader_client_connect_success(mocker: MockerFixture) -> None:
     mock_reactor = mocker.patch("twisted.internet.reactor", create=True)
     mock_reactor.running = False
 
-    class SuccessMockClient(BaseMockClient):
-        def send(self, msg: Any) -> None:
-            if isinstance(msg, ProtoOAApplicationAuthReq) and self.message_cb:
-                self.message_cb(
-                    self,
-                    MockMessage(ProtoOAPayloadType.PROTO_OA_APPLICATION_AUTH_RES),
-                )
-            elif (
-                isinstance(msg, ProtoOAGetAccountListByAccessTokenReq)
-                and self.message_cb
-            ):
-                self.message_cb(
-                    self,
-                    MockMessage(
-                        ProtoOAPayloadType.PROTO_OA_GET_ACCOUNTS_BY_ACCESS_TOKEN_RES
-                    ),
-                )
-            elif isinstance(msg, ProtoOAAccountAuthReq) and self.message_cb:
-                self.message_cb(
-                    self, MockMessage(ProtoOAPayloadType.PROTO_OA_ACCOUNT_AUTH_RES)
-                )
-
     mocker.patch("app.services.brokers.ctrader.Client", SuccessMockClient)
 
-    # Mock Protobuf extract helper to return mock accounts list
+    # Mock Protobuf extract helper to return mock accounts list and trader info
     mock_extract = mocker.patch("ctrader_open_api.protobuf.Protobuf.extract")
 
     mock_acc = MagicMock()
@@ -124,6 +127,17 @@ def test_ctrader_client_connect_success(mocker: MockerFixture) -> None:
     mock_accounts_res = MagicMock()
     mock_accounts_res.ctidTraderAccount = [mock_acc]
 
+    mock_trader = MagicMock()
+    mock_trader.traderLogin = 12345
+    mock_trader.brokerName = "Broker"
+    mock_trader.balance = 100000
+    mock_trader.depositAssetId = 1
+    mock_trader.maxLeverage = 500
+    mock_trader.accountType = "DEMO"
+
+    mock_trader_res = MagicMock()
+    mock_trader_res.trader = mock_trader
+
     # We configure extract to return appropriate objects based on message payloadType
     def side_effect(message: Any) -> Any:
         if (
@@ -131,6 +145,8 @@ def test_ctrader_client_connect_success(mocker: MockerFixture) -> None:
             == ProtoOAPayloadType.PROTO_OA_GET_ACCOUNTS_BY_ACCESS_TOKEN_RES
         ):
             return mock_accounts_res
+        if message.payloadType == ProtoOAPayloadType.PROTO_OA_TRADER_RES:
+            return mock_trader_res
         return MagicMock()
 
     mock_extract.side_effect = side_effect
@@ -148,6 +164,9 @@ def test_ctrader_client_connect_success(mocker: MockerFixture) -> None:
     assert client.is_app_authenticated() is True
     assert client.is_account_authorized() is True
     assert client.account_id == 12345
+    assert client.trader_info is not None
+    assert client.trader_info.traderLogin == 12345
+    assert client.trader_info.brokerName == "Broker"
 
 
 def test_ctrader_client_connect_missing_credentials(mocker: MockerFixture) -> None:
@@ -363,28 +382,6 @@ def test_ctrader_client_connect_live_environment(mocker: MockerFixture) -> None:
     """Test connect uses live environment endpoints when configured."""
     mocker.patch("twisted.internet.reactor", create=True)
 
-    class SuccessMockClient(BaseMockClient):
-        def send(self, msg: Any) -> None:
-            if isinstance(msg, ProtoOAApplicationAuthReq) and self.message_cb:
-                self.message_cb(
-                    self,
-                    MockMessage(ProtoOAPayloadType.PROTO_OA_APPLICATION_AUTH_RES),
-                )
-            elif (
-                isinstance(msg, ProtoOAGetAccountListByAccessTokenReq)
-                and self.message_cb
-            ):
-                self.message_cb(
-                    self,
-                    MockMessage(
-                        ProtoOAPayloadType.PROTO_OA_GET_ACCOUNTS_BY_ACCESS_TOKEN_RES
-                    ),
-                )
-            elif isinstance(msg, ProtoOAAccountAuthReq) and self.message_cb:
-                self.message_cb(
-                    self, MockMessage(ProtoOAPayloadType.PROTO_OA_ACCOUNT_AUTH_RES)
-                )
-
     mocker.patch("app.services.brokers.ctrader.Client", SuccessMockClient)
 
     mock_extract = mocker.patch("ctrader_open_api.protobuf.Protobuf.extract")
@@ -406,6 +403,7 @@ def test_ctrader_client_connect_live_environment(mocker: MockerFixture) -> None:
 
     assert result is True
     assert client.environment == "live"
+    # Ensure client was initialized with the live host
     from ctrader_open_api import (  # type: ignore[import-untyped, unused-ignore]
         EndPoints,
     )
@@ -420,28 +418,6 @@ def test_ctrader_client_connect_default_account_selection(
     """Test connect automatically selects the first account if none is specified."""
     mocker.patch("twisted.internet.reactor", create=True)
     mocker.patch.object(settings, "ctrader_account_id", None)
-
-    class SuccessMockClient(BaseMockClient):
-        def send(self, msg: Any) -> None:
-            if isinstance(msg, ProtoOAApplicationAuthReq) and self.message_cb:
-                self.message_cb(
-                    self,
-                    MockMessage(ProtoOAPayloadType.PROTO_OA_APPLICATION_AUTH_RES),
-                )
-            elif (
-                isinstance(msg, ProtoOAGetAccountListByAccessTokenReq)
-                and self.message_cb
-            ):
-                self.message_cb(
-                    self,
-                    MockMessage(
-                        ProtoOAPayloadType.PROTO_OA_GET_ACCOUNTS_BY_ACCESS_TOKEN_RES
-                    ),
-                )
-            elif isinstance(msg, ProtoOAAccountAuthReq) and self.message_cb:
-                self.message_cb(
-                    self, MockMessage(ProtoOAPayloadType.PROTO_OA_ACCOUNT_AUTH_RES)
-                )
 
     mocker.patch("app.services.brokers.ctrader.Client", SuccessMockClient)
 

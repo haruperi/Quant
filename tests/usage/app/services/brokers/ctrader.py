@@ -35,6 +35,38 @@ def run_ctrader_demo() -> None:
             print(f"App Authenticated:     {client.is_app_authenticated()}")
             print(f"Account Authorized:    {client.is_account_authorized()}")
             print(f"Authorized Account ID: {client.account_id}")
+            print()
+
+            trader = client.trader_info
+            if trader is not None:
+                asset_map = {
+                    1: "USD",
+                    2: "EUR",
+                    3: "GBP",
+                    4: "JPY",
+                    5: "CHF",
+                    6: "CAD",
+                    7: "AUD",
+                    8: "NZD",
+                    9: "SGD",
+                    10: "HKD",
+                }
+                currency = asset_map.get(
+                    trader.depositAssetId, f"Asset ID {trader.depositAssetId}"
+                )
+                leverage = getattr(trader, "maxLeverage", 0)
+                leverage_in_cents = getattr(trader, "leverageInCents", None)
+                if not leverage and leverage_in_cents is not None:
+                    leverage = leverage_in_cents // 100
+
+                print(f"Login:          {trader.traderLogin}")
+                print(f"Name:           cTrader Account {trader.ctidTraderAccountId}")
+                print(f"Server:         {trader.accountType}")
+                print(f"Company:        {trader.brokerName}")
+                print(f"Currency:       {currency}")
+                print(f"Leverage:       1:{leverage}")
+                balance = trader.balance / 100
+                print(f"Balance:        {balance:.2f} {currency}")
 
             # Sleep briefly to allow any incoming messages to be parsed/printed
             time.sleep(2)

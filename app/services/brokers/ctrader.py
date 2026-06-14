@@ -19,6 +19,7 @@ from ctrader_open_api.messages.OpenApiMessages_pb2 import (  # type: ignore[impo
     ProtoOAAccountAuthReq,
     ProtoOAApplicationAuthReq,
     ProtoOAGetAccountListByAccessTokenReq,
+    ProtoOATraderReq,
 )
 from ctrader_open_api.messages.OpenApiModelMessages_pb2 import (  # type: ignore[import-untyped, unused-ignore]
     ProtoOAPayloadType,
@@ -74,6 +75,7 @@ class CTraderClient:
         self._is_connected = False
         self._is_app_authenticated = False
         self._is_account_authorized = False
+        self.trader_info: Any = None
 
         logger.info(
             "CTraderClient initialized",
@@ -261,6 +263,8 @@ class CTraderClient:
             self._handle_account_list_res(extracted)
         elif payload_type == ProtoOAPayloadType.PROTO_OA_ACCOUNT_AUTH_RES:
             self._handle_account_auth_res()
+        elif payload_type == ProtoOAPayloadType.PROTO_OA_TRADER_RES:
+            self._handle_trader_res(extracted)
         elif payload_type in (
             ProtoOAPayloadType.PROTO_OA_ERROR_RES,
             ProtoPayloadType.ERROR_RES,
@@ -329,6 +333,20 @@ class CTraderClient:
         """Handle account authorization success response."""
         logger.info("cTrader account %s authorized successfully.", self.account_id)
         self._is_account_authorized = True
+
+        try:
+            req = ProtoOATraderReq()
+            req.ctidTraderAccountId = self.account_id
+            self.client.send(req)
+        except Exception as e:  # noqa: BLE001
+            logger.exception("Failed to send ProtoOATraderReq")
+            self._error = f"Trader details request failed: {e}"
+            self._auth_event.set()
+
+    def _handle_trader_res(self, extracted: Any) -> None:  # noqa: ANN401
+        """Handle trader details response."""
+        logger.info("cTrader trader details received.")
+        self.trader_info = extracted.trader
         self._auth_event.set()
 
     def _handle_error_res(self, extracted: Any) -> None:  # noqa: ANN401
