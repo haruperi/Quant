@@ -8,3 +8,4 @@ detect-secrets
 metatrader5
 pytest-mock
 ctrader-open-api
+service-identity

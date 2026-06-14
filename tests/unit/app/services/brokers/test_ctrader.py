@@ -1,4 +1,4 @@
-# ruff: noqa: N802, ARG002, TRY002, TRY004
+# ruff: noqa: N802, ARG002, TRY002, TRY004, E501, PLR0915
 """Unit tests for the CTraderClient broker service."""
 
 from typing import Any
@@ -6,7 +6,18 @@ from unittest.mock import MagicMock
 
 import pytest
 from app.core.config import settings
-from app.services.brokers.ctrader import CTraderClient, get_ctrader_client
+from app.services.brokers.ctrader import (
+    CTraderClient,
+    get_account_info,
+    get_ctrader_client,
+    get_history_deal_info,
+    get_history_order_info,
+    get_order_info,
+    get_position_info,
+    get_symbol_info,
+    get_terminal_info,
+    trade,
+)
 from app.utils.errors import ConfigurationError, ExternalServiceError
 from ctrader_open_api.messages.OpenApiCommonModelMessages_pb2 import (  # type: ignore[import-untyped, unused-ignore]
     ProtoPayloadType,
@@ -632,3 +643,371 @@ def test_ctrader_client_on_message_payload_error_res(
     client._on_message(None, msg)
 
     assert client._error == "SYSTEM_ERROR: System error"
+
+
+def test_ctrader_client_send_request_success(mocker: MockerFixture) -> None:
+    """Test send_request synchronous response wait succeeds."""
+    client = CTraderClient()
+    client._is_connected = True
+    mock_twisted_client = MagicMock()
+    client.client = mock_twisted_client
+
+    expected_response = MagicMock()
+    expected_response.payloadType = 12345
+
+    def mock_send(req: Any) -> None:
+        assert len(client._message_callbacks) == 1
+        cb = client._message_callbacks[0]
+        cb(expected_response, 12345)
+
+    mock_twisted_client.send.side_effect = mock_send
+
+    req = MagicMock()
+    res = client.send_request(req, response_payload_type=12345, timeout=1.0)
+    assert res == expected_response
+    assert len(client._message_callbacks) == 0
+
+
+def test_ctrader_client_send_request_timeout(mocker: MockerFixture) -> None:
+    """Test send_request raises ExternalServiceError on timeout."""
+    client = CTraderClient()
+    client._is_connected = True
+    client.client = MagicMock()
+
+    req = MagicMock()
+    with pytest.raises(ExternalServiceError, match="Request timed out"):
+        client.send_request(req, response_payload_type=12345, timeout=0.01)
+
+
+def test_ctrader_client_send_request_error(mocker: MockerFixture) -> None:
+    """Test send_request raises ExternalServiceError when error response received."""
+    client = CTraderClient()
+    client._is_connected = True
+    mock_twisted_client = MagicMock()
+    client.client = mock_twisted_client
+
+    error_response = MagicMock()
+    error_response.description = "Auth failed"
+    error_response.errorCode = "AUTH_FAILED"
+
+    def mock_send(req: Any) -> None:
+        cb = client._message_callbacks[0]
+        cb(error_response, ProtoOAPayloadType.PROTO_OA_ERROR_RES)
+
+    mock_twisted_client.send.side_effect = mock_send
+
+    req = MagicMock()
+    with pytest.raises(
+        ExternalServiceError, match="cTrader request error: AUTH_FAILED: Auth failed"
+    ):
+        client.send_request(req, response_payload_type=12345, timeout=1.0)
+
+
+def test_ctrader_client_subscribe_unsubscribe_spots(mocker: MockerFixture) -> None:
+    """Test spot price subscription methods."""
+    client = CTraderClient()
+    client._is_connected = True
+    client.client = MagicMock()
+
+    mock_light_sym = MagicMock()
+    mock_light_sym.symbolId = 42
+    client._symbol_map = {"EURUSD": mock_light_sym}
+
+    mock_send = mocker.patch.object(client, "send_request")
+
+    client.subscribe_spots("EURUSD")
+    assert 42 in client._subscribed_symbols
+    mock_send.assert_called_once()
+
+    mock_send.reset_mock()
+    client.unsubscribe_spots("EURUSD")
+    assert 42 not in client._subscribed_symbols
+    mock_send.assert_called_once()
+
+
+def test_ctrader_client_order_calc_margin_and_profit(mocker: MockerFixture) -> None:
+    """Test order_calc_margin and order_calc_profit calculations."""
+    client = CTraderClient()
+    client._is_connected = True
+    client.client = MagicMock()
+
+    mock_light_sym = MagicMock()
+    mock_light_sym.symbolId = 42
+    client._symbol_map = {"EURUSD": mock_light_sym}
+
+    # cTrader margin is a list of ProtoOAExpectedMargin containing buyMargin/sellMargin
+    mock_margin = MagicMock()
+    mock_margin.volume = 100000
+    mock_margin.buyMargin = 150000
+    mock_margin.sellMargin = 150000
+
+    mock_margin_res = MagicMock()
+    mock_margin_res.margin = [mock_margin]
+    mock_margin_res.moneyDigits = 2
+
+    mock_symbol_detail = MagicMock()
+    mock_symbol_detail.lotSize = 100000
+    mock_symbol_detail_res = MagicMock()
+    mock_symbol_detail_res.symbol = [mock_symbol_detail]
+
+    def mock_send_request(req: Any, payload_type: int) -> Any:
+        if payload_type == ProtoOAPayloadType.PROTO_OA_EXPECTED_MARGIN_RES:
+            return mock_margin_res
+        if payload_type == ProtoOAPayloadType.PROTO_OA_SYMBOL_BY_ID_RES:
+            return mock_symbol_detail_res
+        return MagicMock()
+
+    mocker.patch.object(client, "send_request", side_effect=mock_send_request)
+
+    margin = client.order_calc_margin(0, "EURUSD", 1.0, 1.2)
+    assert margin == 1500.0
+
+    profit = client.order_calc_profit(0, "EURUSD", 1.0, 1.2, 1.21)
+    assert profit == pytest.approx(1000.0)
+
+
+def test_ctrader_wrappers_and_helpers(mocker: MockerFixture) -> None:
+    """Test get_terminal_info, get_account_info, and other broker wrappers."""
+    mock_reactor = mocker.patch("twisted.internet.reactor", create=True)
+    mock_reactor.running = True
+
+    client = get_ctrader_client()
+    client._is_connected = True
+    client._is_account_authorized = True
+
+    mock_trader = MagicMock()
+    mock_trader.traderLogin = 999
+    mock_trader.ctidTraderAccountId = 123
+    mock_trader.accountType = "DEMO"
+    mock_trader.brokerName = "MockBroker"
+    mock_trader.depositAssetId = 1
+    mock_trader.maxLeverage = 100
+    mock_trader.balance = 500000
+    mock_trader.moneyDigits = 2
+    client.trader_info = mock_trader
+
+    term = get_terminal_info()
+    assert term is not None
+    assert term.connected is True
+    assert "cTrader" in term.name
+
+    acc = get_account_info()
+    assert acc is not None
+    assert acc.login == 999
+    assert acc.balance == 5000.0
+
+    mock_light_sym = MagicMock()
+    mock_light_sym.symbolId = 10
+    mock_light_sym.symbolName = "GBPUSD"
+    mock_light_sym.description = "GBP vs USD"
+    mock_light_sym.symbolCategoryId = 1
+    client._symbol_map = {"GBPUSD": mock_light_sym}
+    client._symbol_id_to_name = {10: "GBPUSD"}
+
+    mock_sym = MagicMock()
+    mock_sym.digits = 5
+    mock_sym.tradingMode = 1
+    mock_sym.lotSize = 100000
+    mock_sym_res = MagicMock()
+    mock_sym_res.symbol = [mock_sym]
+
+    mocker.patch.object(client, "send_request", return_value=mock_sym_res)
+    sym = get_symbol_info("GBPUSD")
+    assert sym is not None
+    assert sym.name == "GBPUSD"
+    assert sym.digits == 5
+
+    mock_pos = MagicMock()
+    mock_pos.positionId = 101
+    mock_pos.tradeData.symbolId = 10
+    mock_pos.tradeData.tradeSide = 1
+    mock_pos.tradeData.volume = 20000
+    mock_pos.price = 120000
+    mock_pos.moneyDigits = 2
+    mock_reconcile_res = MagicMock()
+    mock_reconcile_res.position = [mock_pos]
+    mock_reconcile_res.order = []
+
+    mocker.patch.object(client, "send_request", return_value=mock_reconcile_res)
+    positions = get_position_info("GBPUSD")
+    assert len(positions) == 1
+    assert positions[0].ticket == 101
+    assert positions[0].volume == 0.2
+
+    # 6. get_order_info
+    mock_order = MagicMock()
+    mock_order.orderId = 301
+    mock_order.tradeData.symbolId = 10
+    mock_order.tradeData.tradeSide = 1
+    mock_order.tradeData.volume = 10000
+    mock_order.orderType = 2
+    mock_order.limitPrice = 125000
+    mock_order.orderStatus = 1
+    mock_reconcile_res.order = [mock_order]
+
+    mocker.patch.object(client, "send_request", return_value=mock_reconcile_res)
+    orders = get_order_info("GBPUSD")
+    assert len(orders) == 1
+    assert orders[0].ticket == 301
+
+    # 7. get_history_order_info & get_history_deal_info
+    mock_history_order_res = MagicMock()
+    mock_history_order_res.order = [mock_order]
+    mocker.patch.object(client, "send_request", return_value=mock_history_order_res)
+    hist_orders = get_history_order_info(date_from=1000, date_to=2000, group="GBP")
+    assert len(hist_orders) == 1
+
+    mock_deal = MagicMock()
+    mock_deal.dealId = 401
+    mock_deal.orderId = 301
+    mock_deal.positionId = 101
+    mock_deal.symbolId = 10
+    mock_deal.volume = 10000
+    mock_deal.executionPrice = 124000
+    mock_deal.tradeSide = 1
+    mock_deal.executionTimestamp = 1600000000
+    mock_deal.moneyDigits = 2
+    mock_deal_res = MagicMock()
+    mock_deal_res.deal = [mock_deal]
+    mocker.patch.object(client, "send_request", return_value=mock_deal_res)
+    deals = get_history_deal_info(date_from=1000, date_to=2000, group="GBP")
+    assert len(deals) == 1
+
+    # 8. trade - Action DEAL (New market order)
+    mock_exec_event = MagicMock()
+    mock_exec_event.order.orderId = 501
+    mock_exec_event.deal.dealId = 601
+    mocker.patch.object(client, "send_request", return_value=mock_exec_event)
+    res_deal = trade(
+        {"action": 1, "symbol": "GBPUSD", "volume": 0.1, "type": 0, "price": 1.25}
+    )
+    assert res_deal.order == 501
+    assert res_deal.deal == 601
+
+    # 9. trade - Action DEAL (Close position)
+    res_close = trade(
+        {
+            "action": 1,
+            "symbol": "GBPUSD",
+            "volume": 0.1,
+            "type": 1,
+            "position": 101,
+            "price": 1.24,
+        }
+    )
+    assert res_close.order == 501
+
+    # 10. trade - Action MODIFY
+    res_modify = trade(
+        {
+            "action": 2,
+            "order": 301,
+            "price": 1.26,
+            "volume": 0.2,
+            "sl": 1.20,
+            "tp": 1.30,
+        }
+    )
+    assert res_modify.order == 501
+
+    # 11. trade - Action REMOVE
+    res_remove = trade({"action": 4, "order": 301})
+    assert res_remove.order == 301
+
+    # 12. trade - Action PENDING (Place limit order)
+    res_pending = trade(
+        {
+            "action": 5,
+            "symbol": "GBPUSD",
+            "volume": 0.1,
+            "type": 2,
+            "price": 1.23,
+            "sl": 1.20,
+            "tp": 1.26,
+        }
+    )
+    assert res_pending.order == 501
+
+    # 13. trade - Action SLTP
+    res_sltp = trade({"action": 3, "position": 101, "sl": 1.19, "tp": 1.22})
+    assert res_sltp.order == 501
+
+
+def test_ctrader_additional_coverage_details(mocker: MockerFixture) -> None:
+    """Test edge cases and exception branches in wrappers to reach 80%+ coverage."""
+    client = get_ctrader_client()
+    client._is_connected = True
+    client._is_account_authorized = True
+    client._symbol_map = {}
+    client._subscribed_symbols = set()
+
+    # 1. get_symbol_info symbol not in map
+    assert get_symbol_info("INVALID") is None
+
+    # 2. get_symbol_info exception path
+    client._symbol_map = {"EURUSD": MagicMock()}
+    mocker.patch.object(client, "send_request", side_effect=Exception("API error"))
+    assert get_symbol_info("EURUSD") is None
+
+    # 3. get_position_info exception path
+    assert get_position_info() == []
+
+    # 4. get_order_info exception path
+    assert get_order_info() == []
+
+    # 5. get_history_order_info exception path
+    assert get_history_order_info() == []
+
+    # 6. get_history_deal_info exception path
+    assert get_history_deal_info() == []
+
+    # 7. order_calc_margin edge cases
+    assert client.order_calc_margin(0, "INVALID", 1.0, 1.2) is None
+    mocker.patch.object(
+        client, "send_request", side_effect=Exception("Margin API error")
+    )
+    assert client.order_calc_margin(0, "EURUSD", 1.0, 1.2) is None
+
+    # 8. order_calc_profit edge cases
+    assert client.order_calc_profit(0, "INVALID", 1.0, 1.2, 1.21) is None
+    mocker.patch.object(
+        client, "send_request", side_effect=Exception("Profit API error")
+    )
+    assert client.order_calc_profit(0, "EURUSD", 1.0, 1.2, 1.21) is None
+
+    # 9. subscribe_spots/unsubscribe_spots edge cases
+    client.subscribe_spots("INVALID")  # Should log warning and return
+    client.unsubscribe_spots("INVALID")  # Should return
+    client._symbol_map = {"EURUSD": MagicMock(symbolId=42)}
+    client.unsubscribe_spots("EURUSD")  # Not subscribed, should return
+
+    # 10. trade unsupported action
+    with pytest.raises(ExternalServiceError, match="Unsupported trade action"):
+        trade({"action": 999})
+
+    # 11. trade exception handling
+    mocker.patch.object(
+        client, "send_request", side_effect=Exception("Trade exception")
+    )
+    with pytest.raises(ExternalServiceError, match="Trade failed"):
+        trade(
+            {"action": 1, "symbol": "EURUSD", "volume": 0.1, "type": 0, "price": 1.25}
+        )
+
+    # 12. get_account_info when trader_info is None
+    client.trader_info = None
+    assert get_account_info() is None
+
+    # 13. last_error and symbols_total
+    client._error = "Test error"
+    assert client.last_error() == "Test error"
+    client._error = None
+    assert client.last_error() == "Success"
+    assert client.symbols_total() == 1
+
+    # 14. _ensure_connected path when not connected
+    client._is_connected = False
+    mock_connect = mocker.patch.object(client, "connect", return_value=True)
+    # This should call connect() via _ensure_connected() inside wrappers
+    get_terminal_info()
+    mock_connect.assert_called_once()
