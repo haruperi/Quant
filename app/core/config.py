@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     ctrader_refresh_token: str
     ctrader_redirect_url: str
     ctrader_environment: str
+    ctrader_account_id: int | None = None
 
     # Gemini / Google AI Studio
     gemini_api_key: str = Field(validation_alias="GOOGLE_API_KEY")
