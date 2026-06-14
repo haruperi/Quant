@@ -27,7 +27,7 @@ class AccountInfo:
             int: Account number.
         """
         self._refresh()
-        return cast(int, self._data.login) if self._data else 0
+        return cast("int", self._data.login) if self._data else 0
 
     def trade_mode(self) -> int:
         """Get trading account mode (0=Demo, 1=Contest, 2=Real).
@@ -59,7 +59,7 @@ class AccountInfo:
             int: Leverage ratio.
         """
         self._refresh()
-        return cast(int, self._data.leverage) if self._data else 1
+        return cast("int", self._data.leverage) if self._data else 1
 
     def limit_orders(self) -> int:
         """Get maximum allowed pending orders count.
@@ -68,7 +68,7 @@ class AccountInfo:
             int: Limit.
         """
         self._refresh()
-        return cast(int, self._data.limit_orders) if self._data else 0
+        return cast("int", self._data.limit_orders) if self._data else 0
 
     def trade_allowed(self) -> bool:
         """Check if trading is allowed for this account.
@@ -77,7 +77,7 @@ class AccountInfo:
             bool: True if allowed.
         """
         self._refresh()
-        return cast(bool, self._data.trade_allowed) if self._data else False
+        return cast("bool", self._data.trade_allowed) if self._data else False
 
     def trade_expert(self) -> bool:
         """Check if Expert Advisor trading is allowed for this account.
@@ -86,7 +86,7 @@ class AccountInfo:
             bool: True if allowed.
         """
         self._refresh()
-        return cast(bool, self._data.trade_expert) if self._data else False
+        return cast("bool", self._data.trade_expert) if self._data else False
 
     def margin_so_mode(self) -> int:
         """Get stop-out mode.
@@ -124,7 +124,7 @@ class AccountInfo:
             float: Balance in deposit currency.
         """
         self._refresh()
-        return cast(float, self._data.balance) if self._data else 0.0
+        return cast("float", self._data.balance) if self._data else 0.0
 
     def credit(self) -> float:
         """Get account credit value.
@@ -133,7 +133,7 @@ class AccountInfo:
             float: Credit.
         """
         self._refresh()
-        return cast(float, self._data.credit) if self._data else 0.0
+        return cast("float", self._data.credit) if self._data else 0.0
 
     def profit(self) -> float:
         """Get current account floating profit.
@@ -142,7 +142,7 @@ class AccountInfo:
             float: Profit.
         """
         self._refresh()
-        return cast(float, self._data.profit) if self._data else 0.0
+        return cast("float", self._data.profit) if self._data else 0.0
 
     def equity(self) -> float:
         """Get current account equity.
@@ -151,7 +151,7 @@ class AccountInfo:
             float: Equity.
         """
         self._refresh()
-        return cast(float, self._data.equity) if self._data else 0.0
+        return cast("float", self._data.equity) if self._data else 0.0
 
     def margin(self) -> float:
         """Get current account used margin.
@@ -160,7 +160,7 @@ class AccountInfo:
             float: Margin.
         """
         self._refresh()
-        return cast(float, self._data.margin) if self._data else 0.0
+        return cast("float", self._data.margin) if self._data else 0.0
 
     def free_margin(self) -> float:
         """Get account free margin.
@@ -169,7 +169,7 @@ class AccountInfo:
             float: Free margin.
         """
         self._refresh()
-        return cast(float, self._data.margin_free) if self._data else 0.0
+        return cast("float", self._data.margin_free) if self._data else 0.0
 
     def free_margin_mode(self) -> int:
         """Get free margin calculation mode.
@@ -186,7 +186,7 @@ class AccountInfo:
             float: Margin level.
         """
         self._refresh()
-        return cast(float, self._data.margin_level) if self._data else 0.0
+        return cast("float", self._data.margin_level) if self._data else 0.0
 
     def margin_so_level(self) -> float:
         """Get stop out level value.
@@ -204,7 +204,7 @@ class AccountInfo:
             str: Client name.
         """
         self._refresh()
-        return cast(str, self._data.name) if self._data else ""
+        return cast("str", self._data.name) if self._data else ""
 
     def server(self) -> str:
         """Get trading server name.
@@ -213,7 +213,7 @@ class AccountInfo:
             str: Server name.
         """
         self._refresh()
-        return cast(str, self._data.server) if self._data else ""
+        return cast("str", self._data.server) if self._data else ""
 
     def currency(self) -> str:
         """Get account currency name.
@@ -222,7 +222,7 @@ class AccountInfo:
             str: Currency.
         """
         self._refresh()
-        return cast(str, self._data.currency) if self._data else "USD"
+        return cast("str", self._data.currency) if self._data else "USD"
 
     def company(self) -> str:
         """Get broker company name.
@@ -231,7 +231,7 @@ class AccountInfo:
             str: Company name.
         """
         self._refresh()
-        return cast(str, self._data.company) if self._data else ""
+        return cast("str", self._data.company) if self._data else ""
 
     def info_integer(self, prop_id: int) -> int:
         """Get generic integer property.

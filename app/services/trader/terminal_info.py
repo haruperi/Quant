@@ -26,7 +26,7 @@ class TerminalInfo:
             str: Language string.
         """
         self._refresh()
-        return cast(str, self._data.language) if self._data else "Python"
+        return cast("str", self._data.language) if self._data else "Python"
 
     def company(self) -> str:
         """Get broker company name.
@@ -35,7 +35,7 @@ class TerminalInfo:
             str: Company name.
         """
         self._refresh()
-        return cast(str, self._data.company) if self._data else ""
+        return cast("str", self._data.company) if self._data else ""
 
     def name(self) -> str:
         """Get terminal name.
@@ -44,7 +44,7 @@ class TerminalInfo:
             str: Terminal name.
         """
         self._refresh()
-        return cast(str, self._data.name) if self._data else ""
+        return cast("str", self._data.name) if self._data else ""
 
     def path(self) -> str:
         """Get terminal execution path.
@@ -53,7 +53,7 @@ class TerminalInfo:
             str: Path.
         """
         self._refresh()
-        return cast(str, self._data.path) if self._data else ""
+        return cast("str", self._data.path) if self._data else ""
 
     def data_path(self) -> str:
         """Get terminal data folder path.
@@ -62,7 +62,7 @@ class TerminalInfo:
             str: Data path.
         """
         self._refresh()
-        return cast(str, self._data.data_path) if self._data else ""
+        return cast("str", self._data.data_path) if self._data else ""
 
     def common_data_path(self) -> str:
         """Get common data folder path.
@@ -71,7 +71,7 @@ class TerminalInfo:
             str: Common data path.
         """
         self._refresh()
-        return cast(str, self._data.commondata_path) if self._data else ""
+        return cast("str", self._data.commondata_path) if self._data else ""
 
     def build(self) -> int:
         """Get terminal build number.
@@ -80,7 +80,7 @@ class TerminalInfo:
             int: Build number.
         """
         self._refresh()
-        return cast(int, self._data.build) if self._data else 0
+        return cast("int", self._data.build) if self._data else 0
 
     def connected(self) -> bool:
         """Check if terminal is connected to the trade server.
@@ -89,7 +89,7 @@ class TerminalInfo:
             bool: True if connected.
         """
         self._refresh()
-        return cast(bool, self._data.connected) if self._data else False
+        return cast("bool", self._data.connected) if self._data else False
 
     def trade_allowed(self) -> bool:
         """Check if trading is allowed for the terminal.
@@ -98,7 +98,7 @@ class TerminalInfo:
             bool: True if trading allowed.
         """
         self._refresh()
-        return cast(bool, self._data.trade_allowed) if self._data else False
+        return cast("bool", self._data.trade_allowed) if self._data else False
 
     def dlls_allowed(self) -> bool:
         """Check if DLL imports are allowed.
@@ -107,7 +107,7 @@ class TerminalInfo:
             bool: True if allowed.
         """
         self._refresh()
-        return cast(bool, self._data.dlls_allowed) if self._data else False
+        return cast("bool", self._data.dlls_allowed) if self._data else False
 
     def ping_last(self) -> int:
         """Get last ping time to trade server.
@@ -116,7 +116,7 @@ class TerminalInfo:
             int: Last ping in microseconds.
         """
         self._refresh()
-        return cast(int, self._data.ping_last) if self._data else 0
+        return cast("int", self._data.ping_last) if self._data else 0
 
     def info_integer(self, prop_id: int) -> int:
         """Get generic integer property.

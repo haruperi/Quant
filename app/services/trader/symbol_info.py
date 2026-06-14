@@ -96,7 +96,7 @@ class SymbolInfo:
             int: Digits count.
         """
         self.refresh()
-        return cast(int, self._data.digits) if self._data else 0
+        return cast("int", self._data.digits) if self._data else 0
 
     def point(self) -> float:
         """Get symbol point value (1 / 10^digits).
@@ -105,7 +105,7 @@ class SymbolInfo:
             float: Point.
         """
         self.refresh()
-        return cast(float, self._data.point) if self._data else 0.0
+        return cast("float", self._data.point) if self._data else 0.0
 
     def tick_size(self) -> float:
         """Get symbol tick size.
@@ -114,7 +114,7 @@ class SymbolInfo:
             float: Tick size.
         """
         self.refresh()
-        return cast(float, self._data.trade_tick_size) if self._data else 0.0
+        return cast("float", self._data.trade_tick_size) if self._data else 0.0
 
     def trade_mode(self) -> int:
         """Get symbol trade mode.
@@ -123,7 +123,7 @@ class SymbolInfo:
             int: Trade mode identifier.
         """
         self.refresh()
-        return cast(int, getattr(self._data, "trade_mode", 0)) if self._data else 0
+        return cast("int", getattr(self._data, "trade_mode", 0)) if self._data else 0
 
     def trade_mode_description(self) -> str:
         """Get symbol trade mode description.
@@ -140,7 +140,7 @@ class SymbolInfo:
             float: Contract size.
         """
         self.refresh()
-        return cast(float, self._data.trade_contract_size) if self._data else 0.0
+        return cast("float", self._data.trade_contract_size) if self._data else 0.0
 
     def volume_min(self) -> float:
         """Get minimum allowed order volume.
@@ -149,7 +149,7 @@ class SymbolInfo:
             float: Minimum lot volume.
         """
         self.refresh()
-        return cast(float, self._data.volume_min) if self._data else 0.0
+        return cast("float", self._data.volume_min) if self._data else 0.0
 
     def volume_max(self) -> float:
         """Get maximum allowed order volume.
@@ -158,7 +158,7 @@ class SymbolInfo:
             float: Maximum lot volume.
         """
         self.refresh()
-        return cast(float, self._data.volume_max) if self._data else 0.0
+        return cast("float", self._data.volume_max) if self._data else 0.0
 
     def volume_step(self) -> float:
         """Get minimum lot volume step.
@@ -167,7 +167,7 @@ class SymbolInfo:
             float: Step volume.
         """
         self.refresh()
-        return cast(float, self._data.volume_step) if self._data else 0.0
+        return cast("float", self._data.volume_step) if self._data else 0.0
 
     def swap_mode(self) -> int:
         """Get symbol swap mode.
@@ -176,7 +176,7 @@ class SymbolInfo:
             int: Swap mode.
         """
         self.refresh()
-        return cast(int, self._data.swap_mode) if self._data else 0
+        return cast("int", self._data.swap_mode) if self._data else 0
 
     def swap_long(self) -> float:
         """Get swap value for long positions.
@@ -185,7 +185,7 @@ class SymbolInfo:
             float: Long swap.
         """
         self.refresh()
-        return cast(float, self._data.swap_long) if self._data else 0.0
+        return cast("float", self._data.swap_long) if self._data else 0.0
 
     def swap_short(self) -> float:
         """Get swap value for short positions.
@@ -194,7 +194,7 @@ class SymbolInfo:
             float: Short swap.
         """
         self.refresh()
-        return cast(float, self._data.swap_short) if self._data else 0.0
+        return cast("float", self._data.swap_short) if self._data else 0.0
 
     def bid(self) -> float:
         """Get current bid price.
@@ -203,7 +203,7 @@ class SymbolInfo:
             float: Bid price.
         """
         self.refresh()
-        return cast(float, self._data.bid) if self._data else 0.0
+        return cast("float", self._data.bid) if self._data else 0.0
 
     def ask(self) -> float:
         """Get current ask price.
@@ -212,7 +212,7 @@ class SymbolInfo:
             float: Ask price.
         """
         self.refresh()
-        return cast(float, self._data.ask) if self._data else 0.0
+        return cast("float", self._data.ask) if self._data else 0.0
 
     def last(self) -> float:
         """Get current last transaction price.
@@ -221,7 +221,7 @@ class SymbolInfo:
             float: Last price.
         """
         self.refresh()
-        return cast(float, self._data.last) if self._data else 0.0
+        return cast("float", self._data.last) if self._data else 0.0
 
     def spread(self) -> int:
         """Get current spread in points.
@@ -230,7 +230,7 @@ class SymbolInfo:
             int: Spread points.
         """
         self.refresh()
-        return cast(int, self._data.spread) if self._data else 0
+        return cast("int", self._data.spread) if self._data else 0
 
     def info_integer(self, prop_id: int) -> int:
         """Get generic integer property.
