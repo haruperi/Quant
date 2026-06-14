@@ -1,4 +1,4 @@
-# ruff: noqa: N802, ARG002, TRY002, TRY004, E501, PLR0915
+# ruff: noqa: N802, ARG002, TRY002, TRY004, PLR0915
 """Unit tests for the CTraderClient broker service."""
 
 from typing import Any

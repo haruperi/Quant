@@ -9,6 +9,8 @@ All notable HaruQuantAI project changes should be recorded here.
 | DONE-020 | MT5Client Broker Adapter   | Created MT5Client class to manage initialization, login, symbol selection, status connection checks, and connection shutdown.     |
 | DONE-021 | Dynamic Pip Calculations   | Updated MT5 usage examples to dynamically compute pip values and round prices based on symbol specifications.                     |
 | DONE-022 | cTrader Open API Client    | Integrated CTraderClient broker adapter using ctrader-open-api over Twisted/TCP with mock test infrastructure.                     |
+| DONE-023 | Generic Trade Classes      | Created generic, unified, MQL5-compatible trade classes and active broker resolver inside app/services/trader.                    |
+
 
 ## Added
 
