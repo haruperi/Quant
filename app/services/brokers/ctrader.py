@@ -304,7 +304,11 @@ class CTraderClient:
                 None,
             )
             if not target_account:
-                self._error = f"Specified account ID {self.account_id} not found."
+                available_ids = [a["account_id"] for a in self._accounts]
+                self._error = (
+                    f"Specified account ID {self.account_id} not found. "
+                    f"Available accounts: {available_ids}"
+                )
                 self._auth_event.set()
                 return
         else:

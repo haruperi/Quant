@@ -406,8 +406,8 @@ def test_ctrader_client_connect_live_environment(mocker: MockerFixture) -> None:
 
     assert result is True
     assert client.environment == "live"
-    from ctrader_open_api import (
-        EndPoints,  # type: ignore[import-untyped, unused-ignore]
+    from ctrader_open_api import (  # type: ignore[import-untyped, unused-ignore]
+        EndPoints,
     )
 
     assert client.client.host == EndPoints.PROTOBUF_LIVE_HOST
@@ -419,6 +419,7 @@ def test_ctrader_client_connect_default_account_selection(
 ) -> None:
     """Test connect automatically selects the first account if none is specified."""
     mocker.patch("twisted.internet.reactor", create=True)
+    mocker.patch.object(settings, "ctrader_account_id", None)
 
     class SuccessMockClient(BaseMockClient):
         def send(self, msg: Any) -> None:
