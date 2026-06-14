@@ -115,6 +115,7 @@ addopts = [
     "--strict-markers",
     "--strict-config",
     "--cov=app.utils",
+    "--cov=app.services",
     "--cov-report=term-missing",
     "--cov-report=html",
     "--cov-fail-under=80"
@@ -122,7 +123,7 @@ addopts = [
 
 [tool.coverage.run]
 branch = true
-source = ["app/utils"]
+source = ["app/utils", "app/services"]
 
 [tool.coverage.report]
 show_missing = true
@@ -138,7 +139,7 @@ exclude_lines = [
 python_version = "3.14"
 strict = true
 mypy_path = "."
-packages = ["app.utils"]
+packages = ["app.utils", "app.services"]
 warn_unused_configs = true
 warn_return_any = true
 warn_unused_ignores = true

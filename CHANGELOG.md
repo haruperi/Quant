@@ -6,6 +6,8 @@ All notable HaruQuantAI project changes should be recorded here.
 
 | ID       | Functionality              | Notes                                                                                                                             |
 | -------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| DONE-020 | MT5Client Broker Adapter   | Created MT5Client class to manage initialization, login, symbol selection, status connection checks, and connection shutdown.     |
+| DONE-021 | Dynamic Pip Calculations   | Updated MT5 usage examples to dynamically compute pip values and round prices based on symbol specifications.                     |
 
 ## Added
 
