@@ -540,3 +540,56 @@ def test_trade_failure(mock_broker: MagicMock) -> None:
     assert trade.buy(0.05) is False
     assert trade.result_retcode() == 10001
     assert trade.result_comment() == "Broker rejects request"
+
+
+def test_kill_switch_blocking(mock_broker: MagicMock) -> None:
+    """Test that active kill switch blocks new trade requests."""
+    Trade.set_kill_switch(True)
+    try:
+        trade = Trade()
+        trade.set_symbol("EURUSD")
+        assert trade.buy(0.05) is False
+        assert trade.result_retcode() == 10001
+        assert "kill switch" in trade.result_comment().lower()
+    finally:
+        Trade.set_kill_switch(False)
+
+
+def test_shutdown_blocking(mock_broker: MagicMock) -> None:
+    """Test that graceful shutdown blocks new trade requests."""
+    Trade.shutdown(timeout=0.01)
+    try:
+        trade = Trade()
+        trade.set_symbol("EURUSD")
+        assert trade.buy(0.05) is False
+        assert trade.result_retcode() == 10001
+        assert "shutting down" in trade.result_comment().lower()
+    finally:
+        Trade._is_shutting_down = False
+
+
+def test_kill_switch_actions(mock_broker: MagicMock) -> None:
+    """Test that activating the kill switch cancels pending orders and closes positions.
+
+    Verifies order removal and position close.
+    """
+    from app.services.trader.store import InMemoryTradeStore, get_default_store
+
+    store = get_default_store()
+    assert isinstance(store, InMemoryTradeStore)
+    store._idempotency.clear()
+    store._orders.clear()
+    store._positions.clear()
+    store._executions.clear()
+
+    mock_broker.trade.reset_mock()
+
+    Trade.set_kill_switch(True, flatten_positions=True)
+    try:
+        mock_broker.get_order_info.assert_called()
+        mock_broker.get_position_info.assert_called()
+        # It should have called trade at least twice (one for remove order,
+        # one for close position)
+        assert mock_broker.trade.call_count >= 2
+    finally:
+        Trade.set_kill_switch(False)

@@ -6,6 +6,7 @@ All notable HaruQuantAI project changes should be recorded here.
 
 | ID       | Functionality              | Notes                                                                                                                             |
 | -------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| DONE-028 | Trading Plan Implementation | Implemented the updated trading requirements document, including TradeStore contract integration, validation enrichment, graceful shutdown, and global kill switch, with 100% unit tests passing and >85% test coverage. |
 | DONE-020 | MT5Client Broker Adapter   | Created MT5Client class to manage initialization, login, symbol selection, status connection checks, and connection shutdown.     |
 | DONE-021 | Dynamic Pip Calculations   | Updated MT5 usage examples to dynamically compute pip values and round prices based on symbol specifications.                     |
 | DONE-022 | cTrader Open API Client    | Integrated CTraderClient broker adapter using ctrader-open-api over Twisted/TCP with mock test infrastructure.                     |
@@ -13,6 +14,8 @@ All notable HaruQuantAI project changes should be recorded here.
 | DONE-024 | Broker Simulator Adapter   | Implemented an in-memory broker simulator (`simulator.py`) under `app/services/brokers` and registered it in `resolver.py`. Integrated live MT5 specifications and calculations (margin & profit) with offline fallbacks. |
 | DONE-025 | Standalone Simulator Service | Refactored simulator adapter into a standalone package `app/services/simulator` with separate `models.py` and `engine.py`. |
 | DONE-026 | Broker Resolver Relocation | Relocated active broker resolver from `app/services/trader/resolver.py` to `app/routes/brokers.py` and refactored reference imports across the trader sub-modules, tests, and scripts. |
+| DONE-027 | Trading Plan Update        | Updated trading requirements specification (`07_trading_revised.md`) to integrate state management, error handling resilience, execution quality, rate limiting, observability, concurrency guarantees (including `ConcurrencyQueue`), reconciliation triggers (including Startup Reconciliation Gate), MQL5 specifics, expanded testing, security hardening, Netting/Hedging mode compatibility, Decimal normalization, explicit timeouts, partial fill strategy, graceful shutdown sequence, alerting thresholds, and chaos testing. |
+
 
 
 

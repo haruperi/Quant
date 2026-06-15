@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     ui_origin: str
     log_level: str
     database_url: str
-    active_broker: str = "simulator"  # Currently mt5, ctrader, simulator
+    active_broker: str = "mt5"  # Currently mt5, ctrader, simulator
 
     # MetaTrader 5
     mt5_enabled: bool

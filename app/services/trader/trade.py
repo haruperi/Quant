@@ -1,26 +1,62 @@
-# ruff: noqa: TRY300, BLE001, PLR0913
+# ruff: noqa: TRY300, BLE001, PLR0913, C901, FBT001, FBT002, PLR0915, PLR0912, PLR0911
 """MQL5-compatible Trade class wrapping trading operations.
 
-Provides easy access to sending trade requests to the active broker.
+Integrates idempotency checks, concurrency queue locks, parameter validations,
+execution readiness gating, connection circuit breakers, synchronous timeouts,
+and reconciliation updates.
 """
 
+import concurrent.futures
+import threading
+import time
 from typing import Any
 
+from app.core.config import settings
 from app.routes.brokers import get_broker_module
+from app.services.trader.account_info import AccountInfo
+from app.services.trader.concurrency import ConcurrencyQueue
+from app.services.trader.idempotency import IdempotencyService
 from app.services.trader.position_info import PositionInfo
+from app.services.trader.readiness import ReadinessService
+from app.services.trader.reconciliation import ReconciliationService
+from app.services.trader.result import BrokerResponseNormalizer, ResultBuilder
+from app.services.trader.store import TradeStore, get_default_store
 from app.services.trader.symbol_info import SymbolInfo
+from app.services.trader.terminal_info import TerminalInfo
+from app.services.trader.validation import ValidationService
 
 
 class Trade:
-    """Provides methods for executing trade operations."""
+    """Provides methods for executing trade operations with safety boundaries."""
 
-    def __init__(self) -> None:
-        """Initialize Trade helper with default parameters."""
+    # Global tracking of startup reconciliation pass
+    _startup_reconciliation_passed = False
+
+    # Graceful shutdown and kill-switch states
+    _is_shutting_down = False
+    _in_flight_requests = 0
+    _in_flight_lock = threading.Lock()
+    _kill_switch_active = False
+    _bypass_kill_switch = False
+
+    def __init__(self, store: TradeStore | None = None) -> None:
+        """Initialize Trade helper with default parameters and services.
+
+        Args:
+            store: Optional repository store instance.
+        """
         self._symbol: str = ""
         self._magic: int = 99999
         self._deviation: int = 20
         self._filling: int = 1  # Default to ORDER_FILLING_FOK
         self._result: Any = None
+
+        self._store = store or get_default_store()
+        self._idempotency = IdempotencyService(self._store)
+        self._validation = ValidationService()
+        self._readiness = ReadinessService()
+        self._reconciliation = ReconciliationService(self._store)
+        self._concurrency = ConcurrencyQueue.get_instance()
 
     def set_symbol(self, symbol: str) -> None:
         """Set default symbol for trade operations.
@@ -119,7 +155,7 @@ class Trade:
         return str(getattr(self._result, "comment", ""))
 
     def _send_request(self, request: dict[str, Any]) -> bool:
-        """Send a trade request dictionary to the active broker.
+        """Send a trade request dictionary to the active broker with safety checks.
 
         Args:
             request: Trade request dictionary.
@@ -127,25 +163,236 @@ class Trade:
         Returns:
             bool: True if trade was executed successfully.
         """
-        try:
-            broker = get_broker_module()
-            self._result = broker.trade(request)
-            return True
-        except Exception as e:
-
-            class DummyResult:
-                def __init__(self, err_msg: str) -> None:
-                    self.retcode = 10001
-                    self.deal = 0
-                    self.order = 0
-                    self.volume = 0.0
-                    self.price = 0.0
-                    self.bid = 0.0
-                    self.ask = 0.0
-                    self.comment = err_msg
-
-            self._result = DummyResult(str(e))
+        if Trade._kill_switch_active and not Trade._bypass_kill_switch:
+            self._result = ResultBuilder.failure(
+                "Blocked by active kill switch", retcode=10001
+            )
             return False
+
+        with Trade._in_flight_lock:
+            if Trade._is_shutting_down:
+                self._result = ResultBuilder.failure(
+                    "Service is shutting down", retcode=10001
+                )
+                return False
+            Trade._in_flight_requests += 1
+
+        try:
+            # 1. Resolve basic parameters for key generation and locking
+            acc = AccountInfo()
+            account_id = str(acc.login())
+            symbol = request.get("symbol", self._symbol)
+
+            if not symbol:
+                order_ticket = request.get("order")
+                position_ticket = request.get("position")
+                if order_ticket:
+                    from app.services.trader.order_info import OrderInfo
+
+                    ord_info = OrderInfo()
+                    if ord_info.select(order_ticket):
+                        symbol = ord_info.symbol()
+                if not symbol and position_ticket:
+                    pos_info = PositionInfo()
+                    if pos_info.select_by_ticket(position_ticket):
+                        symbol = pos_info.symbol()
+                # Final fallback
+                if not symbol:
+                    symbol = "GLOBAL"
+            if "symbol" not in request and symbol:
+                request["symbol"] = symbol
+
+            action_type = request.get("action", 1)
+            volume = request.get("volume", 0.0)
+            price = request.get("price", 0.0)
+            slippage = request.get("deviation", self._deviation)
+
+            # 2. Idempotency Check
+            idem_key = self._idempotency.generate_key(
+                account_id, symbol, action_type, volume, price, slippage
+            )
+            existing = self._idempotency.check_duplicate(idem_key)
+            if existing:
+                if existing["status"] == "in_progress":
+                    self._result = ResultBuilder.failure(
+                        "already in progress", retcode=10004
+                    )
+                    return False
+                if existing["status"] == "completed":
+                    res_dict = existing["result"]
+                    self._result = BrokerResponseNormalizer.normalize_response(
+                        settings.active_broker, res_dict
+                    )
+                    return self._result.retcode in (10009, 10008, 0)
+
+            # 3. Startup Reconciliation Gate Check
+            if (
+                self._reconciliation.block_trading_on_startup
+                and not Trade._startup_reconciliation_passed
+            ):
+                # Attempt to run startup reconciliation once
+                try:
+                    broker = get_broker_module()
+                    raw_positions = broker.get_position_info() or []
+                    raw_orders = broker.get_order_info() or []
+
+                    # Convert broker models to basic dicts for reconcile
+                    live_positions = []
+                    for p in raw_positions:
+                        live_positions.append(
+                            {
+                                "ticket": getattr(p, "ticket", 0),
+                                "volume": getattr(p, "volume", 0.0),
+                                "type": getattr(p, "type", 0),
+                                "profit": getattr(p, "profit", 0.0),
+                            }
+                        )
+                    live_orders = []
+                    for o in raw_orders:
+                        live_orders.append(
+                            {
+                                "ticket": getattr(o, "ticket", 0),
+                                "volume_current": getattr(o, "volume_current", 0.0),
+                            }
+                        )
+
+                    self._reconciliation.reconcile(
+                        live_positions, live_orders, acc.equity()
+                    )
+                    Trade._startup_reconciliation_passed = True
+                except Exception as e:
+                    self._result = ResultBuilder.failure(
+                        f"Blocked: Startup reconciliation pass failed. Error: {e}",
+                        retcode=10010,
+                    )
+                    return False
+
+            # 4. Sequential Concurrency Lock
+            with self._concurrency.lock_sync(account_id, symbol):
+                # Mark key in progress
+                self._idempotency.register_in_progress(idem_key, request)
+
+                # 5. Readiness verification
+                term = TerminalInfo()
+                readiness_res = self._readiness.run_execution_readiness_check(
+                    settings.active_broker, symbol, term, acc
+                )
+                if not readiness_res["passed"]:
+                    self._result = ResultBuilder.failure(
+                        "Readiness check failed: " + ", ".join(readiness_res["errors"]),
+                        retcode=10001,
+                    )
+                    self._idempotency.register_completed(
+                        idem_key, self._result.to_dict()
+                    )
+                    return False
+
+                # 6. Parameter Validation & Decimal precision normalization
+                try:
+                    sym_info = SymbolInfo(symbol)
+                    # Ensure symbol specifications are cached/refreshed
+                    sym_info.refresh()
+                    sanitized_req = self._validation.validate_order_request(
+                        request, sym_info, acc
+                    )
+                except Exception as e:
+                    from app.utils.logger import logger
+
+                    logger.exception("Validation failed in Trade._send_request")
+                    self._result = ResultBuilder.failure(
+                        str(e),
+                        retcode=10001,
+                    )
+                    self._idempotency.register_completed(
+                        idem_key, self._result.to_dict()
+                    )
+                    return False
+
+                # 7. Execution of Broker Request with explicit Timeout (5 seconds)
+                broker = get_broker_module()
+                executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+                future = executor.submit(broker.trade, sanitized_req)
+                try:
+                    raw_result = future.result(timeout=5.0)
+                    self._result = ResultBuilder.success(
+                        settings.active_broker, raw_result
+                    )
+                except concurrent.futures.TimeoutError:
+                    # Timeout represents an Unknown Outcome -> forced reconciliation
+                    self._result = ResultBuilder.failure(
+                        "Synchronous broker call timed out after 5 seconds. "
+                        "Flagged as Unknown Outcome.",
+                        retcode=10005,
+                    )
+                    # Trigger forced reconciliation pass
+                    try:
+                        raw_positions = broker.get_position_info() or []
+                        raw_orders = broker.get_order_info() or []
+                        live_positions = [
+                            {
+                                "ticket": getattr(p, "ticket", 0),
+                                "volume": getattr(p, "volume", 0.0),
+                                "type": getattr(p, "type", 0),
+                                "profit": getattr(p, "profit", 0.0),
+                            }
+                            for p in raw_positions
+                        ]
+                        live_orders = [
+                            {
+                                "ticket": getattr(o, "ticket", 0),
+                                "volume_current": getattr(o, "volume_current", 0.0),
+                            }
+                            for o in raw_orders
+                        ]
+                        self._reconciliation.reconcile(
+                            live_positions, live_orders, acc.equity()
+                        )
+                    except Exception as rec_err:
+                        self._result.comment += (
+                            f" Forced reconciliation failed: {rec_err}"
+                        )
+                except Exception as e:
+                    # Broker adapter execution error -> set exact string e
+                    self._result = ResultBuilder.failure(str(e), retcode=10001)
+                finally:
+                    executor.shutdown(wait=False)
+
+                # 8. Update Local TradeStore State based on result details
+                is_success = self._result.retcode in (10009, 10008, 0)
+                if is_success:
+                    deal_ticket = self._result.deal
+                    order_ticket = self._result.order
+                    if deal_ticket > 0:
+                        self._store.save_execution(deal_ticket, self._result.to_dict())
+                        # If this deal opened a position, store it locally
+                        if action_type == 1:  # Deal
+                            self._store.save_position(
+                                deal_ticket,
+                                {
+                                    "ticket": deal_ticket,
+                                    "symbol": symbol,
+                                    "volume": volume,
+                                    "type": request.get("type", 0),
+                                    "price": self._result.price,
+                                    "profit": 0.0,
+                                },
+                            )
+                    if order_ticket > 0:
+                        self._store.save_order(order_ticket, self._result.to_dict())
+
+                    # If position closing operation succeeded, remove position locally
+                    if "position" in request and (
+                        request.get("type") in (0, 1)
+                        or "close" in str(request.get("comment", "")).lower()
+                    ):
+                        self._store.delete_position(request["position"])
+
+                # Register completed idempotency log
+                self._idempotency.register_completed(idem_key, self._result.to_dict())
+                return is_success
+        finally:
+            with Trade._in_flight_lock:
+                Trade._in_flight_requests -= 1
 
     def buy(
         self,
@@ -160,7 +407,7 @@ class Trade:
 
         Args:
             volume: Lot volume size.
-            symbol: Optional symbol name (defaults to set_symbol).
+            symbol: Optional symbol name.
             price: Open price (0.0 uses current ask price).
             sl: Stop loss level.
             tp: Take profit level.
@@ -217,7 +464,7 @@ class Trade:
 
         Args:
             volume: Lot volume size.
-            symbol: Optional symbol name (defaults to set_symbol).
+            symbol: Optional symbol name.
             price: Open price (0.0 uses current bid price).
             sl: Stop loss level.
             tp: Take profit level.
@@ -659,3 +906,114 @@ class Trade:
             "order": ticket,
         }
         return self._send_request(request)
+
+    @classmethod
+    def set_kill_switch(cls, active: bool, flatten_positions: bool = False) -> None:
+        """Set the global kill switch state.
+
+        If active, blocks all new trade requests, cancels all active pending
+        orders immediately, and flattens all open positions if
+        flatten_positions is True.
+        """
+        cls._kill_switch_active = active
+        if active:
+            from app.utils.logger import logger
+
+            logger.warning("GLOBAL KILL SWITCH ACTIVATED!")
+
+            cls._bypass_kill_switch = True
+            try:
+                # Cancel all active pending orders immediately
+                try:
+                    from app.routes.brokers import get_broker_module
+
+                    broker = get_broker_module()
+                    if broker:
+                        raw_orders = broker.get_order_info() or []
+                        for o in raw_orders:
+                            ticket = getattr(o, "ticket", 0)
+                            if ticket > 0:
+                                t = cls()
+                                t.order_delete(ticket)
+                except Exception as e:
+                    logger.error(
+                        f"Error cancelling orders during kill switch activation: {e}"
+                    )
+
+                # Flatten all open positions if flatten_positions is True
+                if flatten_positions:
+                    try:
+                        from app.routes.brokers import get_broker_module
+
+                        broker = get_broker_module()
+                        if broker:
+                            raw_positions = broker.get_position_info() or []
+                            for p in raw_positions:
+                                ticket = getattr(p, "ticket", 0)
+                                if ticket > 0:
+                                    t = cls()
+                                    t.position_close(ticket)
+                    except Exception as e:
+                        logger.error(
+                            "Error flattening positions during kill switch "
+                            f"activation: {e}"
+                        )
+            finally:
+                cls._bypass_kill_switch = False
+
+    @classmethod
+    def shutdown(cls, timeout: float = 5.0) -> None:
+        """Shutdown the trading service gracefully.
+
+        Args:
+            timeout: Timeout window in seconds to allow in-flight requests to resolve.
+        """
+        cls._is_shutting_down = True
+
+        # Allow in-flight requests to resolve
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            if cls._in_flight_requests <= 0:
+                break
+            time.sleep(0.1)
+
+        # Flush states using default store and broker module
+        try:
+            from app.routes.brokers import get_broker_module
+            from app.services.trader.reconciliation import ReconciliationService
+            from app.services.trader.store import get_default_store
+
+            store = get_default_store()
+            broker = get_broker_module()
+
+            # Reconcile if broker is available and connected
+            if broker and hasattr(broker, "get_terminal_info"):
+                term_info = broker.get_terminal_info()
+                if term_info and getattr(term_info, "connected", False):
+                    raw_positions = broker.get_position_info() or []
+                    raw_orders = broker.get_order_info() or []
+
+                    live_positions = [
+                        {
+                            "ticket": getattr(p, "ticket", 0),
+                            "volume": getattr(p, "volume", 0.0),
+                            "type": getattr(p, "type", 0),
+                            "profit": getattr(p, "profit", 0.0),
+                        }
+                        for p in raw_positions
+                    ]
+
+                    live_orders = [
+                        {
+                            "ticket": getattr(o, "ticket", 0),
+                            "volume_current": getattr(o, "volume_current", 0.0),
+                        }
+                        for o in raw_orders
+                    ]
+
+                    recon = ReconciliationService(store)
+                    recon.reconcile(live_positions, live_orders, 0.0)
+        except Exception as e:
+            from app.utils.logger import logger
+
+            logger.error(f"Error during graceful shutdown: {e}")
