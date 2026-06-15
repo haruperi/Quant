@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from app.core.config import settings
+from app.routes.brokers import get_broker_module
 from app.services.trader import (
     AccountInfo,
     DealInfo,
@@ -15,7 +16,6 @@ from app.services.trader import (
     TerminalInfo,
     Trade,
 )
-from app.services.trader.resolver import get_broker_module
 from pytest_mock import MockerFixture
 
 
@@ -205,9 +205,7 @@ def mock_broker(mocker: MockerFixture) -> MagicMock:
     trade_res.comment = "Request executed"
     mock_mod.trade.return_value = trade_res
 
-    mocker.patch(
-        "app.services.trader.resolver.get_broker_module", return_value=mock_mod
-    )
+    mocker.patch("app.routes.brokers.get_broker_module", return_value=mock_mod)
     mocker.patch(
         "app.services.trader.terminal_info.get_broker_module", return_value=mock_mod
     )
@@ -241,9 +239,7 @@ def test_resolver_mt5(mocker: MockerFixture) -> None:
     # Resolve resolver import locally
     import app.services.brokers.mt5 as mock_mt5
 
-    mocker.patch(
-        "app.services.trader.resolver.get_broker_module", return_value=mock_mt5
-    )
+    mocker.patch("app.routes.brokers.get_broker_module", return_value=mock_mt5)
 
     res = get_broker_module()
     assert res == mock_mt5

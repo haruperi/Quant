@@ -12,6 +12,7 @@ All notable HaruQuantAI project changes should be recorded here.
 | DONE-023 | Generic Trade Classes      | Created generic, unified, MQL5-compatible trade classes and active broker resolver inside app/services/trader.                    |
 | DONE-024 | Broker Simulator Adapter   | Implemented an in-memory broker simulator (`simulator.py`) under `app/services/brokers` and registered it in `resolver.py`. Integrated live MT5 specifications and calculations (margin & profit) with offline fallbacks. |
 | DONE-025 | Standalone Simulator Service | Refactored simulator adapter into a standalone package `app/services/simulator` with separate `models.py` and `engine.py`. |
+| DONE-026 | Broker Resolver Relocation | Relocated active broker resolver from `app/services/trader/resolver.py` to `app/routes/brokers.py` and refactored reference imports across the trader sub-modules, tests, and scripts. |
 
 
 

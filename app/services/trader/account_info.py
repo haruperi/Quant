@@ -6,7 +6,7 @@ Provides easy access to the currently opened trade account properties.
 
 from typing import Any, cast
 
-from app.services.trader.resolver import get_broker_module
+from app.routes.brokers import get_broker_module
 
 
 class AccountInfo:

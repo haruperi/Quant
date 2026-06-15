@@ -6,8 +6,8 @@ Provides easy access to sending trade requests to the active broker.
 
 from typing import Any
 
+from app.routes.brokers import get_broker_module
 from app.services.trader.position_info import PositionInfo
-from app.services.trader.resolver import get_broker_module
 from app.services.trader.symbol_info import SymbolInfo
 
 

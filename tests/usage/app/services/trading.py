@@ -13,6 +13,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from app.core.config import settings
+from app.routes.brokers import get_broker_module
 from app.services.trader import (
     AccountInfo,
     DealInfo,
@@ -23,7 +24,6 @@ from app.services.trader import (
     TerminalInfo,
     Trade,
 )
-from app.services.trader.resolver import get_broker_module
 
 # Shared state across trading examples
 trading_symbol = "GBPUSD"

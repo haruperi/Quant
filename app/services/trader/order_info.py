@@ -5,7 +5,7 @@ Provides access to the active pending order properties.
 
 from typing import Any
 
-from app.services.trader.resolver import get_broker_module
+from app.routes.brokers import get_broker_module
 
 
 class OrderInfo:

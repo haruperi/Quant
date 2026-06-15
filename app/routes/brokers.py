@@ -1,7 +1,7 @@
 # ruff: noqa: ANN401, PLC0415
-"""Active broker resolver for generic trade classes.
+"""Active broker router/resolver.
 
-This module resolves and returns the active broker module based on settings.
+This module resolves, routes and returns the active broker module based on settings.
 """
 
 from typing import Any
