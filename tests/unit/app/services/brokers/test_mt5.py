@@ -1,5 +1,6 @@
 """Unit tests for the MT5Client broker service."""
 
+from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -352,13 +353,16 @@ def test_get_history_order_info(mocker: MockerFixture) -> None:
     mock_get = mocker.patch("MetaTrader5.history_orders_get", return_value=())
 
     get_history_order_info()
-    mock_get.assert_called_with()
+    args, kwargs = mock_get.call_args
+    assert args[0] == 1
+    assert isinstance(args[1], datetime)
+    assert not kwargs
 
     get_history_order_info(ticket=123)
     mock_get.assert_called_with(ticket=123)
 
     get_history_order_info(date_from=1000, date_to=2000, group="*EUR*")
-    mock_get.assert_called_with(date_from=1000, date_to=2000, group="*EUR*")
+    mock_get.assert_called_with(1000, 2000, group="*EUR*")
 
 
 def test_get_history_deal_info(mocker: MockerFixture) -> None:
@@ -368,13 +372,16 @@ def test_get_history_deal_info(mocker: MockerFixture) -> None:
     mock_get = mocker.patch("MetaTrader5.history_deals_get", return_value=())
 
     get_history_deal_info()
-    mock_get.assert_called_with()
+    args, kwargs = mock_get.call_args
+    assert args[0] == 1
+    assert isinstance(args[1], datetime)
+    assert not kwargs
 
     get_history_deal_info(ticket=123)
     mock_get.assert_called_with(ticket=123)
 
     get_history_deal_info(date_from=1000, date_to=2000, group="*EUR*")
-    mock_get.assert_called_with(date_from=1000, date_to=2000, group="*EUR*")
+    mock_get.assert_called_with(1000, 2000, group="*EUR*")
 
 
 def test_trade_success(mocker: MockerFixture) -> None:

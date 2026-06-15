@@ -25,7 +25,9 @@ from ctrader_open_api.messages.OpenApiCommonModelMessages_pb2 import (  # type: 
 from ctrader_open_api.messages.OpenApiMessages_pb2 import (  # type: ignore[import-untyped, unused-ignore]
     ProtoOAAccountAuthReq,
     ProtoOAApplicationAuthReq,
+    ProtoOAAssetListReq,
     ProtoOAGetAccountListByAccessTokenReq,
+    ProtoOASymbolsListReq,
     ProtoOATraderReq,
 )
 from ctrader_open_api.messages.OpenApiModelMessages_pb2 import (  # type: ignore[import-untyped, unused-ignore]
@@ -93,6 +95,14 @@ class SuccessMockClient(BaseMockClient):
             )
         elif isinstance(msg, ProtoOATraderReq) and self.message_cb:
             self.message_cb(self, MockMessage(ProtoOAPayloadType.PROTO_OA_TRADER_RES))
+        elif isinstance(msg, ProtoOASymbolsListReq) and self.message_cb:
+            self.message_cb(
+                self, MockMessage(ProtoOAPayloadType.PROTO_OA_SYMBOLS_LIST_RES)
+            )
+        elif isinstance(msg, ProtoOAAssetListReq) and self.message_cb:
+            self.message_cb(
+                self, MockMessage(ProtoOAPayloadType.PROTO_OA_ASSET_LIST_RES)
+            )
 
 
 def test_ctrader_client_initialization_defaults() -> None:
@@ -149,6 +159,21 @@ def test_ctrader_client_connect_success(mocker: MockerFixture) -> None:
     mock_trader_res = MagicMock()
     mock_trader_res.trader = mock_trader
 
+    mock_symbol = MagicMock()
+    mock_symbol.symbolId = 1
+    mock_symbol.symbolName = "EURUSD"
+    mock_symbol.description = "EURUSD symbol"
+    mock_symbols_res = MagicMock()
+    mock_symbols_res.symbol = [mock_symbol]
+
+    mock_asset = MagicMock()
+    mock_asset.assetId = 1
+    mock_asset.name = "USD"
+    mock_asset.displayName = "US Dollar"
+    mock_asset.digits = 2
+    mock_assets_res = MagicMock()
+    mock_assets_res.asset = [mock_asset]
+
     # We configure extract to return appropriate objects based on message payloadType
     def side_effect(message: Any) -> Any:
         if (
@@ -158,6 +183,10 @@ def test_ctrader_client_connect_success(mocker: MockerFixture) -> None:
             return mock_accounts_res
         if message.payloadType == ProtoOAPayloadType.PROTO_OA_TRADER_RES:
             return mock_trader_res
+        if message.payloadType == ProtoOAPayloadType.PROTO_OA_SYMBOLS_LIST_RES:
+            return mock_symbols_res
+        if message.payloadType == ProtoOAPayloadType.PROTO_OA_ASSET_LIST_RES:
+            return mock_assets_res
         return MagicMock()
 
     mock_extract.side_effect = side_effect
@@ -1011,3 +1040,43 @@ def test_ctrader_additional_coverage_details(mocker: MockerFixture) -> None:
     # This should call connect() via _ensure_connected() inside wrappers
     get_terminal_info()
     mock_connect.assert_called_once()
+
+
+def test_ctrader_account_info_dynamic_currency() -> None:
+    """Test CTraderAccountInfo resolves currency dynamically from asset map."""
+    from app.services.brokers.ctrader import CTraderAccountInfo
+
+    mock_trader = MagicMock()
+    mock_trader.traderLogin = 12345
+    mock_trader.ctidTraderAccountId = 9876
+    mock_trader.accountType = "DEMO"
+    mock_trader.brokerName = "MockBroker"
+    mock_trader.depositAssetId = 42
+    mock_trader.maxLeverage = 100
+    mock_trader.balance = 500000
+    mock_trader.moneyDigits = 2
+
+    mock_client = MagicMock()
+    mock_client._asset_map = {42: "CHF"}
+
+    # Resolves from client._asset_map
+    acc = CTraderAccountInfo(mock_trader, mock_client)
+    assert acc.currency == "CHF"
+
+    # Fallback to f"Asset ID {depositAssetId}" when not found in client or map
+    acc_fallback = CTraderAccountInfo(mock_trader, None)
+    assert acc_fallback.currency == "Asset ID 42"
+
+    # Fallback to hardcoded list (e.g. ID 1 is USD)
+    mock_trader_usd = MagicMock()
+    mock_trader_usd.depositAssetId = 1
+    mock_trader_usd.traderLogin = 12345
+    mock_trader_usd.ctidTraderAccountId = 9876
+    mock_trader_usd.accountType = "DEMO"
+    mock_trader_usd.brokerName = "MockBroker"
+    mock_trader_usd.maxLeverage = 100
+    mock_trader_usd.balance = 500000
+    mock_trader_usd.moneyDigits = 2
+
+    acc_usd = CTraderAccountInfo(mock_trader_usd, None)
+    assert acc_usd.currency == "USD"

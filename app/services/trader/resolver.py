@@ -13,13 +13,18 @@ def get_broker_module() -> Any:
     """Resolve and return the active broker module based on settings.
 
     Returns:
-        Any: The active broker module (mt5 or ctrader).
+        Any: The active broker module (mt5, ctrader, or simulator).
     """
     active = getattr(settings, "active_broker", "mt5").lower()
     if active == "ctrader":
         from app.services.brokers import ctrader
 
         return ctrader
+
+    if active == "simulator":
+        from app.services import simulator
+
+        return simulator
 
     from app.services.brokers import mt5
 

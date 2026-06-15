@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     ui_origin: str
     log_level: str
     database_url: str
-    active_broker: str = "mt5"
+    active_broker: str = "simulator"  # Currently mt5, ctrader, simulator
 
     # MetaTrader 5
     mt5_enabled: bool
@@ -68,6 +68,61 @@ class Settings(BaseSettings):
     ollama_max_tokens: int = 4096
     ollama_top_p: float = 0.95
     ollama_top_k: int = 40
+
+    FOREX_SYMBOLS: list[str] = [
+        "AUDCAD",
+        "AUDCHF",
+        "AUDJPY",
+        "AUDNZD",
+        "AUDUSD",
+        "CADCHF",
+        "CADJPY",
+        "CHFJPY",
+        "EURAUD",
+        "EURCAD",
+        "EURCHF",
+        "EURGBP",
+        "EURJPY",
+        "EURNZD",
+        "EURUSD",
+        "GBPAUD",
+        "GBPCAD",
+        "GBPCHF",
+        "GBPJPY",
+        "GBPNZD",
+        "GBPUSD",
+        "NZDCAD",
+        "NZDCHF",
+        "NZDJPY",
+        "NZDUSD",
+        "USDCHF",
+        "USDCAD",
+        "USDJPY",
+    ]
+
+    COMMODITY_SYMBOLS: list[str] = [
+        "XAUUSD",
+        "XAUEUR",
+        "XAUGBP",
+        "XAUJPY",
+        "XAUAUD",
+        "XAUCHF",
+        "XAGUSD",
+    ]
+
+    INDICES_SYMBOLS: list[str] = [
+        "US500",
+        "US30",
+        "UK100",
+        "GER40",
+        "NAS100",
+        "USDX",
+        "EURX",
+        "JPYX",
+    ]
+
+    # Combine all symbols
+    ALL_SYMBOLS: list[str] = FOREX_SYMBOLS + COMMODITY_SYMBOLS + INDICES_SYMBOLS
 
     # Tell Pydantic to read from the .env file in the project root
     model_config = SettingsConfigDict(

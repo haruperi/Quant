@@ -10,6 +10,9 @@ All notable HaruQuantAI project changes should be recorded here.
 | DONE-021 | Dynamic Pip Calculations   | Updated MT5 usage examples to dynamically compute pip values and round prices based on symbol specifications.                     |
 | DONE-022 | cTrader Open API Client    | Integrated CTraderClient broker adapter using ctrader-open-api over Twisted/TCP with mock test infrastructure.                     |
 | DONE-023 | Generic Trade Classes      | Created generic, unified, MQL5-compatible trade classes and active broker resolver inside app/services/trader.                    |
+| DONE-024 | Broker Simulator Adapter   | Implemented an in-memory broker simulator (`simulator.py`) under `app/services/brokers` and registered it in `resolver.py`. Integrated live MT5 specifications and calculations (margin & profit) with offline fallbacks. |
+| DONE-025 | Standalone Simulator Service | Refactored simulator adapter into a standalone package `app/services/simulator` with separate `models.py` and `engine.py`. |
+
 
 
 ## Added
@@ -48,6 +51,8 @@ All notable HaruQuantAI project changes should be recorded here.
 | FIX-006 | Logger Migration | Fully migrated logger implementation to `app/utils/logger.py` and deleted the deprecated `tools/utils/logger.py` shim. |
 | FIX-007 | Security Migration | Moved security helper logic to `app/core/security.py`, resolved circular imports using `TYPE_CHECKING` guards, and relocated unit tests. |
 | FIX-008 | Utilities Relocation | Relocated standard utility modules to `app/utils/`, deleted the deprecated settings module (`tools/utils/settings.py`), and removed the deprecated `tools/` folder. |
+| FIX-009 | cTrader Account Currency | Fetch and cache dynamic asset list from cTrader Open API to correctly resolve trading account base currency. |
+| FIX-010 | MT5 History Queries | Pass date parameters positionally to `history_orders_get` and `history_deals_get` to fix silent failures under MT5 python module. |
 
 ## Decisions
 
@@ -57,6 +62,9 @@ All notable HaruQuantAI project changes should be recorded here.
 | DEC-002 | Project Memory | project memory lives in durable files, not chat                                                                                  |
 | DEC-003 | Rebuild Style  | HaruQuantAI is a clean-room rebuild that preserves important functionality and safety behavior while adding new product behavior |
 | DEC-004 | Product Scope  | product scope includes tools, API, UI, data, live, research, and conversation surfaces                                           |
+| DEC-005 | No Direct MT5 Import | No file should import MetaTrader5 directly. The client/connection should be resolved via app/services/brokers/mt5.py module/functions to maintain a single point of control over terminal state. |
+| DEC-006 | Standalone Simulator Service | Standalone simulator service is created to separate simulation state from external live broker adapter definitions. |
+
 
 ## Pending Decisions
 

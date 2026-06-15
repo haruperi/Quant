@@ -26,7 +26,7 @@ from app.services.trader import (
 from app.services.trader.resolver import get_broker_module
 
 # Shared state across trading examples
-trading_symbol = "EURUSD"
+trading_symbol = "GBPUSD"
 pos_ticket = 0
 ord_ticket = 0
 buy_price = 0.0

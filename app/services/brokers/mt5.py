@@ -5,6 +5,7 @@ of the MetaTrader 5 terminal connection, user authentication, and Market Watch
 symbol registration.
 """
 
+from datetime import UTC, datetime
 from typing import Any
 
 import MetaTrader5 as mt5  # type: ignore[import-untyped, unused-ignore]  # noqa: N813
@@ -393,14 +394,12 @@ def get_history_order_info(
     if ticket is not None:
         return mt5.history_orders_get(ticket=ticket)
 
-    kwargs = {}
-    if date_from is not None:
-        kwargs["date_from"] = date_from
-    if date_to is not None:
-        kwargs["date_to"] = date_to
+    from_val = date_from if date_from is not None else 1
+    to_val = date_to if date_to is not None else datetime.now(UTC)
+
     if group is not None:
-        kwargs["group"] = group
-    return mt5.history_orders_get(**kwargs)
+        return mt5.history_orders_get(from_val, to_val, group=group)
+    return mt5.history_orders_get(from_val, to_val)
 
 
 def get_history_deal_info(
@@ -424,14 +423,12 @@ def get_history_deal_info(
     if ticket is not None:
         return mt5.history_deals_get(ticket=ticket)
 
-    kwargs = {}
-    if date_from is not None:
-        kwargs["date_from"] = date_from
-    if date_to is not None:
-        kwargs["date_to"] = date_to
+    from_val = date_from if date_from is not None else 1
+    to_val = date_to if date_to is not None else datetime.now(UTC)
+
     if group is not None:
-        kwargs["group"] = group
-    return mt5.history_deals_get(**kwargs)
+        return mt5.history_deals_get(from_val, to_val, group=group)
+    return mt5.history_deals_get(from_val, to_val)
 
 
 def trade(request: dict[str, Any]) -> Any:  # noqa: ANN401

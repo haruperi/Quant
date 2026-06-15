@@ -249,6 +249,30 @@ def test_resolver_mt5(mocker: MockerFixture) -> None:
     assert res == mock_mt5
 
 
+def test_resolver_actual_resolution(mocker: MockerFixture) -> None:
+    """Test get_broker_module resolution without mocking the function itself."""
+    # Test MT5 resolution
+    mocker.patch.object(settings, "active_broker", "mt5")
+    res_mt5 = get_broker_module()
+    from app.services.brokers import mt5
+
+    assert res_mt5 == mt5
+
+    # Test cTrader resolution
+    mocker.patch.object(settings, "active_broker", "ctrader")
+    res_ctrader = get_broker_module()
+    from app.services.brokers import ctrader
+
+    assert res_ctrader == ctrader
+
+    # Test Simulator resolution
+    mocker.patch.object(settings, "active_broker", "simulator")
+    res_sim = get_broker_module()
+    from app.services import simulator
+
+    assert res_sim == simulator
+
+
 def test_terminal_info(mock_broker: MagicMock) -> None:
     """Test TerminalInfo class wrapper properties."""
     term = TerminalInfo()

@@ -23,6 +23,7 @@ from ctrader_open_api.messages.OpenApiMessages_pb2 import (  # type: ignore[impo
     ProtoOAAmendOrderReq,
     ProtoOAAmendPositionSLTPReq,
     ProtoOAApplicationAuthReq,
+    ProtoOAAssetListReq,
     ProtoOACancelOrderReq,
     ProtoOAClosePositionReq,
     ProtoOADealListReq,
@@ -113,6 +114,7 @@ class CTraderClient:
         self._message_callbacks: list[Any] = []
         self._symbol_map: dict[str, Any] = {}
         self._symbol_id_to_name: dict[int, str] = {}
+        self._asset_map: dict[int, str] = {}
         self._subscribed_symbols: set[int] = set()
         self._ticks: dict[str, dict[str, float]] = {}
 
@@ -213,6 +215,16 @@ class CTraderClient:
             logger.warning("Failed to cache symbol list: %s", e)
             self._symbol_map = {}
             self._symbol_id_to_name = {}
+
+        # Cache assets list
+        try:
+            req = ProtoOAAssetListReq()
+            req.ctidTraderAccountId = self.account_id
+            res = self.send_request(req, ProtoOAPayloadType.PROTO_OA_ASSET_LIST_RES)
+            self._asset_map = {a.assetId: a.name for a in res.asset}
+        except Exception as e:
+            logger.warning("Failed to cache asset list: %s", e)
+            self._asset_map = {}
 
         return True
 
@@ -766,29 +778,37 @@ class CTraderTerminalInfo:
 class CTraderAccountInfo:
     """Wrapper for cTrader account information."""
 
-    def __init__(self, trader: Any) -> None:
+    def __init__(self, trader: Any, client: CTraderClient | None = None) -> None:
         """Initialize account info."""
         self.login = trader.traderLogin
         self.name = f"cTrader Account {trader.ctidTraderAccountId}"
         self.server = trader.accountType
         self.company = trader.brokerName
 
-        asset_map = {
-            1: "USD",
-            2: "EUR",
-            3: "GBP",
-            4: "JPY",
-            5: "CHF",
-            6: "CAD",
-            7: "AUD",
-            8: "NZD",
-            9: "SGD",
-            10: "HKD",
-            15: "EUR",
-        }
-        self.currency = asset_map.get(
-            trader.depositAssetId, f"Asset ID {trader.depositAssetId}"
-        )
+        # Attempt dynamic asset currency lookup, then fallback to asset_map
+        if (
+            client
+            and hasattr(client, "_asset_map")
+            and trader.depositAssetId in client._asset_map
+        ):
+            self.currency = client._asset_map[trader.depositAssetId]
+        else:
+            asset_map = {
+                1: "USD",
+                2: "EUR",
+                3: "GBP",
+                4: "JPY",
+                5: "CHF",
+                6: "CAD",
+                7: "AUD",
+                8: "NZD",
+                9: "SGD",
+                10: "HKD",
+                15: "EUR",
+            }
+            self.currency = asset_map.get(
+                trader.depositAssetId, f"Asset ID {trader.depositAssetId}"
+            )
 
         leverage = getattr(trader, "maxLeverage", 0)
         leverage_in_cents = getattr(trader, "leverageInCents", None)
@@ -1067,7 +1087,7 @@ def get_account_info() -> CTraderAccountInfo | None:
     client = get_ctrader_client()
     if client.trader_info is None:
         return None
-    return CTraderAccountInfo(client.trader_info)
+    return CTraderAccountInfo(client.trader_info, client)
 
 
 def get_symbol_info(symbol: str) -> CTraderSymbolInfo | None:
