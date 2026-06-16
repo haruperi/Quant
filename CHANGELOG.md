@@ -6,6 +6,7 @@ All notable HaruQuantAI project changes should be recorded here.
 
 | ID       | Functionality              | Notes                                                                                                                             |
 | -------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| DONE-036 | Shared Utilities Documentation and Renames | Added app/utils/README.md, created tests/usage/app/services/01_utils.py as a complete usage script, and renamed usage scripts to 02_data.py and 07_trading.py. |
 | DONE-035 | Requirements Specification Synchronization | Updated docs/source-requirements/02-data.md to align all architecture diagrams, tables, and section headings with the active consolidated data service file layout. |
 | DONE-034 | Market Data Documentation & Test Fix | Documented all options and parameters of the get_data() function in app/services/data/README.md, and added a circuit-breaker reset fixture in gateway tests to resolve state contamination issues. |
 | DONE-033 | Broker Data Retrieval Integration | Implemented actual broker data retrieval (`get_bars` and `get_ticks`) across MT5, cTrader, Dukascopy, Yahoo Finance, and Binance clients. Integrated active adapters in `app/services/data/gateway.py`. Added comprehensive tests, achieving 80.58% total package coverage. |
