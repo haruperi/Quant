@@ -8,10 +8,10 @@ from app.services.indicators.batch.volatility import (
     AverageTrueRange,
     RollingVolatility,
 )
-from app.services.indicators.errors import (
+from app.services.indicators.protocols import IndicatorConfig
+from app.utils.errors import (
     IndicatorParameterError,
 )
-from app.services.indicators.protocols import IndicatorConfig
 
 from tests.unit.app.services.indicators.test_trend import generate_mock_ohlcv
 

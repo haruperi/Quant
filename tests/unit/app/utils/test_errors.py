@@ -6,6 +6,7 @@ from app.utils.errors import (
     ConfigurationError,
     DataError,
     Error,
+    ErrorRouter,
     ExternalServiceError,
     SecurityError,
     ValidationError,
@@ -16,8 +17,10 @@ from app.utils.errors import (
     message_for,
     normalize_error_code,
     raise_for_invalid_code,
+    route_error,
     validate_error_payload,
 )
+from app.utils.event_bus import InMemoryEventBus
 
 
 class CompatibleDomainError(Exception):
@@ -96,3 +99,25 @@ def test_validate_error_payload_normalizes_and_rejects_malformed_payloads() -> N
 
     with pytest.raises(ValidationError, match="details"):
         validate_error_payload({"code": "INVALID_INPUT", "details": ""})
+
+
+def test_error_router_routes_and_suppresses_duplicates() -> None:
+    """Repeated errors are suppressed within the dedupe window."""
+    bus = InMemoryEventBus()
+    router = ErrorRouter(bus=bus, dedupe_window_seconds=60)
+
+    first = router.route_error(error=ValidationError("bad token=secret"), source="unit")
+    second = router.route_error(
+        error=ValidationError("bad token=secret"), source="unit"
+    )
+
+    assert first.status == "routed"
+    assert second.status == "suppressed"
+    assert "secret" not in first.route_key
+
+
+def test_route_error_helper_uses_temporary_bus() -> None:
+    """Top-level route helper returns a deterministic result."""
+    result = route_error({"code": "INVALID_INPUT", "details": "bad"}, source="unit")
+
+    assert result.status == "routed"

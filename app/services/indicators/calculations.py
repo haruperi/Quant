@@ -19,7 +19,15 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from app.services.indicators.errors import (
+from app.services.indicators.protocols import (
+    IndicatorConfig,
+    IndicatorContext,
+    IndicatorManifest,
+    IndicatorResult,
+    IndicatorState,
+)
+from app.utils.data_quality import inspect_ohlcv_quality
+from app.utils.errors import (
     DuplicateTimestampError,
     IndicatorConfigError,
     IndicatorParameterError,
@@ -36,16 +44,8 @@ from app.services.indicators.errors import (
     SymbolMappingRequiredError,
     UnknownAdjustmentStatusError,
     UnsupportedIntraBarAdjustmentError,
+    ValidationError,
 )
-from app.services.indicators.protocols import (
-    IndicatorConfig,
-    IndicatorContext,
-    IndicatorManifest,
-    IndicatorResult,
-    IndicatorState,
-)
-from app.utils.data_quality import inspect_ohlcv_quality
-from app.utils.errors import ValidationError
 
 # Proposed Core MVP default resource limits
 DEFAULT_MAX_ROWS = 10_000_000
@@ -654,11 +654,11 @@ def deserialize_indicator_state(
         StateCorruptedError: If JSON is malformed.
         StateIncompatibleError: If metadata does not match target specifications.
     """
-    from app.services.indicators.errors import (
+    from app.services.indicators.protocols import IndicatorState
+    from app.utils.errors import (
         StateCorruptedError,
         StateIncompatibleError,
     )
-    from app.services.indicators.protocols import IndicatorState
 
     try:
         data = json.loads(payload)
@@ -808,7 +808,7 @@ def update_sliding_window_state(
     df = df.drop(columns=["timestamp_dt", "timestamp"])
 
     # Call calculate
-    from app.services.indicators.errors import InsufficientDataError
+    from app.utils.errors import InsufficientDataError
 
     try:
         calc_result = indicator_inst.calculate(df, config, context)

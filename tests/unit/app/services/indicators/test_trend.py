@@ -11,11 +11,11 @@ from app.services.indicators.batch.trend import (
     ExponentialMovingAverage,
     SimpleMovingAverage,
 )
-from app.services.indicators.errors import (
+from app.services.indicators.protocols import IndicatorConfig
+from app.utils.errors import (
     IndicatorParameterError,
     InsufficientDataError,
 )
-from app.services.indicators.protocols import IndicatorConfig
 
 
 def generate_mock_ohlcv(

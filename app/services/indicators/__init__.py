@@ -5,7 +5,6 @@ indicator calculations, conforming to standard quantitative replay requirements.
 """
 
 from app.services.indicators.calculations import execute_indicator_composition
-from app.services.indicators.errors import IndicatorError
 from app.services.indicators.protocols import (
     IndicatorConfig,
     IndicatorContext,
@@ -30,6 +29,7 @@ from app.services.indicators.registry import (
     validate_indicator,
     williams_r,
 )
+from app.utils.errors import IndicatorError
 
 __all__ = [
     "IndicatorConfig",

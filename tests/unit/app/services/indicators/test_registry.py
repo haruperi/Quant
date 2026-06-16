@@ -25,12 +25,12 @@ from app.services.indicators import (
     validate_indicator,
     williams_r,
 )
-from app.services.indicators.errors import (
+from app.utils.errors import (
     InsufficientDataError,
     MissingRequiredColumnError,
     UnsupportedIndicatorError,
+    ValidationError,
 )
-from app.utils.errors import ValidationError
 
 from tests.unit.app.services.indicators.test_trend import generate_mock_ohlcv
 
@@ -299,8 +299,7 @@ def test_calculation_helpers():
         normalize_to_utc,
         parse_timeframe_to_timedelta,
     )
-    from app.services.indicators.errors import IndicatorParameterError
-    from app.utils.errors import ValidationError
+    from app.utils.errors import IndicatorParameterError, ValidationError
 
     # 1. parse_timeframe_to_timedelta
     assert parse_timeframe_to_timedelta("H1") == pd.Timedelta(hours=1)

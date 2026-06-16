@@ -18,13 +18,13 @@ from app.services.indicators.adapters.cache import global_cache
 from app.services.indicators.calculations import (
     validate_composition_graph,
 )
-from app.services.indicators.errors import (
+from app.utils.errors import (
     IndicatorConfigError,
     ResourceLimitExceededError,
     StateCorruptedError,
     StateIncompatibleError,
+    ValidationError,
 )
-from app.utils.errors import ValidationError
 
 from tests.unit.app.services.indicators.test_trend import generate_mock_ohlcv
 
@@ -543,7 +543,7 @@ def test_typing_marker_and_metadata():
 
 def test_price_adjustment_and_microstructure_validations():
     """Verify price adjustment, symbol mapping, and bid/ask microstructure validations."""
-    from app.services.indicators.errors import (
+    from app.utils.errors import (
         InvertedMarketError,
         SpreadThresholdExceededError,
         StubQuoteRejectedError,
@@ -619,7 +619,7 @@ def test_price_adjustment_and_microstructure_validations():
 
 def test_unsupported_out_of_core_and_acceleration():
     """Verify out-of-core rejection, acceleration fallback, and deprecation checks."""
-    from app.services.indicators.errors import (
+    from app.utils.errors import (
         AccelerationBackendUnavailableError,
         DeprecatedIndicatorError,
         UnsupportedOutOfCoreError,
@@ -666,11 +666,11 @@ def test_unsupported_out_of_core_and_acceleration():
 
 def test_input_mutation_detection():
     """Verify that unexpected in-place input mutation is detected and blocked."""
-    from app.services.indicators.errors import InputMutationError
     from app.services.indicators.registry import (
         register_indicator,
         unregister_indicator,
     )
+    from app.utils.errors import InputMutationError
 
     class MutatingIndicator:
         indicator_id = "mutating_ind"
@@ -746,8 +746,8 @@ def test_input_mutation_detection():
 
 def test_custom_indicator_conformance_checks():
     """Verify custom indicator side-effect conformance validation."""
-    from app.services.indicators.errors import CustomIndicatorRejectedError
     from app.services.indicators.registry import register_indicator
+    from app.utils.errors import CustomIndicatorRejectedError
 
     # 1. Custom indicator performing network I/O
     class NetworkIndicator:

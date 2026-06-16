@@ -57,9 +57,6 @@ from app.utils.dataframe_tools import (
     serialize_dataframe_records,
 )
 
-# error_routing.py exports
-from app.utils.error_routing import ErrorRouter, ErrorRouteResult, route_error
-
 # errors.py exports
 from app.utils.errors import (
     APPROVED_ERROR_CODES,
@@ -67,6 +64,8 @@ from app.utils.errors import (
     DataError,
     Error,
     ErrorPayload,
+    ErrorRouter,
+    ErrorRouteResult,
     ExternalServiceError,
     SecurityError,
     ValidationError,
@@ -77,6 +76,7 @@ from app.utils.errors import (
     message_for,
     normalize_error_code,
     raise_for_invalid_code,
+    route_error,
     validate_error_payload,
 )
 

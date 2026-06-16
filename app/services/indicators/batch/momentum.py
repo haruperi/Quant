@@ -18,16 +18,16 @@ from app.services.indicators.calculations import (
     generate_output_column_name,
     validate_input_data,
 )
-from app.services.indicators.errors import (
-    IndicatorParameterError,
-    InsufficientDataError,
-)
 from app.services.indicators.protocols import (
     IndicatorConfig,
     IndicatorContext,
     IndicatorResult,
     IndicatorState,
     WarmupRequirement,
+)
+from app.utils.errors import (
+    IndicatorParameterError,
+    InsufficientDataError,
 )
 
 

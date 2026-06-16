@@ -4,10 +4,10 @@
 import numpy as np
 import pytest
 from app.services.indicators.batch.momentum import RelativeStrengthIndex, WilliamsR
-from app.services.indicators.errors import (
+from app.services.indicators.protocols import IndicatorConfig
+from app.utils.errors import (
     IndicatorParameterError,
 )
-from app.services.indicators.protocols import IndicatorConfig
 
 from tests.unit.app.services.indicators.test_trend import generate_mock_ohlcv
 

@@ -1,4 +1,4 @@
-# ruff: noqa: E501, ANN001, ANN201, D103, PTH123, PLR2004, INP001, EM102, T201
+# ruff: noqa: E501, ANN001, ANN201, D103, PTH123, PLR2004, INP001
 """Performance benchmark runner for HaruQuantAI indicators.
 
 Measures calculation latencies, tracks regressions, and verifies SLO targets.

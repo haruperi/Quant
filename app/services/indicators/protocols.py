@@ -246,7 +246,7 @@ class IndicatorResult:
                 target_col = col
                 if col in df_copy.columns:
                     if conflict_policy == "fail":
-                        from app.services.indicators.errors import (
+                        from app.utils.errors import (
                             OutputColumnConflictError,
                         )
 
@@ -274,7 +274,7 @@ class IndicatorResult:
             target_col = col
             if col in df_copy.columns:
                 if conflict_policy == "fail":
-                    from app.services.indicators.errors import OutputColumnConflictError
+                    from app.utils.errors import OutputColumnConflictError
 
                     msg = f"Column collision: {col} already exists in source."
                     raise OutputColumnConflictError(msg)

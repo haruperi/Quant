@@ -32,10 +32,6 @@ from app.services.indicators.calculations import (
     compute_input_checksum,
     compute_parameter_hash,
 )
-from app.services.indicators.errors import (
-    IndicatorError,
-    UnsupportedIndicatorError,
-)
 from app.services.indicators.protocols import (
     IndicatorConfig,
     IndicatorContext,
@@ -44,7 +40,11 @@ from app.services.indicators.protocols import (
     IndicatorProtocol,
     IndicatorResult,
 )
-from app.utils.errors import ValidationError
+from app.utils.errors import (
+    IndicatorError,
+    UnsupportedIndicatorError,
+    ValidationError,
+)
 from app.utils.logger import logger
 
 
@@ -68,7 +68,7 @@ class IndicatorRegistry:
             # Conformance checks
             res = validate_indicator(indicator_class)
             if not res.valid:
-                from app.services.indicators.errors import CustomIndicatorRejectedError
+                from app.utils.errors import CustomIndicatorRejectedError
 
                 raise CustomIndicatorRejectedError(
                     res.message, code="IND_CUSTOM_INDICATOR_REJECTED"
@@ -263,13 +263,13 @@ def execute_indicator_workflow(
 
     from app.services.indicators.adapters.tracing import IndicatorSpan
     from app.services.indicators.calculations import compute_lookahead_metadata
-    from app.services.indicators.errors import (
+    from app.services.indicators.protocols import IndicatorResourceLimits
+    from app.utils.errors import (
         InputMutationError,
         InvalidOutputColumnError,
         OutputColumnConflictError,
         ResourceLimitExceededError,
     )
-    from app.services.indicators.protocols import IndicatorResourceLimits
 
     start_time = time.perf_counter()
     is_error = False
@@ -296,7 +296,7 @@ def execute_indicator_workflow(
 
         # Check execution backend
         if config.execution_backend == "out_of_core":
-            from app.services.indicators.errors import UnsupportedOutOfCoreError
+            from app.utils.errors import UnsupportedOutOfCoreError
 
             raise UnsupportedOutOfCoreError(
                 "Out-of-core execution backend is not supported.",
@@ -306,7 +306,7 @@ def execute_indicator_workflow(
         # Check acceleration backend
         if config.acceleration_backend is not None:
             if config.acceleration_backend == "unsupported_backend":
-                from app.services.indicators.errors import (
+                from app.utils.errors import (
                     AccelerationBackendUnavailableError,
                 )
 
@@ -323,7 +323,7 @@ def execute_indicator_workflow(
         # Check deprecation
         if getattr(ind_class, "status", None) == "deprecated":
             if not getattr(config, "allow_deprecated", False):
-                from app.services.indicators.errors import DeprecatedIndicatorError
+                from app.utils.errors import DeprecatedIndicatorError
 
                 msg = f"Indicator '{indicator_id}' is deprecated."
                 raise DeprecatedIndicatorError(msg, code="IND_DEPRECATED")
