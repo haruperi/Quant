@@ -1,0 +1,24 @@
+{
+  "sma": {
+    "min": 230.75560000143014,
+    "median": 335.254999998142,
+    "p99": 478.03250699682394,
+    "runs": 10
+  },
+  "ema": {
+    "min": 205.05920000141487,
+    "median": 266.6765000030864,
+    "p99": 278.2216319949657,
+    "runs": 10
+  },
+  "environment": {
+    "python_version": "3.14.3",
+    "pandas_version": "3.0.3",
+    "numpy_version": "2.4.6",
+    "os": "Windows",
+    "cpu": "Intel64 Family 6 Model 189 Stepping 1, GenuineIntel",
+    "cores": 8,
+    "ram_gb": 16.0,
+    "disk_type": "SSD"
+  }
+}
