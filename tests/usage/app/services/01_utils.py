@@ -5,10 +5,17 @@ identities, normalization, security, dataframe tools, data quality, schema valid
 event buses, circuit breakers, notifications, and error handling.
 """
 
-# ruff: noqa: E501
+# ruff: noqa: E501, E402
+import sys
+from pathlib import Path
+
+# Bootstrap project root to sys.path if not present
+_project_root = str(Path(__file__).resolve().parents[4])
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+
 import tempfile
 from datetime import timedelta
-from pathlib import Path
 from typing import Any, cast
 
 import pandas as pd
