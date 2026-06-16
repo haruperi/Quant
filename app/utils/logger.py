@@ -149,7 +149,7 @@ class ColorConsoleFormatter(logging.Formatter):
     }
     RESET: ClassVar[str] = "\033[0m"
 
-    def __init__(self, use_color: bool = True) -> None:  # noqa: FBT001, FBT002
+    def __init__(self, use_color: bool = True) -> None:
         """Initialize the formatter with color control."""
         super().__init__()
         self.use_color = use_color
@@ -263,7 +263,7 @@ def get_logger(name: str | None = None) -> logging.Logger:
 logger = get_logger()
 
 
-def configure_logging(  # noqa: PLR0913
+def configure_logging(
     level: str | int = "DEBUG",
     *,
     use_json: bool = False,

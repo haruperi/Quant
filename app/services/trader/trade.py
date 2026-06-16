@@ -1,4 +1,4 @@
-# ruff: noqa: TRY300, BLE001, PLR0913, C901, FBT001, FBT002, PLR0915, PLR0912, PLR0911
+# ruff: noqa: BLE001, C901, PLR0915, PLR0912, PLR0911
 """MQL5-compatible Trade class wrapping trading operations.
 
 Integrates idempotency checks, concurrency queue locks, parameter validations,

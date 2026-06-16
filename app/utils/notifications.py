@@ -91,7 +91,7 @@ class NotificationRouter:
         if not self.enabled_channels:
             self.enabled_channels = set(self.adapters.keys())
 
-    def route(  # noqa: PLR0913
+    def route(
         self,
         *,
         channel: NotificationChannel,
@@ -222,7 +222,7 @@ def render_notification(
     }
 
 
-def route_notification(  # noqa: PLR0913
+def route_notification(
     router: NotificationRouter,
     *,
     channel: NotificationChannel,

@@ -1,4 +1,4 @@
-# ruff: noqa: ANN401, FBT001
+# ruff: noqa: ANN401
 """Wrapper specifications classes matching MT5 for the simulator service."""
 
 from typing import TYPE_CHECKING, Any

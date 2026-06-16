@@ -9,3 +9,5 @@ metatrader5
 pytest-mock
 ctrader-open-api
 service-identity
+yfinance
+python-binance

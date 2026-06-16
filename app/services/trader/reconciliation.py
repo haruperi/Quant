@@ -1,4 +1,4 @@
-# ruff: noqa: E501, PLR2004, PLR0912, FBT001, C901
+# ruff: noqa: E501, PLR2004, PLR0912, C901
 """Reconciliation service implementation.
 
 Compares local TradeStore state against the live broker terminal state,

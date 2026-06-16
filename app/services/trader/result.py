@@ -1,4 +1,4 @@
-# ruff: noqa: E501, PLR0913, ANN401
+# ruff: noqa: E501, ANN401
 """Result builders and response normalizers.
 
 Defines the normalized trade execution output envelope, masking

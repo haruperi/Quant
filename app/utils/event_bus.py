@@ -118,7 +118,7 @@ class InMemoryEventBus:
             return len(self._idempotency)
 
 
-def build_event_envelope(  # noqa: PLR0913
+def build_event_envelope(
     *,
     event_type: str,
     source: str,

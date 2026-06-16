@@ -63,7 +63,7 @@ class QualityProfile(TypedDict):
     warning_count: int
 
 
-def _add_issue(  # noqa: PLR0913
+def _add_issue(
     issues: list[QualityIssue],
     *,
     code: str,

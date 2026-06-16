@@ -273,7 +273,7 @@ def get_execution_ms(start_time: float) -> float:
     return round(max(elapsed_ms, 0.0), 3)
 
 
-def build_data_quality_issue(  # noqa: PLR0913
+def build_data_quality_issue(
     *,
     code: str,
     severity: IssueSeverity,
@@ -491,7 +491,7 @@ def validate_ohlcv_records(  # noqa: C901, PLR0912
     return list(issue_map.values())[:issue_limit]
 
 
-def build_metadata(  # noqa: PLR0913
+def build_metadata(
     *,
     tool_name: str,
     start_time: float | None = None,

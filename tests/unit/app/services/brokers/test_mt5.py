@@ -150,7 +150,7 @@ def test_mt5_client_connect_symbol_failure(mocker: MockerFixture) -> None:
     mocker.patch("MetaTrader5.login", return_value=True)
 
     # Fail selection for EURUSD only, succeed for others
-    def side_effect(symbol: str, select: bool) -> bool:  # noqa: FBT001
+    def side_effect(symbol: str, select: bool) -> bool:
         return symbol != "EURUSD"
 
     mocker.patch("MetaTrader5.symbol_select", side_effect=side_effect)
@@ -168,7 +168,7 @@ def test_mt5_client_connect_symbol_exception(mocker: MockerFixture) -> None:
     mocker.patch("MetaTrader5.login", return_value=True)
 
     # Throw exception for EURUSD, succeed for others
-    def side_effect(symbol: str, select: bool) -> bool:  # noqa: FBT001
+    def side_effect(symbol: str, select: bool) -> bool:
         if symbol == "EURUSD":
             raise ValueError("Symbol select crash")
         return True

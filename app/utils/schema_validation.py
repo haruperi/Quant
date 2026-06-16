@@ -328,7 +328,7 @@ def _tool_failure_response(
     )
 
 
-def _run_schema_tool(  # noqa: PLR0913
+def _run_schema_tool(
     *,
     tool_name: str,
     payload: Mapping[str, object],

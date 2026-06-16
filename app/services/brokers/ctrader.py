@@ -1,4 +1,4 @@
-# ruff: noqa: E501, PLR0915, PLR0912, PLR2004, SLF001, TRY301, FBT001, ANN401, BLE001, TRY300, C901
+# ruff: noqa: E501, PLR0915, PLR0912, PLR2004, SLF001, TRY301, ANN401, BLE001, TRY300, C901
 """cTrader Open API broker client service.
 
 This module provides the CTraderClient class responsible for managing the lifecycle
@@ -10,6 +10,7 @@ import threading
 from datetime import UTC, datetime
 from typing import Any
 
+import pandas as pd
 from ctrader_open_api import (  # type: ignore[import-untyped, unused-ignore]
     Client,
     EndPoints,
@@ -29,6 +30,7 @@ from ctrader_open_api.messages.OpenApiMessages_pb2 import (  # type: ignore[impo
     ProtoOADealListReq,
     ProtoOAExpectedMarginReq,
     ProtoOAGetAccountListByAccessTokenReq,
+    ProtoOAGetTickDataReq,
     ProtoOAGetTrendbarsReq,
     ProtoOANewOrderReq,
     ProtoOAOrderListReq,
@@ -744,9 +746,333 @@ class CTraderClient:
                 else (price_open - price_close)
             )
             return float(diff * (volume * lot_size))
+            return float(diff * (volume * lot_size))
         except Exception as e:
             logger.error("Failed to calculate profit: %s", e)
             return None
+
+    def get_bars(
+        self,
+        symbol: str,
+        timeframe: str,
+        count: int = 100,
+        start_pos: int = 0,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+    ) -> pd.DataFrame:
+        """Get OHLCVS bars from cTrader.
+
+        Args:
+            symbol: Symbol name (e.g. "EURUSD").
+            timeframe: Timeframe string (e.g., "M1", "H1", "D1").
+            count: Number of bars to return (used if date_from is None).
+            start_pos: Start position (index) for fetching bars (used if date_from is None).
+            date_from: Start date for fetching bars.
+            date_to: End date for fetching bars (defaults to now if date_from is set).
+
+        Returns:
+            pd.DataFrame with columns:
+            ["Timestamp", "Open", "High", "Low", "Close", "Volume", "Spread"]
+        """
+        if not self.is_connected():
+            self.connect()
+
+        light_sym = self._symbol_map.get(symbol)
+        if not light_sym:
+            return pd.DataFrame(
+                columns=[
+                    "Timestamp",
+                    "Open",
+                    "High",
+                    "Low",
+                    "Close",
+                    "Volume",
+                    "Spread",
+                ]
+            )
+
+        # map timeframe to cTrader trendbar period enum values
+        tf_map = {
+            "M1": 1,
+            "M2": 2,
+            "M3": 3,
+            "M4": 4,
+            "M5": 5,
+            "M10": 6,
+            "M15": 7,
+            "M30": 8,
+            "H1": 9,
+            "H4": 10,
+            "H12": 11,
+            "D1": 12,
+            "W1": 13,
+            "MN1": 14,
+        }
+
+        tf_upper = timeframe.upper()
+        if tf_upper not in tf_map:
+            msg = f"Unsupported cTrader timeframe: {timeframe}"
+            raise ValueError(msg)
+        period = tf_map[tf_upper]
+
+        digits = 5
+        try:
+            req_sym = ProtoOASymbolByIdReq()
+            req_sym.ctidTraderAccountId = self.account_id
+            req_sym.symbolId.append(light_sym.symbolId)
+            res_sym = self.send_request(
+                req_sym, ProtoOAPayloadType.PROTO_OA_SYMBOL_BY_ID_RES, timeout=5.0
+            )
+            if res_sym.symbol:
+                digits = res_sym.symbol[0].digits
+        except Exception as e:
+            logger.warning("Failed to fetch symbol digits for %s: %s", symbol, e)
+
+        divisor = 10.0**digits
+
+        # Handle date range
+        if date_from is not None:
+            from_ts = int(date_from.timestamp() * 1000)
+            to_ts = int((date_to or datetime.now(UTC)).timestamp() * 1000)
+        else:
+            # period in milliseconds
+            period_ms = {
+                "M1": 60000,
+                "M2": 120000,
+                "M3": 180000,
+                "M4": 240000,
+                "M5": 300000,
+                "M10": 600000,
+                "M15": 900000,
+                "M30": 1800000,
+                "H1": 3600000,
+                "H4": 14400000,
+                "H12": 43200000,
+                "D1": 86400000,
+                "W1": 604800000,
+                "MN1": 2592000000,
+            }
+            to_ts = int((date_to or datetime.now(UTC)).timestamp() * 1000)
+            # Add some buffer to start_pos
+            from_ts = to_ts - ((count + start_pos) * period_ms.get(tf_upper, 60000))
+
+        req = ProtoOAGetTrendbarsReq()
+        req.ctidTraderAccountId = self.account_id
+        req.fromTimestamp = from_ts
+        req.toTimestamp = to_ts
+        req.period = period
+        req.symbolId = light_sym.symbolId
+
+        try:
+            res = self.send_request(
+                req, ProtoOAPayloadType.PROTO_OA_GET_TRENDBARS_RES, timeout=10.0
+            )
+        except Exception as e:
+            logger.error("Failed to fetch cTrader trendbars: %s", e)
+            return pd.DataFrame(
+                columns=[
+                    "Timestamp",
+                    "Open",
+                    "High",
+                    "Low",
+                    "Close",
+                    "Volume",
+                    "Spread",
+                ]
+            )
+
+        bars = []
+        if res and hasattr(res, "trendbar"):
+            for bar in res.trendbar:
+                ts_ms = bar.utcTimestampInMinutes * 60 * 1000
+                bar_low = bar.low / divisor
+                bar_open = (bar.low + bar.deltaOpen) / divisor
+                bar_high = (bar.low + bar.deltaHigh) / divisor
+                bar_close = (bar.low + bar.deltaClose) / divisor
+
+                bars.append(
+                    {
+                        "Timestamp": pd.to_datetime(ts_ms, unit="ms", utc=True),
+                        "Open": bar_open,
+                        "High": bar_high,
+                        "Low": bar_low,
+                        "Close": bar_close,
+                        "Volume": float(bar.volume),
+                        "Spread": 0.0,
+                    }
+                )
+
+        df = pd.DataFrame(bars)
+        if df.empty:
+            return pd.DataFrame(
+                columns=[
+                    "Timestamp",
+                    "Open",
+                    "High",
+                    "Low",
+                    "Close",
+                    "Volume",
+                    "Spread",
+                ]
+            )
+
+        if date_from is None:
+            df = df.tail(count)
+
+        return df[["Timestamp", "Open", "High", "Low", "Close", "Volume", "Spread"]]
+
+    def get_ticks(
+        self,
+        symbol: str,
+        count: int = 100,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        as_dataframe: bool = True,
+    ) -> pd.DataFrame | list[dict[str, Any]] | None:
+        """Get ticks from cTrader.
+
+        Args:
+            symbol: Trading symbol.
+            count: Number of ticks to retrieve.
+            start: Start date/time.
+            end: End date/time.
+            as_dataframe: Return as DataFrame (True) or list of dicts (False).
+
+        Returns:
+            DataFrame or list of dicts containing tick data, or None on error.
+        """
+        if not self.is_connected():
+            self.connect()
+
+        light_sym = self._symbol_map.get(symbol)
+        if not light_sym:
+            return pd.DataFrame() if as_dataframe else []
+
+        symbol_id = light_sym.symbolId
+
+        digits = 5
+        try:
+            req_sym = ProtoOASymbolByIdReq()
+            req_sym.ctidTraderAccountId = self.account_id
+            req_sym.symbolId.append(symbol_id)
+            res_sym = self.send_request(
+                req_sym, ProtoOAPayloadType.PROTO_OA_SYMBOL_BY_ID_RES, timeout=5.0
+            )
+            if res_sym.symbol:
+                digits = res_sym.symbol[0].digits
+        except Exception as e:
+            logger.warning("Failed to fetch symbol digits for %s: %s", symbol, e)
+
+        divisor = 10.0**digits
+
+        if start is not None:
+            from_ts = int(start.timestamp() * 1000)
+            to_ts = int((end or datetime.now(UTC)).timestamp() * 1000)
+        else:
+            to_ts = int((end or datetime.now(UTC)).timestamp() * 1000)
+            from_ts = to_ts - 24 * 60 * 60 * 1000
+
+        # Fetch BID ticks
+        bid_ticks = []
+        try:
+            req_bid = ProtoOAGetTickDataReq()
+            req_bid.ctidTraderAccountId = self.account_id
+            req_bid.symbolId = symbol_id
+            req_bid.type = 1  # BID
+            req_bid.fromTimestamp = from_ts
+            req_bid.toTimestamp = to_ts
+            res_bid = self.send_request(
+                req_bid, ProtoOAPayloadType.PROTO_OA_GET_TICKDATA_RES, timeout=10.0
+            )
+            if res_bid and hasattr(res_bid, "tickData"):
+                bid_ticks = list(res_bid.tickData)
+        except Exception as e:
+            logger.warning("Failed to fetch BID ticks: %s", e)
+
+        # Fetch ASK ticks
+        ask_ticks = []
+        try:
+            req_ask = ProtoOAGetTickDataReq()
+            req_ask.ctidTraderAccountId = self.account_id
+            req_ask.symbolId = symbol_id
+            req_ask.type = 2  # ASK
+            req_ask.fromTimestamp = from_ts
+            req_ask.toTimestamp = to_ts
+            res_ask = self.send_request(
+                req_ask, ProtoOAPayloadType.PROTO_OA_GET_TICKDATA_RES, timeout=10.0
+            )
+            if res_ask and hasattr(res_ask, "tickData"):
+                ask_ticks = list(res_ask.tickData)
+        except Exception as e:
+            logger.warning("Failed to fetch ASK ticks: %s", e)
+
+        # Decode BID ticks (delta compression)
+        bids = []
+        last_ts = 0
+        last_price = 0
+        for i, t in enumerate(bid_ticks):
+            if i == 0:
+                last_ts = t.timestamp
+                last_price = t.tick
+            else:
+                last_ts += t.timestamp
+                last_price += t.tick
+            bids.append({"timestamp": last_ts, "bid": last_price / divisor})
+
+        # Decode ASK ticks (delta compression)
+        asks = []
+        last_ts = 0
+        last_price = 0
+        for i, t in enumerate(ask_ticks):
+            if i == 0:
+                last_ts = t.timestamp
+                last_price = t.tick
+            else:
+                last_ts += t.timestamp
+                last_price += t.tick
+            asks.append({"timestamp": last_ts, "ask": last_price / divisor})
+
+        df_bid = pd.DataFrame(bids)
+        df_ask = pd.DataFrame(asks)
+
+        if df_bid.empty and df_ask.empty:
+            return pd.DataFrame() if as_dataframe else []
+
+        if df_bid.empty:
+            df_ask["bid"] = df_ask["ask"] - 0.0002
+            df = df_ask
+        elif df_ask.empty:
+            df_bid["ask"] = df_bid["bid"] + 0.0002
+            df = df_bid
+        else:
+            df_bid = df_bid.sort_values("timestamp")
+            df_ask = df_ask.sort_values("timestamp")
+            df = pd.merge_asof(df_bid, df_ask, on="timestamp", direction="backward")
+            df["ask"] = df["ask"].fillna(df["bid"] + 0.0002)
+
+        df["Timestamp"] = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
+        df["Spread"] = df["ask"] - df["bid"]
+        df["Last"] = (df["bid"] + df["ask"]) / 2.0
+        df["Volume"] = 1.0
+
+        # format output
+        res_df = df.rename(
+            columns={
+                "bid": "bid",
+                "ask": "ask",
+                "Last": "last",
+                "Volume": "volume",
+                "Spread": "spread",
+            }
+        )
+        res_df = res_df[["Timestamp", "bid", "ask", "last", "volume", "spread"]]
+
+        if start is None:
+            res_df = res_df.tail(count)
+
+        if as_dataframe:
+            return res_df
+        return res_df.to_dict(orient="records")
 
     @classmethod
     def get_instance(cls) -> "CTraderClient":

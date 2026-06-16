@@ -54,6 +54,22 @@ APPROVED_ERROR_CODES = frozenset(
         "CLOCK_DRIFT_DETECTED",
         "CIRCUIT_OPEN",
         "SECRET_VERSION_CONFLICT",
+        "DATA_DROPPED",
+        "CIRCUIT_BREAKER_OPEN",
+        "AUTHENTICATION_FAILED",
+        "MISSING_ASSET_METADATA",
+        "DB_CONNECTION_ERROR",
+        "DB_WRITE_FAILED",
+        "STATE_RECOVERY_FAILED",
+        "CHECKPOINT_CORRUPTED",
+        "CREDENTIALS_MISSING",
+        "BUFFER_OVERFLOW",
+        "FEED_HEARTBEAT_TIMEOUT",
+        "FEED_RECONCILIATION_FAILED",
+        "JOB_NOT_FOUND",
+        "SCHEDULER_ERROR",
+        "LICENSE_RESTRICTION",
+        "UNSUPPORTED_OPERATION",
     }
 )
 
@@ -87,6 +103,22 @@ ERROR_MESSAGES: dict[str, str] = {
     "CLOCK_DRIFT_DETECTED": "Clock drift was detected.",
     "CIRCUIT_OPEN": "The circuit is open and the operation was blocked.",
     "SECRET_VERSION_CONFLICT": "Secret conflict detected.",  # pragma: allowlist secret
+    "DATA_DROPPED": "Data record was dropped due to buffer overflow or constraints.",
+    "CIRCUIT_BREAKER_OPEN": "Circuit breaker is open for the source.",
+    "AUTHENTICATION_FAILED": "Authentication failed for the data source.",
+    "MISSING_ASSET_METADATA": "Asset/symbol metadata is missing.",
+    "DB_CONNECTION_ERROR": "Database connection failed.",
+    "DB_WRITE_FAILED": "Failed to write data to database.",
+    "STATE_RECOVERY_FAILED": "Failed to recover scheduler/feed state.",
+    "CHECKPOINT_CORRUPTED": "Job checkpoint is corrupted or invalid.",
+    "CREDENTIALS_MISSING": "Credentials are missing for the source.",
+    "BUFFER_OVERFLOW": "Feed buffer has overflowed.",
+    "FEED_HEARTBEAT_TIMEOUT": "Feed heartbeat timeout detected.",
+    "FEED_RECONCILIATION_FAILED": "Feed gap reconciliation failed.",
+    "JOB_NOT_FOUND": "Scheduler job was not found.",
+    "SCHEDULER_ERROR": "A scheduler/job error occurred.",
+    "LICENSE_RESTRICTION": "Access denied due to license restrictions.",
+    "UNSUPPORTED_OPERATION": "The requested operation is unsupported.",
 }
 
 

@@ -5,10 +5,11 @@ of the MetaTrader 5 terminal connection, user authentication, and Market Watch
 symbol registration.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import MetaTrader5 as mt5  # type: ignore[import-untyped, unused-ignore]  # noqa: N813
+import pandas as pd
 
 from app.core.config import settings
 from app.utils.errors import ConfigurationError, ExternalServiceError
@@ -234,6 +235,136 @@ class MT5Client:
                 e,
                 exc_info=True,
             )
+
+    def get_bars(
+        self,
+        symbol: str,
+        timeframe: str,
+        count: int = 100,
+        start_pos: int = 0,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+    ) -> pd.DataFrame:
+        """Get OHLCVS bars from MT5.
+
+        Args:
+            symbol: Symbol name.
+            timeframe: Timeframe string (e.g., "M1", "H1", "D1").
+            count: Number of bars to return (used if date_from is None).
+            start_pos: Start position (index) for fetching bars (used if
+                date_from is None).
+            date_from: Start date for fetching bars.
+            date_to: End date for fetching bars (defaults to now if date_from is set).
+
+        Returns:
+            pd.DataFrame with columns:
+            ["Timestamp", "Open", "High", "Low", "Close", "Volume", "Spread"]
+        """
+        if not self.is_connected():
+            self.connect()
+
+        # map timeframe to MT5 timeframe constants
+        tf_map = {
+            "M1": mt5.TIMEFRAME_M1,
+            "M2": mt5.TIMEFRAME_M2,
+            "M3": mt5.TIMEFRAME_M3,
+            "M4": mt5.TIMEFRAME_M4,
+            "M5": mt5.TIMEFRAME_M5,
+            "M6": mt5.TIMEFRAME_M6,
+            "M10": mt5.TIMEFRAME_M10,
+            "M12": mt5.TIMEFRAME_M12,
+            "M15": mt5.TIMEFRAME_M15,
+            "M20": mt5.TIMEFRAME_M20,
+            "M30": mt5.TIMEFRAME_M30,
+            "H1": mt5.TIMEFRAME_H1,
+            "H2": mt5.TIMEFRAME_H2,
+            "H3": mt5.TIMEFRAME_H3,
+            "H4": mt5.TIMEFRAME_H4,
+            "H6": mt5.TIMEFRAME_H6,
+            "H8": mt5.TIMEFRAME_H8,
+            "H12": mt5.TIMEFRAME_H12,
+            "D1": mt5.TIMEFRAME_D1,
+            "W1": mt5.TIMEFRAME_W1,
+            "MN1": mt5.TIMEFRAME_MN1,
+        }
+
+        tf_upper = timeframe.upper()
+        if tf_upper not in tf_map:
+            msg = f"Unsupported MT5 timeframe: {timeframe}"
+            raise ValueError(msg)
+        mt5_tf = tf_map[tf_upper]
+
+        mt5.symbol_select(symbol, True)
+
+        if date_from is not None:
+            dt_to = date_to if date_to is not None else datetime.now(UTC)
+            rates = mt5.copy_rates_range(symbol, mt5_tf, date_from, dt_to)
+        else:
+            rates = mt5.copy_rates_from_pos(symbol, mt5_tf, start_pos, count)
+
+        cols = ["Timestamp", "Open", "High", "Low", "Close", "Volume", "Spread"]
+        if rates is None or len(rates) == 0:
+            return pd.DataFrame(columns=cols)
+
+        df = pd.DataFrame(rates)
+        df["Timestamp"] = pd.to_datetime(df["time"], unit="s", utc=True)
+        df = df.rename(
+            columns={
+                "open": "Open",
+                "high": "High",
+                "low": "Low",
+                "close": "Close",
+                "tick_volume": "Volume",
+                "spread": "Spread",
+            }
+        )
+        return df[cols]
+
+    def get_ticks(
+        self,
+        symbol: str,
+        count: int = 100,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        flags: int = mt5.COPY_TICKS_ALL,
+        as_dataframe: bool = True,
+    ) -> pd.DataFrame | list[dict[str, Any]] | None:
+        """Get ticks from MT5.
+
+        Args:
+            symbol: Trading symbol.
+            count: Number of ticks to retrieve.
+            start: Start date/time.
+            end: End date/time.
+            flags: Tick flags (COPY_TICKS_ALL, COPY_TICKS_INFO, COPY_TICKS_TRADE).
+            as_dataframe: Return as DataFrame (True) or list of dicts (False).
+
+        Returns:
+            DataFrame or list of dicts containing tick data, or None on error.
+        """
+        if not self.is_connected():
+            self.connect()
+
+        mt5.symbol_select(symbol, True)
+
+        if start is not None:
+            dt_end = end if end is not None else datetime.now(UTC)
+            ticks = mt5.copy_ticks_range(symbol, start, dt_end, flags)
+        else:
+            dt_start = datetime.now(UTC) - timedelta(hours=24)
+            ticks = mt5.copy_ticks_from(symbol, dt_start, count, flags)
+
+        if ticks is None:
+            return None
+
+        if len(ticks) == 0:
+            return pd.DataFrame() if as_dataframe else []
+
+        if as_dataframe:
+            return pd.DataFrame(ticks)
+
+        names = ticks.dtype.names
+        return [dict(zip(names, row, strict=False)) for row in ticks]
 
     @classmethod
     def get_instance(cls) -> "MT5Client":

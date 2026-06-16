@@ -1,4 +1,3 @@
-# ruff: noqa: PLC0415
 """Security helpers for redaction, hashing, and optional encryption."""
 
 from __future__ import annotations

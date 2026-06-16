@@ -1,4 +1,4 @@
-# ruff: noqa: C901, PLR0912, PLR0915, E501, ARG002, PLR0913
+# ruff: noqa: C901, PLR0912, PLR0915, E501, ARG002
 """ValidationService implementation for trade requests.
 
 Handles input sanitization, decimal precision rounding, dealing mode
@@ -34,10 +34,10 @@ class ValidationService:
 
         dec_val = Decimal(str(value))
         if isinstance(precision, int):
-            exponent = Decimal("10") ** -precision
+            exponent = Decimal(10) ** -precision
             return dec_val.quantize(exponent, rounding=ROUND_HALF_UP)
         step = Decimal(str(precision))
-        return (dec_val / step).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * step
+        return (dec_val / step).quantize(Decimal(1), rounding=ROUND_HALF_UP) * step
 
     def validate_volume(
         self, symbol: str, volume: float, symbol_info: SymbolInfo

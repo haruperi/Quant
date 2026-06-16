@@ -29,7 +29,7 @@
 - **Key Config**: `ALLOW_LIVE_MUTATIONS=false` (default), `ENVIRONMENT`, `DATABASE_URL`, `LOG_LEVEL` (JSON prod, color local).
 
 ## 5. Folder Structure
-`api/` (routes, auth, middleware), `tools/` (core domain modules), `agentic/` (runtime, policy, registry, contracts), `data/` (SQLite, migrations, cache), `ui/` (Next.js workspace), `tests/`, `scripts/`, `docs/`, `.github/`.
+`app/` (routes, core services, utilities), `agentic/` (runtime, policy, registry, contracts), `data/` (SQLite, migrations, cache), `ui/` (Next.js workspace), `tests/`, `scripts/`, `docs/`, `.github/`.
 
 ## 6. Non-Negotiable Business Rules
 - **Build Order**: Utils → Data → Indicator → Strategy → Risk → Analytics → Trading → Simulation → Optimization → Live → UI/API → Research → Conversation.

@@ -70,7 +70,7 @@ class AuthorizationDecision:
     missing_permissions: tuple[str, ...]
 
 
-def build_auth_context(  # noqa: PLR0913
+def build_auth_context(
     *,
     principal_id: str,
     principal_type: PrincipalType,

@@ -1,4 +1,4 @@
-# ruff: noqa: FBT001, TRY300, BLE001
+# ruff: noqa: TRY300, BLE001
 """MQL5-compatible SymbolInfo class wrapping symbol specifications.
 
 Provides access to the symbol properties.

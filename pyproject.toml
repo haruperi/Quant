@@ -90,6 +90,11 @@ ignore = [
     "UP047",   # Pyupgrade - PEP 695 generic functions are not supported by pinned mypy/pre-commit yet
     "COM812",  # Flake8-commas - Formatter conflicts
     "ISC001",  # Flake8-implicit-str-concat - Formatter conflicts
+    "PLC0415", # Pylint - deferred imports allowed for lazy-loading optional dependencies
+    "PLR0913", # Pylint - too many arguments in function definition (6 > 5) standard for API/Broker functions
+    "FBT001",  # Flake8-boolean-trap - boolean-typed positional argument in function definition (standard format selectors)
+    "FBT002",  # Flake8-boolean-trap - boolean default positional argument in function definition
+    "PD901",   # Pandas-vet - generic df variable name is standard and widely accepted
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -139,7 +144,7 @@ exclude_lines = [
 python_version = "3.14"
 strict = true
 mypy_path = "."
-packages = ["app.utils", "app.services"]
+packages = ["app.utils", "app.services", "agentic"]
 warn_unused_configs = true
 warn_return_any = true
 warn_unused_ignores = true
@@ -152,3 +157,14 @@ no_implicit_optional = true
 [[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_decorators = false
+
+[[tool.mypy.overrides]]
+module = [
+    "pandas",
+    "yfinance",
+    "binance.*",
+    "requests",
+    "pytest_mock",
+    "MetaTrader5"
+]
+ignore_missing_imports = true

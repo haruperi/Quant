@@ -1,4 +1,4 @@
-# ruff: noqa: PLR0913, E501
+# ruff: noqa: E501
 """Idempotency service implementation.
 
 Computes request hashes, tracks lifecycle stages (in_progress vs. completed),

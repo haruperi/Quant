@@ -1,4 +1,4 @@
-# ruff: noqa: ANN401, PLC0415
+# ruff: noqa: ANN401
 """Active broker router/resolver.
 
 This module resolves, routes and returns the active broker module based on settings.
