@@ -1,4 +1,4 @@
-# ruff: noqa: E501, BLE001, E402, PLW0603, SLF001, ANN401
+# ruff: noqa: E501, BLE001, E402, PLW0603
 """Unified usage example for generic Trade classes working with MT5 and cTrader."""
 
 import sys
