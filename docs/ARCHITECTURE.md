@@ -56,6 +56,7 @@
 | **Indicator** | Normalized data, definitions, params | Indicator result columns/values |
 | **Strategy** | Data, indicators, params, lifecycle | Signals, strategy metadata |
 | **Risk** | Proposals, portfolio/broker state, policies | Risk decisions, constraints, kill-switch state |
+| **Analytics** | Trade logs, equity curves, returns, benchmark data | Canonical reports, portfolio reports, scorecard evaluations, dashboard payloads |
 | **Trading** | Risk decisions, proposal material | Order intents, idempotency records |
 | **Simulation** | Historical data, strategy, order intents | Simulated trades, equity curve, metrics |
 | **Live** | Order intents, broker readiness, reconciliation | Execution attempts, receipts, live audit events |
