@@ -71,7 +71,7 @@ from app.utils import (
 )
 
 
-def demo_logging_and_tracing() -> None:
+def example_01_logging_and_tracing() -> None:
     """Demonstrate configure_logging, logger usage, and trace context propagation."""
     print("\n--- 1. Logging & Tracing Demo ---")
     # Configure logging for local run
@@ -93,7 +93,7 @@ def demo_logging_and_tracing() -> None:
     logger.info("Context cleared; this log will have no trace metadata fields")
 
 
-def demo_standard_responses() -> None:
+def example_02_standard_responses() -> None:
     """Demonstrate standardized success, error, and exception response envelope creation."""
     print("\n--- 2. Standard Responses Demo ---")
     # Success envelope
@@ -126,7 +126,7 @@ def demo_standard_responses() -> None:
         print("Exception Envelope:", canonical_json(ex_resp))
 
 
-def demo_identities() -> None:
+def example_03_identities() -> None:
     """Demonstrate prefix-validated, collision-resistant ULID/UUID identifiers."""
     print("\n--- 3. Prefixed Identifiers Demo ---")
     req_id = generate_request_id()
@@ -148,7 +148,7 @@ def demo_identities() -> None:
     print("All ID validations completed successfully.")
 
 
-def demo_datetimes_and_normalizations() -> None:
+def example_04_datetimes_and_normalizations() -> None:
     """Demonstrate timezone-aware UTC datetime parsing, staleness checks, and drift detection."""
     print("\n--- 4. Datetime Normalizations Demo ---")
     now_utc = utc_now()
@@ -177,7 +177,7 @@ def demo_datetimes_and_normalizations() -> None:
     print("Timestamp sequence validated successfully.")
 
 
-def demo_security_and_redaction() -> None:
+def example_05_security_and_redaction() -> None:
     """Demonstrate secure hashing, text encryption, and key redaction."""
     print("\n--- 5. Security & Redaction Demo ---")
     # Password hashing
@@ -204,7 +204,7 @@ def demo_security_and_redaction() -> None:
     print("Redacted Payload:", redacted)
 
 
-def demo_dataframe_and_combinations() -> None:
+def example_06_dataframe_and_combinations() -> None:
     """Demonstrate lazy alignment, data mapping, and grid parameter combinatorics."""
     print("\n--- 6. DataFrames & Combinations Demo ---")
     # Parameter grid optimization helpers
@@ -227,7 +227,7 @@ def demo_dataframe_and_combinations() -> None:
     print("Serialized records:", records)
 
 
-def demo_data_quality() -> None:
+def example_07_data_quality() -> None:
     """Demonstrate bar checks, volume checks, and data profiles creation."""
     print("\n--- 7. Data Quality Checking Demo ---")
     records = [
@@ -257,7 +257,7 @@ def demo_data_quality() -> None:
     print("Validate OHLCV Quality response status:", resp["status"])
 
 
-def demo_schema_validation() -> None:
+def example_08_schema_validation() -> None:
     """Demonstrate input and output validation checks."""
     print("\n--- 8. Schema Validation Demo ---")
     schema = {
@@ -282,7 +282,7 @@ def demo_schema_validation() -> None:
         print(f"Caught schema validation expected error: {ex}")
 
 
-def demo_event_bus() -> None:
+def example_09_event_bus() -> None:
     """Demonstrate internal Event Bus publisher/subscriber pattern."""
     print("\n--- 9. Event Bus Pub/Sub Demo ---")
     bus = InMemoryEventBus(max_queue_size=100)
@@ -304,7 +304,7 @@ def demo_event_bus() -> None:
     publish_event(bus, envelope)
 
 
-def demo_circuit_breakers() -> None:
+def example_10_circuit_breakers() -> None:
     """Demonstrate circuit-breaker triggers and telemetry counters."""
     print("\n--- 10. Circuit Breakers & Metrics Demo ---")
     cb = CircuitBreaker(name="demo_breaker", failure_threshold=2, cooldown_seconds=1.0)
@@ -326,7 +326,7 @@ def demo_circuit_breakers() -> None:
         print("Circuit Open Response Envelope:", canonical_json(resp))
 
 
-def demo_notifications() -> None:
+def example_11_notifications() -> None:
     """Demonstrate rendered alerts and mock channel routing."""
     print("\n--- 11. Notifications Router Demo ---")
     from app.utils.notifications import NotificationAdapter, NotificationChannel
@@ -346,7 +346,7 @@ def demo_notifications() -> None:
     print(f"Routed Notification Status: {res.status}, Delivered: {res.channel}")
 
 
-def demo_paths() -> None:
+def example_12_paths() -> None:
     """Demonstrate path creation and directory checks."""
     print("\n--- 12. Safe Paths Demo ---")
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -368,18 +368,18 @@ if __name__ == "__main__":
     print("STARTING SHRED UTILITIES DEMO SCRIPT (01_utils.py)")
     print("==================================================")
 
-    demo_logging_and_tracing()
-    demo_standard_responses()
-    demo_identities()
-    demo_datetimes_and_normalizations()
-    demo_security_and_redaction()
-    demo_dataframe_and_combinations()
-    demo_data_quality()
-    demo_schema_validation()
-    demo_event_bus()
-    demo_circuit_breakers()
-    demo_notifications()
-    demo_paths()
+    example_01_logging_and_tracing()
+    example_02_standard_responses()
+    example_03_identities()
+    example_04_datetimes_and_normalizations()
+    example_05_security_and_redaction()
+    example_06_dataframe_and_combinations()
+    example_07_data_quality()
+    example_08_schema_validation()
+    example_09_event_bus()
+    example_10_circuit_breakers()
+    example_11_notifications()
+    example_12_paths()
 
     print("==================================================")
     print("DEMO SCRIPT EXECUTED SUCCESSFULLY")
