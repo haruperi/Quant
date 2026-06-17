@@ -8,19 +8,19 @@
 
 | Phase | Source file               | Module path             | Phase focus                                                                                                                                                       |
 | ----- | ------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 01    | `01-utils(3).md`        | `tools/utils/`        | Core platform primitives: logging, standard envelopes, errors, identity, time, paths, schemas, security, settings, auth, event bus, notifications, observability. |
-| 02    | `02-data(2).md`         | `tools/data/`         | Contract-driven historical, real-time, local, synthetic, broker, and external market-data gateway.                                                                |
-| 03    | `03-indicator(1).md`    | `tools/indicators/`   | Pure deterministic indicator calculation library with no direct I/O and explicit no-lookahead metadata.                                                           |
-| 04    | `04-strategy(1).md`     | `tools/strategies/`   | Side-effect-free decision layer converting market data, indicators, config, and read-only state into TradeIntent objects.                                         |
-| 05    | `05-risk(1).md`         | `tools/risk/`         | Deterministic risk governance and safety gate between strategy intent and execution-sensitive workflows.                                                          |
-| 06    | `06_analytics(1).md`    | `tools/analytics/`    | Read-only performance, robustness, dashboard, and reporting evidence layer.                                                                                       |
-| 07    | `07_trading(1).md`      | `tools/trading/`      | Shared route-aware trading surface for simulation and live workflows.                                                                                             |
-| 08    | `08-simulation(1).md`   | `tools/simulation/`   | Canonical deterministic tick-based backtesting and simulated execution engine.                                                                                    |
-| 09    | `09_optimization(1).md` | `tools/optimization/` | Parameter search, walk-forward, robustness, Monte Carlo, scoring, and optimization evidence packaging.                                                            |
-| 10    | `10_live(1).md`         | `tools/live/`         | Governed live-mutation boundary, live session runtime, gates, reconciliation, monitoring, and incident handling.                                                  |
+| 01    | `01-utils(3).md`        | `app/utils/`        | Core platform primitives: logging, standard envelopes, errors, identity, time, paths, schemas, security, settings, auth, event bus, notifications, observability. |
+| 02    | `02-data(2).md`         | `app/services/data/`         | Contract-driven historical, real-time, local, synthetic, broker, and external market-data gateway.                                                                |
+| 03    | `03-indicator(1).md`    | `app/services/indicators/`   | Pure deterministic indicator calculation library with no direct I/O and explicit no-lookahead metadata.                                                           |
+| 04    | `04-strategy(1).md`     | `app/services/strategies/`   | Side-effect-free decision layer converting market data, indicators, config, and read-only state into TradeIntent objects.                                         |
+| 05    | `05-risk(1).md`         | `app/services/risk/`         | Deterministic risk governance and safety gate between strategy intent and execution-sensitive workflows.                                                          |
+| 06    | `06_analytics(1).md`    | `app/services/analytics/`    | Read-only performance, robustness, dashboard, and reporting evidence layer.                                                                                       |
+| 07    | `07_trading(1).md`      | `app/services/trader/`      | Shared route-aware trading surface for simulation and live workflows.                                                                                             |
+| 08    | `08-simulation(1).md`   | `app/services/simulation/`   | Canonical deterministic tick-based backtesting and simulated execution engine.                                                                                    |
+| 09    | `09_optimization(1).md` | `app/services/optimization/` | Parameter search, walk-forward, robustness, Monte Carlo, scoring, and optimization evidence packaging.                                                            |
+| 10    | `10_live(1).md`         | `app/services/live/`         | Governed live-mutation boundary, live session runtime, gates, reconciliation, monitoring, and incident handling.                                                  |
 | 11    | `11_ui_api(1).md`       | `api/ + ui/`          | FastAPI gateway and Next.js frontend surface for validated, governed access to backend capabilities.                                                              |
-| 12    | `12_research(1).md`     | `tools/research/`     | Sandboxed market research, edge discovery, statistical validation, market structure, feature engineering, and reports.                                            |
-| 13    | `13_conversation(1).md` | `tools/conversation/` | Governed AI chat layer with durable threads, memory, page context, CEO/planner routing, read-only evidence, and action drafts.                                    |
+| 12    | `12_research(1).md`     | `app/services/research/`     | Sandboxed market research, edge discovery, statistical validation, market structure, feature engineering, and reports.                                            |
+| 13    | `13_conversation(1).md` | `app/services/conversation/` | Governed AI chat layer with durable threads, memory, page context, CEO/planner routing, read-only evidence, and action drafts.                                    |
 
 ---
 
@@ -78,7 +78,7 @@
 ## Phase 01 — Utils Foundation
 
 **Source:** `01-utils.md`
-**Target path:** `tools/utils/`
+**Target path:** `app/utils/`
 **Phase objective:** Create the shared HaruQuantAI utility foundation before any domain module depends on envelopes, errors, IDs, timestamps, schema validation, settings, security, events, notifications, or observability.
 
 ### Phase prerequisites
@@ -91,7 +91,7 @@
 
 #### Contracts and registry
 
-- [ ] Create the `tools.utils` package and explicit `__all__` export registry.
+- [ ] Create the `app.utils` package and explicit `__all__` export registry.
 - [ ] Define standard response envelopes with `status`, `message`, `data`, `error`, and `metadata` fields.
 - [ ] Define deterministic error classes, error codes, and exception-to-envelope mapping.
 - [ ] Define module metadata, version metadata, timing metadata, and correlation/causation metadata helpers.
@@ -143,24 +143,24 @@ The following structure is the expected implementation layout. Files must be cre
 
 #### Recommended File Creation Order
 
-1. `tools/__init__.py` (Root package initializer)
-2. `tools/utils/errors.py` (Registry of system exception types and codes)
-3. `tools/utils/standard.py` (Standard response envelopes)
-4. `tools/utils/identity.py` (Request and trace IDs)
-5. `tools/utils/normalization.py` (Timestamp and numeric formatting helpers)
-6. `tools/utils/logger.py` (Configured structured logger)
-7. `tools/utils/paths.py` (Protected path helpers and traversal checks)
-8. `tools/utils/security.py` (Redaction and hash engines)
-9. `tools/utils/settings.py` (Runtime configuration loader)
-10. `tools/utils/auth.py` (Deny-by-default allowlist checks)
-11. `tools/utils/dataframe_tools.py` (Safe lazy DataFrame wrappers)
-12. `tools/utils/schema_validation.py` (JSON schema and contract validation)
-13. `tools/utils/data_quality.py` (Diagnostic-only OHLCV validator)
-14. `tools/utils/event_bus.py` (In-process pub/sub foundation)
-15. `tools/utils/error_routing.py` (Error-to-event router)
-16. `tools/utils/notifications.py` (Email/Telegram routing interfaces)
-17. `tools/utils/observability.py` (Prometheus metrics and health snapshots)
-18. `tools/utils/__init__.py` (Exposes final public utilities)
+1. `app/__init__.py` (Root package initializer)
+2. `app/utils/errors.py` (Registry of system exception types and codes)
+3. `app/utils/standard.py` (Standard response envelopes)
+4. `app/utils/identity.py` (Request and trace IDs)
+5. `app/utils/normalization.py` (Timestamp and numeric formatting helpers)
+6. `app/utils/logger.py` (Configured structured logger)
+7. `app/utils/paths.py` (Protected path helpers and traversal checks)
+8. `app/utils/security.py` (Redaction and hash engines)
+9. `app/utils/settings.py` (Runtime configuration loader)
+10. `app/utils/auth.py` (Deny-by-default allowlist checks)
+11. `app/utils/dataframe_tools.py` (Safe lazy DataFrame wrappers)
+12. `app/utils/schema_validation.py` (JSON schema and contract validation)
+13. `app/utils/data_quality.py` (Diagnostic-only OHLCV validator)
+14. `app/utils/event_bus.py` (In-process pub/sub foundation)
+15. `app/utils/error_routing.py` (Error-to-event router)
+16. `app/utils/notifications.py` (Email/Telegram routing interfaces)
+17. `app/utils/observability.py` (Prometheus metrics and health snapshots)
+18. `app/utils/__init__.py` (Exposes final public utilities)
 
 ### Phase acceptance gate
 
@@ -176,7 +176,7 @@ The following structure is the expected implementation layout. Files must be cre
 ## Phase 02 — Data Service
 
 **Source:** `02-data(2).md`
-**Target path:** `tools/data/`
+**Target path:** `app/services/data/`
 **Phase objective:** Build the canonical data access layer and gateway used by research, indicators, strategy, simulation, optimization, analytics, risk, trading-preparation, and agentic workflows.
 
 ### Phase prerequisites
@@ -188,7 +188,7 @@ The following structure is the expected implementation layout. Files must be cre
 
 #### Contracts and official surface
 
-- [ ] Define official data tool names and `tools.data.__all__` exports.
+- [ ] Define official data tool names and `app.services.data.__all__` exports.
 - [ ] Define standard data envelopes aligned with Utils.
 - [ ] Define deterministic `DATA_*` error codes including validation failure, buffer overflow, and data dropped.
 - [ ] Define data-kind, source, timeframe, readiness, and capability enums.
@@ -248,18 +248,18 @@ The following structure is the expected implementation layout. Files must be cre
 
 #### Recommended File Creation Order
 
-1. `tools/data/errors.py` (Reuses `tools.utils.errors` + custom data exceptions)
-2. `tools/data/validation.py` (Market data and record schemas)
-3. `tools/data/transforms.py` (Timeframe alignments, resampling, and lookahead checks)
-4. `tools/data/cache.py` (Cache storage path and manifest files)
-5. `tools/data/storage.py` (Local CSV and Parquet read/write helpers)
-6. `tools/data/persistence.py` (SQLite scheduler/job persistence)
-7. `tools/data/adapters/__init__.py`
-8. `tools/data/adapters/csv.py`, `tools/data/adapters/parquet.py`, `tools/data/adapters/synthetic.py`
-9. `tools/data/adapters/mt5.py`, `tools/data/adapters/ctrader.py`, `tools/data/adapters/dukascopy.py` (Staged integrations)
-10. `tools/data/scheduler.py` (Idempotent job runner and checkpoint manager)
-11. `tools/data/gateway.py` (The main router interfacing all data adapters)
-12. `tools/data/__init__.py`
+1. `app/services/data/errors.py` (Reuses `app.utils.errors` + custom data exceptions)
+2. `app/services/data/validation.py` (Market data and record schemas)
+3. `app/services/data/transforms.py` (Timeframe alignments, resampling, and lookahead checks)
+4. `app/services/data/cache.py` (Cache storage path and manifest files)
+5. `app/services/data/storage.py` (Local CSV and Parquet read/write helpers)
+6. `app/services/data/persistence.py` (SQLite scheduler/job persistence)
+7. `app/services/data/adapters/__init__.py`
+8. `app/services/data/adapters/csv.py`, `app/services/data/adapters/parquet.py`, `app/services/data/adapters/synthetic.py`
+9. `app/services/data/adapters/mt5.py`, `app/services/data/adapters/ctrader.py`, `app/services/data/adapters/dukascopy.py` (Staged integrations)
+10. `app/services/data/scheduler.py` (Idempotent job runner and checkpoint manager)
+11. `app/services/data/gateway.py` (The main router interfacing all data adapters)
+12. `app/services/data/__init__.py`
 
 ### Phase acceptance gate
 
@@ -275,7 +275,7 @@ The following structure is the expected implementation layout. Files must be cre
 ## Phase 03 — Indicator Library
 
 **Source:** `03-indicator(1).md`
-**Target path:** `tools/indicators/`
+**Target path:** `app/services/indicators/`
 **Phase objective:** Implement deterministic indicator calculations as pure decision-support artifacts with explicit warmup, availability, quality, provenance, and no-lookahead metadata.
 
 ### Phase prerequisites
@@ -329,17 +329,17 @@ The following structure is the expected implementation layout. Files must be cre
 
 #### Recommended File Creation Order
 
-1. `tools/indicators/protocols.py` (Indicator execution interfaces)
-2. `tools/indicators/errors.py` (Custom indicator errors inheriting from utils)
-3. `tools/indicators/calculations.py` (Mathematical calculation helper functions)
-4. `tools/indicators/batch/__init__.py`
-5. `tools/indicators/batch/trend.py`, `tools/indicators/batch/volatility.py`, `tools/indicators/batch/momentum.py`
-6. `tools/indicators/incremental/__init__.py`
-7. `tools/indicators/incremental/state.py`, `tools/indicators/incremental/accumulators.py` (Optional streaming)
-8. `tools/indicators/adapters/__init__.py`
-9. `tools/indicators/adapters/cache.py`, `tools/indicators/adapters/audit.py`
-10. `tools/indicators/registry.py` (Dynamic capability registry and catalog exporter)
-11. `tools/indicators/__init__.py`
+1. `app/services/indicators/protocols.py` (Indicator execution interfaces)
+2. `app/services/indicators/errors.py` (Custom indicator errors inheriting from utils)
+3. `app/services/indicators/calculations.py` (Mathematical calculation helper functions)
+4. `app/services/indicators/batch/__init__.py`
+5. `app/services/indicators/batch/trend.py`, `app/services/indicators/batch/volatility.py`, `app/services/indicators/batch/momentum.py`
+6. `app/services/indicators/incremental/__init__.py`
+7. `app/services/indicators/incremental/state.py`, `app/services/indicators/incremental/accumulators.py` (Optional streaming)
+8. `app/services/indicators/adapters/__init__.py`
+9. `app/services/indicators/adapters/cache.py`, `app/services/indicators/adapters/audit.py`
+10. `app/services/indicators/registry.py` (Dynamic capability registry and catalog exporter)
+11. `app/services/indicators/__init__.py`
 
 ### Phase acceptance gate
 
@@ -355,7 +355,7 @@ The following structure is the expected implementation layout. Files must be cre
 ## Phase 04 — Strategy Engine
 
 **Source:** `04-strategy(1).md`
-**Target path:** `tools/strategies/`
+**Target path:** `app/services/strategies/`
 **Phase objective:** Create the side-effect-free strategy decision layer that emits schema-valid, deterministic, auditable `TradeIntent` objects but never executes or authorizes trades.
 
 ### Phase prerequisites
@@ -413,13 +413,13 @@ The following structure is the expected implementation layout. Files must be cre
 
 #### Recommended File Creation Order
 
-1. `tools/strategies/protocols.py` (Strategy runner interfaces)
-2. `tools/strategies/errors.py` (Lookahead & missing strategy errors)
-3. `tools/strategies/sandbox.py` (Isolated python runtime runner)
-4. `tools/strategies/vectorized.py` (Vectorized batch signal runtime)
-5. `tools/strategies/event.py` (Event-driven strategy signal runtime)
-6. `tools/strategies/registry.py` (Immutable strategy registration and version compiler)
-7. `tools/strategies/__init__.py`
+1. `app/services/strategies/protocols.py` (Strategy runner interfaces)
+2. `app/services/strategies/errors.py` (Lookahead & missing strategy errors)
+3. `app/services/strategies/sandbox.py` (Isolated python runtime runner)
+4. `app/services/strategies/vectorized.py` (Vectorized batch signal runtime)
+5. `app/services/strategies/event.py` (Event-driven strategy signal runtime)
+6. `app/services/strategies/registry.py` (Immutable strategy registration and version compiler)
+7. `app/services/strategies/__init__.py`
 
 ### Phase acceptance gate
 
@@ -435,7 +435,7 @@ The following structure is the expected implementation layout. Files must be cre
 ## Phase 05 — Risk Governor
 
 **Source:** `05-risk(1).md`
-**Target path:** `tools/risk/`
+**Target path:** `app/services/risk/`
 **Phase objective:** Implement deterministic risk governance as the safety gate between strategy intent and trading/simulation/live workflows, treating ambiguity as a hard failure.
 
 ### Phase prerequisites
@@ -491,14 +491,14 @@ The following structure is the expected implementation layout. Files must be cre
 
 #### Recommended File Creation Order
 
-1. `tools/risk/models.py` (Pydantic models for RiskDecisionPackage)
-2. `tools/risk/limits.py` (Max daily loss, drawdown, and correlation checks)
-3. `tools/risk/sizing.py` (Kelly/fixed fractional math calculators)
-4. `tools/risk/scenarios.py` (Stressed regime-specific risk checks)
-5. `tools/risk/kill_switch.py` (System-wide fail-closed checks)
-6. `tools/risk/lifecycle.py` (Approval token registry and consumption checks)
-7. `tools/risk/governor.py` (Admission engine reviewing TradeIntents)
-8. `tools/risk/__init__.py`
+1. `app/services/risk/models.py` (Pydantic models for RiskDecisionPackage)
+2. `app/services/risk/limits.py` (Max daily loss, drawdown, and correlation checks)
+3. `app/services/risk/sizing.py` (Kelly/fixed fractional math calculators)
+4. `app/services/risk/scenarios.py` (Stressed regime-specific risk checks)
+5. `app/services/risk/kill_switch.py` (System-wide fail-closed checks)
+6. `app/services/risk/lifecycle.py` (Approval token registry and consumption checks)
+7. `app/services/risk/governor.py` (Admission engine reviewing TradeIntents)
+8. `app/services/risk/__init__.py`
 
 ### Phase acceptance gate
 
@@ -514,7 +514,7 @@ The following structure is the expected implementation layout. Files must be cre
 ## Phase 06 — Analytics Evidence
 
 **Source:** `06_analytics(1).md`
-**Target path:** `tools/analytics/`
+**Target path:** `app/services/analytics/`
 **Phase objective:** Implement read-only analytics evidence for trades, equity curves, returns, benchmarks, drawdowns, ratios, distributions, dashboard payloads, and strategy-quality scorecards.
 
 ### Phase prerequisites
@@ -530,7 +530,7 @@ The following structure is the expected implementation layout. Files must be cre
 - [ ] Create Official Analytics Tool Catalog with tool names, callable paths, stability, schemas, errors, side effects, risk levels, and support status.
 - [ ] Create Metric Definition Catalog for every official metric.
 - [ ] Create warning-code and quality-flag catalogs.
-- [ ] Expose only approved high-level tools through `tools.analytics.__all__`.
+- [ ] Expose only approved high-level tools through `app.services.analytics.__all__`.
 - [ ] Return standard envelopes with safe metadata.
 
 #### Input adapters and schemas
@@ -571,13 +571,13 @@ The following structure is the expected implementation layout. Files must be cre
 
 #### Recommended File Creation Order
 
-1. `tools/analytics/metrics/__init__.py`
-2. `tools/analytics/metrics/trade.py`, `tools/analytics/metrics/equity.py`, `tools/analytics/metrics/drawdown.py`, `tools/analytics/metrics/ratios.py`, `tools/analytics/metrics/distributions.py`, `tools/analytics/metrics/benchmark.py`, `tools/analytics/metrics/efficiency.py`
-3. `tools/analytics/adapters.py` (Input conversion wrappers for backtest/live inputs)
-4. `tools/analytics/scorecard.py` (Strategy quality evaluation scorecard)
-5. `tools/analytics/report.py` (Aggregates stats into file-persisted documents)
-6. `tools/analytics/dashboard.py` (Minified frontend payload extractor)
-7. `tools/analytics/__init__.py`
+1. `app/services/analytics/metrics/__init__.py`
+2. `app/services/analytics/metrics/trade.py`, `app/services/analytics/metrics/equity.py`, `app/services/analytics/metrics/drawdown.py`, `app/services/analytics/metrics/ratios.py`, `app/services/analytics/metrics/distributions.py`, `app/services/analytics/metrics/benchmark.py`, `app/services/analytics/metrics/efficiency.py`
+3. `app/services/analytics/adapters.py` (Input conversion wrappers for backtest/live inputs)
+4. `app/services/analytics/scorecard.py` (Strategy quality evaluation scorecard)
+5. `app/services/analytics/report.py` (Aggregates stats into file-persisted documents)
+6. `app/services/analytics/dashboard.py` (Minified frontend payload extractor)
+7. `app/services/analytics/__init__.py`
 
 ### Phase acceptance gate
 
@@ -593,7 +593,7 @@ The following structure is the expected implementation layout. Files must be cre
 ## Phase 07 — Trading Contract Boundary
 
 **Source:** `07_trading(1).md`
-**Target path:** `tools/trading/`
+**Target path:** `app/services/trader/`
 **Phase objective:** Build the shared route-aware trading contract used by both simulation and live, with one request/result shape and explicit `route="sim"` or `route="live"` behavior.
 
 ### Phase prerequisites
@@ -606,7 +606,7 @@ The following structure is the expected implementation layout. Files must be cre
 
 #### Registry and route contract
 
-- [ ] Create `tools.trading.__all__` public registry.
+- [ ] Create `app.services.trader.__all__` public registry.
 - [ ] Define canonical trading route contract for `sim` and `live` routes.
 - [ ] Define standard trading envelopes with validation errors, idempotency metadata, route metadata, and audit references.
 - [ ] Classify every trading function by side effect, authority requirement, route support, and persistence behavior.
@@ -651,15 +651,15 @@ The following structure is the expected implementation layout. Files must be cre
 
 #### Recommended File Creation Order
 
-1. `tools/trading/validation.py` (Lot size, order type, and pricing validation)
-2. `tools/trading/bridge/base.py` (Abstract broker interface wrapper)
-3. `tools/trading/bridge/mt5.py`, `tools/trading/bridge/ctrader.py` (Live route handlers)
-4. `tools/trading/simulator/broker.py`, `tools/trading/simulator/state.py` (Simulation route handlers)
-5. `tools/trading/reconciliation.py` (Receipt mapping and compensation)
-6. `tools/trading/monitoring.py` (Stale feeds and connection telemetry checker)
-7. `tools/trading/compensation.py` (Failure state rollback and correction packager)
-8. `tools/trading/registry.py` (Allowed trading capabilities directory)
-9. `tools/trading/__init__.py`
+1. `app/services/trader/validation.py` (Lot size, order type, and pricing validation)
+2. `app/services/trader/bridge/base.py` (Abstract broker interface wrapper)
+3. `app/services/trader/bridge/mt5.py`, `app/services/trader/bridge/ctrader.py` (Live route handlers)
+4. `app/services/trader/simulator/broker.py`, `app/services/trader/simulator/state.py` (Simulation route handlers)
+5. `app/services/trader/reconciliation.py` (Receipt mapping and compensation)
+6. `app/services/trader/monitoring.py` (Stale feeds and connection telemetry checker)
+7. `app/services/trader/compensation.py` (Failure state rollback and correction packager)
+8. `app/services/trader/registry.py` (Allowed trading capabilities directory)
+9. `app/services/trader/__init__.py`
 
 ### Phase acceptance gate
 
@@ -675,7 +675,7 @@ The following structure is the expected implementation layout. Files must be cre
 ## Phase 08 — Simulation / Backtest Engine
 
 **Source:** `08-simulation(1).md`
-**Target path:** `tools/simulation/`
+**Target path:** `app/services/simulation/`
 **Phase objective:** Implement the canonical deterministic FX Phase 1 backtest engine that converts approved strategy outputs into tick-accurate simulated execution, accounting, journals, metrics, reports, and replayable evidence.
 
 ### Phase prerequisites
@@ -737,15 +737,15 @@ The following structure is the expected implementation layout. Files must be cre
 
 #### Recommended File Creation Order
 
-1. `tools/simulation/models.py` (Backtest result and request model definitions)
-2. `tools/simulation/validation.py` (Prerequisite validation check routines)
-3. `tools/simulation/simtrader.py` (Implements target broker protocols)
-4. `tools/simulation/engine.py` (The main event-driven queue runner)
-5. `tools/simulation/journal.py` (Writes intermediate ticks/fills to file)
-6. `tools/simulation/fx.py` (Currency conversion and rate matcher)
-7. `tools/simulation/adapters.py` (Loads inputs from Phase 02 Data)
-8. `tools/simulation/orchestrator.py` (Controls backtest lifecycles)
-9. `tools/simulation/__init__.py`
+1. `app/services/simulation/models.py` (Backtest result and request model definitions)
+2. `app/services/simulation/validation.py` (Prerequisite validation check routines)
+3. `app/services/simulation/simtrader.py` (Implements target broker protocols)
+4. `app/services/simulation/engine.py` (The main event-driven queue runner)
+5. `app/services/simulation/journal.py` (Writes intermediate ticks/fills to file)
+6. `app/services/simulation/fx.py` (Currency conversion and rate matcher)
+7. `app/services/simulation/adapters.py` (Loads inputs from Phase 02 Data)
+8. `app/services/simulation/orchestrator.py` (Controls backtest lifecycles)
+9. `app/services/simulation/__init__.py`
 
 ### Phase acceptance gate
 
@@ -761,7 +761,7 @@ The following structure is the expected implementation layout. Files must be cre
 ## Phase 09 — Optimization Framework
 
 **Source:** `09_optimization(1).md`
-**Target path:** `tools/optimization/`
+**Target path:** `app/services/optimization/`
 **Phase objective:** Implement optimization request packaging, lower-level search contracts, robustness checks, scoring, checkpointing, and evidence packages without becoming a live approval authority.
 
 ### Phase prerequisites
@@ -774,7 +774,7 @@ The following structure is the expected implementation layout. Files must be cre
 
 #### Public service surface
 
-- [ ] Expose approved optimization service tools through `tools.optimization.__all__`.
+- [ ] Expose approved optimization service tools through `app.services.optimization.__all__`.
 - [ ] Return standard optimization envelopes with tool name, status, request ID, data, errors, warnings, and audit metadata.
 - [ ] Package parameter sweep, walk-forward, matrix, comparison, robustness, and report requests.
 - [ ] Classify public service tools by experimental/stable and packaging/execution behavior.
@@ -820,18 +820,18 @@ The following structure is the expected implementation layout. Files must be cre
 
 #### Recommended File Creation Order
 
-1. `tools/optimization/models.py` (Candidate inputs and result Pydantic schemas)
-2. `tools/optimization/helpers.py` (Strategy loader and result wrapper)
-3. `tools/optimization/scoring.py` (Objective calculators like Sharpe and Calmar)
-4. `tools/optimization/splitting.py` (Walk-forward rolling and anchored fold splitters)
-5. `tools/optimization/algorithms/__init__.py`
-6. `tools/optimization/algorithms/grid.py`, `tools/optimization/algorithms/random.py`, `tools/optimization/algorithms/bayesian.py`, `tools/optimization/algorithms/genetic.py`
-7. `tools/optimization/robustness.py` (Slippage and Monte Carlo stress engines)
-8. `tools/optimization/persistence/__init__.py`
-9. `tools/optimization/persistence/checkpoint.py` (Saves intermediate candidate state)
-10. `tools/optimization/persistence/repository.py` (Database resume adapter)
-11. `tools/optimization/sweeps.py` (Runs parallel parameter sweeps)
-12. `tools/optimization/__init__.py`
+1. `app/services/optimization/models.py` (Candidate inputs and result Pydantic schemas)
+2. `app/services/optimization/helpers.py` (Strategy loader and result wrapper)
+3. `app/services/optimization/scoring.py` (Objective calculators like Sharpe and Calmar)
+4. `app/services/optimization/splitting.py` (Walk-forward rolling and anchored fold splitters)
+5. `app/services/optimization/algorithms/__init__.py`
+6. `app/services/optimization/algorithms/grid.py`, `app/services/optimization/algorithms/random.py`, `app/services/optimization/algorithms/bayesian.py`, `app/services/optimization/algorithms/genetic.py`
+7. `app/services/optimization/robustness.py` (Slippage and Monte Carlo stress engines)
+8. `app/services/optimization/persistence/__init__.py`
+9. `app/services/optimization/persistence/checkpoint.py` (Saves intermediate candidate state)
+10. `app/services/optimization/persistence/repository.py` (Database resume adapter)
+11. `app/services/optimization/sweeps.py` (Runs parallel parameter sweeps)
+12. `app/services/optimization/__init__.py`
 
 ### Phase acceptance gate
 
@@ -847,7 +847,7 @@ The following structure is the expected implementation layout. Files must be cre
 ## Phase 10 — Live Runtime
 
 **Source:** `10_live(1).md`
-**Target path:** `tools/live/`
+**Target path:** `app/services/live/`
 **Phase objective:** Implement the live trading runtime as a strict middleware/gateway around shared trading functions so live-route requests cannot bypass enablement, approval, risk, reconciliation, audit, idempotency, kill switch, or operator controls.
 
 ### Phase prerequisites
@@ -907,15 +907,15 @@ The following structure is the expected implementation layout. Files must be cre
 
 #### Recommended File Creation Order
 
-1. `tools/live/configs.py` (Live configuration and environment loaders)
-2. `tools/live/status.py` (Durable status and diagnostic snapshot structures)
-3. `tools/live/gates.py` (Strict operator permission gate checks)
-4. `tools/live/reconciliation.py` (Audits live positions against broker logs)
-5. `tools/live/monitoring.py` (Real-time telemetry feeds analyzer)
-6. `tools/live/actions.py` (Manual emergency override execution triggers)
-7. `tools/live/recovery.py` (Failed network recover routines)
-8. `tools/live/runtime.py` (The core session startup and shutdown manager)
-9. `tools/live/__init__.py`
+1. `app/services/live/configs.py` (Live configuration and environment loaders)
+2. `app/services/live/status.py` (Durable status and diagnostic snapshot structures)
+3. `app/services/live/gates.py` (Strict operator permission gate checks)
+4. `app/services/live/reconciliation.py` (Audits live positions against broker logs)
+5. `app/services/live/monitoring.py` (Real-time telemetry feeds analyzer)
+6. `app/services/live/actions.py` (Manual emergency override execution triggers)
+7. `app/services/live/recovery.py` (Failed network recover routines)
+8. `app/services/live/runtime.py` (The core session startup and shutdown manager)
+9. `app/services/live/__init__.py`
 
 ### Phase acceptance gate
 
@@ -1023,7 +1023,7 @@ The following structure is the expected implementation layout. Files must be cre
 ## Phase 12 — Research / Edge Lab
 
 **Source:** `12_research(1).md`
-**Target path:** `tools/research/`
+**Target path:** `app/services/research/`
 **Phase objective:** Implement sandboxed research and Edge Lab evidence generation for market behavior, edge discovery, feature engineering, leakage checks, statistical validation, market structure, and reports without granting execution authority.
 
 ### Phase prerequisites
@@ -1077,15 +1077,15 @@ The following structure is the expected implementation layout. Files must be cre
 
 #### Recommended File Creation Order
 
-1. `tools/research/models.py` (Research report envelope definition schemas)
-2. `tools/research/errors.py` (Exceptions for sample sizes and pipeline leaks)
-3. `tools/research/features.py` (Mathematical feature engineering calculators)
-4. `tools/research/leakage.py` (Checks features for future leakages)
-5. `tools/research/stats.py` (Bootstraps, null models, and statistical significance)
-6. `tools/research/seasonality.py` (Identifies time-of-day/day-of-week trends)
-7. `tools/research/unsupervised.py` (Market regime clustering helpers)
-8. `tools/research/reports.py` (SHA-256 validated PDF/Markdown compiler)
-9. `tools/research/__init__.py`
+1. `app/services/research/models.py` (Research report envelope definition schemas)
+2. `app/services/research/errors.py` (Exceptions for sample sizes and pipeline leaks)
+3. `app/services/research/features.py` (Mathematical feature engineering calculators)
+4. `app/services/research/leakage.py` (Checks features for future leakages)
+5. `app/services/research/stats.py` (Bootstraps, null models, and statistical significance)
+6. `app/services/research/seasonality.py` (Identifies time-of-day/day-of-week trends)
+7. `app/services/research/unsupervised.py` (Market regime clustering helpers)
+8. `app/services/research/reports.py` (SHA-256 validated PDF/Markdown compiler)
+9. `app/services/research/__init__.py`
 
 ### Phase acceptance gate
 
@@ -1101,7 +1101,7 @@ The following structure is the expected implementation layout. Files must be cre
 ## Phase 13 — Conversation / AI Chat
 
 **Source:** `13_conversation(1).md`
-**Target path:** `tools/conversation/`
+**Target path:** `app/services/conversation/`
 **Phase objective:** Implement governed AI conversation as a read-only evidence and draft-proposal layer with durable threads, memory, page context, prompt composition, provider streaming, CEO/planner routing, and strict no-execution boundaries.
 
 ### Phase prerequisites
@@ -1161,17 +1161,17 @@ The following structure is the expected implementation layout. Files must be cre
 
 #### Recommended File Creation Order
 
-1. `tools/conversation/protocols.py` (AI Provider and model adapters definition)
-2. `tools/conversation/errors.py` (Token limits and service degradation codes)
-3. `tools/conversation/models.py` (Durable thread and message schemas)
-4. `tools/conversation/persistence.py` (Session database repositories)
-5. `tools/conversation/context.py` (Retrieves runtime context from other 12 modules)
-6. `tools/conversation/prompt_builder.py` (Compiles prompts with user permissions)
-7. `tools/conversation/providers/__init__.py`
-8. `tools/conversation/providers/openai.py`, `tools/conversation/providers/gemini.py`
-9. `tools/conversation/planner.py` (Planner routing and agent capability resolver)
-10. `tools/conversation/gateway.py` (The streaming coordinator interface)
-11. `tools/conversation/__init__.py`
+1. `app/services/conversation/protocols.py` (AI Provider and model adapters definition)
+2. `app/services/conversation/errors.py` (Token limits and service degradation codes)
+3. `app/services/conversation/models.py` (Durable thread and message schemas)
+4. `app/services/conversation/persistence.py` (Session database repositories)
+5. `app/services/conversation/context.py` (Retrieves runtime context from other 12 modules)
+6. `app/services/conversation/prompt_builder.py` (Compiles prompts with user permissions)
+7. `app/services/conversation/providers/__init__.py`
+8. `app/services/conversation/providers/openai.py`, `app/services/conversation/providers/gemini.py`
+9. `app/services/conversation/planner.py` (Planner routing and agent capability resolver)
+10. `app/services/conversation/gateway.py` (The streaming coordinator interface)
+11. `app/services/conversation/__init__.py`
 
 ### Phase acceptance gate
 
@@ -1234,18 +1234,18 @@ Recommended first slices:
 
 This plan intentionally preserves the following source-level boundaries:
 
-- Phase 01 comes from `01-utils(3).md` and targets `tools/utils/`. Its implementation checklist summarizes the source requirements without copying the full source document.
-- Phase 02 comes from `02-data(2).md` and targets `tools/data/`. Its implementation checklist summarizes the source requirements without copying the full source document.
-- Phase 03 comes from `03-indicator(1).md` and targets `tools/indicators/`. Its implementation checklist summarizes the source requirements without copying the full source document.
-- Phase 04 comes from `04-strategy(1).md` and targets `tools/strategies/`. Its implementation checklist summarizes the source requirements without copying the full source document.
-- Phase 05 comes from `05-risk(1).md` and targets `tools/risk/`. Its implementation checklist summarizes the source requirements without copying the full source document.
-- Phase 06 comes from `06_analytics(1).md` and targets `tools/analytics/`. Its implementation checklist summarizes the source requirements without copying the full source document.
-- Phase 07 comes from `07_trading(1).md` and targets `tools/trading/`. Its implementation checklist summarizes the source requirements without copying the full source document.
-- Phase 08 comes from `08-simulation(1).md` and targets `tools/simulation/`. Its implementation checklist summarizes the source requirements without copying the full source document.
-- Phase 09 comes from `09_optimization(1).md` and targets `tools/optimization/`. Its implementation checklist summarizes the source requirements without copying the full source document.
-- Phase 10 comes from `10_live(1).md` and targets `tools/live/`. Its implementation checklist summarizes the source requirements without copying the full source document.
+- Phase 01 comes from `01-utils(3).md` and targets `app/utils/`. Its implementation checklist summarizes the source requirements without copying the full source document.
+- Phase 02 comes from `02-data(2).md` and targets `app/services/data/`. Its implementation checklist summarizes the source requirements without copying the full source document.
+- Phase 03 comes from `03-indicator(1).md` and targets `app/services/indicators/`. Its implementation checklist summarizes the source requirements without copying the full source document.
+- Phase 04 comes from `04-strategy(1).md` and targets `app/services/strategies/`. Its implementation checklist summarizes the source requirements without copying the full source document.
+- Phase 05 comes from `05-risk(1).md` and targets `app/services/risk/`. Its implementation checklist summarizes the source requirements without copying the full source document.
+- Phase 06 comes from `06_analytics(1).md` and targets `app/services/analytics/`. Its implementation checklist summarizes the source requirements without copying the full source document.
+- Phase 07 comes from `07_trading(1).md` and targets `app/services/trader/`. Its implementation checklist summarizes the source requirements without copying the full source document.
+- Phase 08 comes from `08-simulation(1).md` and targets `app/services/simulation/`. Its implementation checklist summarizes the source requirements without copying the full source document.
+- Phase 09 comes from `09_optimization(1).md` and targets `app/services/optimization/`. Its implementation checklist summarizes the source requirements without copying the full source document.
+- Phase 10 comes from `10_live(1).md` and targets `app/services/live/`. Its implementation checklist summarizes the source requirements without copying the full source document.
 - Phase 11 comes from `11_ui_api(1).md` and targets `api/ + ui/`. Its implementation checklist summarizes the source requirements without copying the full source document.
-- Phase 12 comes from `12_research(1).md` and targets `tools/research/`. Its implementation checklist summarizes the source requirements without copying the full source document.
-- Phase 13 comes from `13_conversation(1).md` and targets `tools/conversation/`. Its implementation checklist summarizes the source requirements without copying the full source document.
+- Phase 12 comes from `12_research(1).md` and targets `app/services/research/`. Its implementation checklist summarizes the source requirements without copying the full source document.
+- Phase 13 comes from `13_conversation(1).md` and targets `app/services/conversation/`. Its implementation checklist summarizes the source requirements without copying the full source document.
 
 End of plan.

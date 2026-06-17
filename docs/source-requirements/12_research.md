@@ -29,7 +29,7 @@ The requirements inventory is strong enough to describe the intended research do
 
 ### 3.1 Public Capabilities Summary
 - Each public export must be classified as stable public API, internal-support contract, compatibility re-export, experimental capability, or network-backed helper before Builder implementation.
-- Each item in `tools.research.__all__` must carry a documented classification label such as `stable`, `internal-support`, `compatibility-re-export`, `experimental`, `network-backed`, or `optional-provider`.
+- Each item in `app.services.research.__all__` must carry a documented classification label such as `stable`, `internal-support`, `compatibility-re-export`, `experimental`, `network-backed`, or `optional-provider`.
 - `internal-support` and `compatibility-re-export` items must be excluded from agent-facing stable tool catalogs by default and must be documented as subject to breaking changes unless explicitly promoted through a versioned contract.
 - Network-backed exports must be marked as `network-backed` and `optional-provider` in the lazy registry and must define provider-missing behavior.
 - Each public callable must document input type, required fields, optional fields, output type, error behavior, side effects, determinism behavior, dependency behavior, and whether it may perform disk or network I/O.
@@ -42,24 +42,25 @@ The requirements inventory is strong enough to describe the intended research do
 ### 4.1 Target Folder Structure
 
 ```text
-tools/
-  research/
-    __init__.py          # Lazy export definitions
-    config.py            # Configuration schemas (EdgeLabConfig, DataConfig)
-    data.py              # Data cleaning, normalization, enrichment
-    features.py          # Technical indicators and returns calculations
-    leakage.py           # Lookahead validators and time partitions
-    metrics.py           # MetricRegistry and metric calculators
-    studies/
-      __init__.py
-      eds.py             # Mean reversion and trend persistence EDS
-      null_models.py     # Resampling, bootstraps, and permutations
-      structure.py       # Directional swing legs and market structures
-      unsupervised.py    # PCA and clustering algorithms
-    helpers.py           # Standard news/sentiment/calendar evidence helpers
-    reporting.py         # Markdown reports and scorecards persistence
-    errors.py            # Mapped error codes and exception classes
-```
+app/
+  services/
+    services/
+        research/
+          __init__.py          # Lazy export definitions
+          config.py            # Configuration schemas (EdgeLabConfig, DataConfig)
+          data.py              # Data cleaning, normalization, enrichment
+          features.py          # Technical indicators and returns calculations
+          leakage.py           # Lookahead validators and time partitions
+          metrics.py           # MetricRegistry and metric calculators
+          studies/
+            __init__.py
+            eds.py             # Mean reversion and trend persistence EDS
+            null_models.py     # Resampling, bootstraps, and permutations
+            structure.py       # Directional swing legs and market structures
+            unsupervised.py    # PCA and clustering algorithms
+          helpers.py           # Standard news/sentiment/calendar evidence helpers
+          reporting.py         # Markdown reports and scorecards persistence
+          errors.py            # Mapped error codes and exception classes```
 
 ### 4.2 Class Diagrams
 
@@ -101,7 +102,7 @@ classDiagram
 
 ### 5.1 Other Global and Cross-Cutting Requirements
 
-- Optional external-feed helper contracts. External-feed helper exports may be absent or disabled when the corresponding provider adapter is not installed; importing `tools.research` must not fail because of a missing optional adapter.
+- Optional external-feed helper contracts. External-feed helper exports may be absent or disabled when the corresponding provider adapter is not installed; importing `app.services.research` must not fail because of a missing optional adapter.
 - [ ] `run_session_breakout_strategy` shall evaluate an opening-range breakout strategy for a session.
 - [ ] `run_session_fade_strategy` shall evaluate a mean-reversion fade strategy within a session.
 - [ ] `EdgeClass` shall represent the classification category assigned to an edge.
@@ -120,7 +121,7 @@ classDiagram
 - [ ] `sortino_ratio` shall expose the analytics Sortino ratio calculation for research workflows.
 - [ ] `win_rate` shall expose the analytics win-rate calculation for research workflows.
 - Research artifacts containing sensitive fields that must be masked before persistence.
-- Import-time safety tests proving `tools.research` does not read secrets, access live trading state, call providers, write files, or perform heavy model execution at import time.
+- Import-time safety tests proving `app.services.research` does not read secrets, access live trading state, call providers, write files, or perform heavy model execution at import time.
 - The overlap resolutions above must be moved into Functional Requirements before Builder handoff; this section cannot remain the only record of API responsibility.
 - Standard research envelope schema, canonical error taxonomy, and audit fields must be frozen before any network-backed or agent-facing research helper is implemented.
 - Measurable resource targets and reference hardware must be approved before claiming production-grade performance.
@@ -130,13 +131,13 @@ classDiagram
 
 ## 6. Detailed Requirements by File
 
-### File: tools/research/__init__.py
+### File: app/services/research/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/research/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/research/__init__.py`.
 
 #### Functional Requirements
-- [ ] Importing `tools.research` shall not perform network calls, disk writes, provider initialization, credential reads, live trading state access, or heavy model execution.
+- [ ] Importing `app.services.research` shall not perform network calls, disk writes, provider initialization, credential reads, live trading state access, or heavy model execution.
 
 #### Non-Functional & Security Requirements
 - [ ] No file-specific non-functional requirements defined.
@@ -144,10 +145,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/research/config.py
+### File: app/services/research/config.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/research/config.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/research/config.py`.
 
 #### Functional Requirements
 - [ ] `create_config` shall create an Edge Lab configuration object with common defaults for research workflows.
@@ -165,7 +166,7 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] `EdgeStats` shall represent summary statistics for an edge result.
 - [ ] `EdgeResult` shall represent a complete edge-study result suitable for summaries and reports.
 - [ ] `research_modeling_module` shall return the research modeling service module through the shared lazy-resolution utility.
-- [ ] Each public export in `tools.research.__all__` shall have a documented contract specifying API status, input types, required fields, output type, error behavior, side effects, determinism guarantees, network/heavy dependency status, and stability level.
+- [ ] Each public export in `app.services.research.__all__` shall have a documented contract specifying API status, input types, required fields, output type, error behavior, side effects, determinism guarantees, network/heavy dependency status, and stability level.
 - [ ] Core model contracts shall define required fields, optional fields, schema versions, validation behavior, serialization behavior, and example payloads for `PreparedDataset`, `DataQualityReportModel`, `EdgeResult`, `CoreMetricProfile`, `MarketStructureProfile`, `UnsupervisedResearchResult`, `UnsupervisedInsightReport`, and report payloads.
 - [ ] The module shall define a canonical research error taxonomy covering validation errors, configuration errors, insufficient-data errors, statistical-invalidity errors, external-provider errors, serialization errors, resource-limit errors, and permission errors.
 - [ ] Public library functions shall either raise typed research exceptions or return structured result objects with warnings according to their documented contract; standard research tools shall return errors through the standard HaruQuant envelope.
@@ -219,10 +220,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - `CleaningConfig` strategy enums and exact cleaning actions must be approved before data-preparation implementation.
 - `CleaningConfig` defaults, including `missing_bar_strategy`, must be approved before implementation.
 
-### File: tools/research/data.py
+### File: app/services/research/data.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/research/data.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/research/data.py`.
 
 #### Functional Requirements
 - DataFrame-returning functions must document required input columns, output columns, index behavior, timezone expectations, row alignment, NaN behavior, and whether the input is mutated.
@@ -265,10 +266,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - ForexFactory helper ownership must be explicitly scoped as optional external research-feed helper behavior, not broad market-data provider ownership.
 
-### File: tools/research/features.py
+### File: app/services/research/features.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/research/features.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/research/features.py`.
 
 #### Functional Requirements
 - [ ] `log_returns` shall compute log returns from close prices.
@@ -307,10 +308,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - `detect_volatility_regime`, `detect_trend_regime`, `detect_market_regime`, `calculate_regime_features`, and `build_market_regime_feature_frame` must have documented boundaries.
 
-### File: tools/research/leakage.py
+### File: app/services/research/leakage.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/research/leakage.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/research/leakage.py`.
 
 #### Functional Requirements
 - [ ] `TimeSplitResult` shall represent deterministic chronological train, validation, and test partitions.
@@ -324,10 +325,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/research/metrics.py
+### File: app/services/research/metrics.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/research/metrics.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/research/metrics.py`.
 
 #### Functional Requirements
 - [ ] `MetricCalculator` shall define the calculator interface for research core metrics.
@@ -347,10 +348,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/research/studies/__init__.py
+### File: app/services/research/studies/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/research/studies/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/research/studies/__init__.py`.
 
 #### Functional Requirements
 - [ ] No file-specific functional requirements defined. Foundation properties apply.
@@ -361,10 +362,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/research/studies/eds.py
+### File: app/services/research/studies/eds.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/research/studies/eds.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/research/studies/eds.py`.
 
 #### Functional Requirements
 - [ ] `run_eds_null_baseline` shall establish null-model baselines for edge-discovery studies.
@@ -379,10 +380,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/research/studies/null_models.py
+### File: app/services/research/studies/null_models.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/research/studies/null_models.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/research/studies/null_models.py`.
 
 #### Functional Requirements
 - [ ] `compare_to_null` shall compare observed expectancy or performance against a null distribution.
@@ -405,10 +406,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/research/studies/structure.py
+### File: app/services/research/studies/structure.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/research/studies/structure.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/research/studies/structure.py`.
 
 #### Functional Requirements
 - [ ] `TrendSwingPoint` shall represent a detected swing point used in market-structure analysis.
@@ -444,10 +445,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/research/studies/unsupervised.py
+### File: app/services/research/studies/unsupervised.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/research/studies/unsupervised.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/research/studies/unsupervised.py`.
 
 #### Functional Requirements
 - [ ] `UnsupervisedResearchRequest` shall represent one unsupervised research request.
@@ -473,10 +474,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - Seed source and propagation rules must be approved for bootstrap, permutation, null-model, clustering, and unsupervised workflows.
 
-### File: tools/research/helpers.py
+### File: app/services/research/helpers.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/research/helpers.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/research/helpers.py`.
 
 #### Functional Requirements
 - [ ] `parse_calendar_events` shall normalize economic calendar events.
@@ -509,10 +510,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/research/reporting.py
+### File: app/services/research/reporting.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/research/reporting.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/research/reporting.py`.
 
 #### Functional Requirements
 - [ ] `result_to_markdown` shall convert an edge result into a Markdown report.
@@ -538,13 +539,13 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/research/errors.py
+### File: app/services/research/errors.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/research/errors.py` (which must inherit from `tools/utils/errors.py` and reuse standard exception types).
+Contains functional, security, and testing requirements specifically assigned to `app/services/research/errors.py` (which must inherit from `app/utils/errors.py` and reuse standard exception types).
 
 #### Functional Requirements
-- [ ] All standard system exceptions and error codes shall be imported and reused from `tools.utils.errors` to prevent duplicate declaration. Custom research exceptions must inherit from `tools.utils.errors.Error` or `HaruQuantError`.
+- [ ] All standard system exceptions and error codes shall be imported and reused from `app.utils.errors` to prevent duplicate declaration. Custom research exceptions must inherit from `app.utils.errors.Error` or `HaruQuantError`.
 
 #### Non-Functional & Security Requirements
 - [ ] No file-specific non-functional requirements defined.
@@ -559,7 +560,7 @@ Contains functional, security, and testing requirements specifically assigned to
 
 #### Example 1
 ```python
-from tools.research import prepare_research_dataset, build_core_metric_profile
+from app.services.research import prepare_research_dataset, build_core_metric_profile
 
 prepared = prepare_research_dataset(raw_data, config=config.data)
 if getattr(prepared, "errors", None):
@@ -569,7 +570,7 @@ profile = build_core_metric_profile(prepared)
 
 #### Example 2
 ```python
-from tools.research import validate_no_lookahead_features, enforce_time_split
+from app.services.research import validate_no_lookahead_features, enforce_time_split
 
 split = enforce_time_split(feature_frame, train_fraction=0.6, validation_fraction=0.2)
 leakage_report = validate_no_lookahead_features(feature_frame, target_column="future_return")
@@ -579,7 +580,7 @@ if leakage_report.severity in {"high", "critical"}:
 
 #### Example 3
 ```python
-from tools.research import run_eds_mean_reversion, run_eds_null_baseline, compare_to_null
+from app.services.research import run_eds_mean_reversion, run_eds_null_baseline, compare_to_null
 
 observed = run_eds_mean_reversion(prepared_dataset, config=config.mean_reversion)
 baseline = run_eds_null_baseline(prepared_dataset, config=config.null_models)
@@ -590,7 +591,7 @@ if comparison.warnings:
 
 #### Example 4
 ```python
-from tools.research import build_market_structure_profile, build_validation_summary
+from app.services.research import build_market_structure_profile, build_validation_summary
 
 structure = build_market_structure_profile(prepared_dataset, config=config.market_structure)
 validation = build_validation_summary(structure, realized_behavior)
@@ -598,7 +599,7 @@ validation = build_validation_summary(structure, realized_behavior)
 
 #### Example 5
 ```python
-from tools.research import build_research_evidence_pack, score_research_hypothesis
+from app.services.research import build_research_evidence_pack, score_research_hypothesis
 
 evidence_pack = build_research_evidence_pack(hypothesis=hypothesis, datasets=[prepared_dataset])
 score = score_research_hypothesis(evidence_pack)
@@ -606,7 +607,7 @@ score = score_research_hypothesis(evidence_pack)
 
 #### Example 6
 ```python
-from tools.research import fetch_forexfactory_calendar
+from app.services.research import fetch_forexfactory_calendar
 
 calendar_response = fetch_forexfactory_calendar(symbol="EURUSD", request_id="req_example")
 if calendar_response.get("status") == "error" or calendar_response.get("errors"):

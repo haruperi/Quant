@@ -38,17 +38,18 @@ The module exists to ensure that `route="live"` cannot bypass live enablement, r
 ### 4.1 Target Folder Structure
 
 ```text
-tools/
-  live/
-    __init__.py          # Live module entry point and public tool registry
-    config.py            # Configuration validation, settings mapping & secret resolution
-    session.py           # Live session lifecycle & signal processing
-    gates.py             # Live gate implementation (mandatory & diagnostic)
-    executor.py          # TradeExecutor, PositionManager & shadow execution
-    reconciliation.py    # Reconciliation engine & authority state transition machine
-    monitoring.py        # Health, staleness, workflow timeout, cost monitoring
-    errors.py            # Mapped error classes & code definitions
-```
+app/
+  services/
+    services/
+        live/
+          __init__.py          # Live module entry point and public tool registry
+          config.py            # Configuration validation, settings mapping & secret resolution
+          session.py           # Live session lifecycle & signal processing
+          gates.py             # Live gate implementation (mandatory & diagnostic)
+          executor.py          # TradeExecutor, PositionManager & shadow execution
+          reconciliation.py    # Reconciliation engine & authority state transition machine
+          monitoring.py        # Health, staleness, workflow timeout, cost monitoring
+          errors.py            # Mapped error classes & code definitions```
 
 ### 4.2 Class Diagrams
 
@@ -205,10 +206,10 @@ classDiagram
 
 ## 6. Detailed Requirements by File
 
-### File: tools/live/__init__.py
+### File: app/services/live/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/live/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/live/__init__.py`.
 
 #### Functional Requirements
 - [ ] The module does not own broker adapter implementation or interface definition; it owns live readiness validation, response classification, and error-mapping requirements for approved broker adapters before live use.
@@ -220,10 +221,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/live/config.py
+### File: app/services/live/config.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/live/config.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/live/config.py`.
 
 #### Functional Requirements
 - [ ] Live runtime configuration, including trading enablement flags, safety settings, notification settings, logging settings, state settings, and secret-reference resolution.
@@ -246,10 +247,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] Live runtime tests with mocks shall cover config parsing, secret resolution, state manager, signal processor, trade executor, position manager, notifications, startup, shutdown, and safe recovery.
 
-### File: tools/live/session.py
+### File: app/services/live/session.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/live/session.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/live/session.py`.
 
 #### Functional Requirements
 - [ ] Live session, live run, startup, shutdown, signal handling, recovery diagnostics, and runtime status/event emission for approved consumers.
@@ -265,10 +266,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] Cost enforcement tests shall cover per-request, workflow, session budget, before-send failure, and after-send incident behavior.
 
-### File: tools/live/gates.py
+### File: app/services/live/gates.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/live/gates.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/live/gates.py`.
 
 #### Functional Requirements
 - [ ] Live-only approval gates for broker mutation, kill-switch action, pause, resume, exposure reduction, mass cancel, mass close, and recovery.
@@ -291,10 +292,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] Diagnostic-only gate tests shall prove only approved local diagnostic gates run after mandatory gate failure and that they do not mutate state, call broker adapters, or require network access.
 - [ ] Mutation-enabled tests with mocks shall prove adapter calls occur only after all mandatory gates pass.
 
-### File: tools/live/executor.py
+### File: app/services/live/executor.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/live/executor.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/live/executor.py`.
 
 #### Functional Requirements
 - [ ] Trade executor shall enforce live execution safety checks before broker mutation.
@@ -305,10 +306,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/live/reconciliation.py
+### File: app/services/live/reconciliation.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/live/reconciliation.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/live/reconciliation.py`.
 
 #### Functional Requirements
 - [ ] The Live module shall be consumed only by approved shared trading tools, live runtime orchestration, operator workflows, monitoring, reconciliation, audit, and reporting consumers.
@@ -353,10 +354,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] Chaos/network partition tests shall prove the runtime fails closed and records incidents when broker connection, audit sink, receipt read, or reconciliation persistence fails mid-mutation.
 - [ ] Unknown-outcome retry tests shall prove clients receive `retry_after_reconciliation` and cannot blindly retry before reconciliation.
 
-### File: tools/live/monitoring.py
+### File: app/services/live/monitoring.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/live/monitoring.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/live/monitoring.py`.
 
 #### Functional Requirements
 - [ ] Live monitoring for stale state, ingestion health, tool health, workflow timeout, operational incidents, latency, cost, notification failures, and live readiness.
@@ -379,13 +380,13 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] Monitoring tests shall cover stale state, ingestion health, workflow timeout, tool health, incident classification, latency, and snapshot cache behavior.
 
-### File: tools/live/errors.py
+### File: app/services/live/errors.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/live/errors.py` (which must inherit from `tools/utils/errors.py` and reuse standard exception types).
+Contains functional, security, and testing requirements specifically assigned to `app/services/live/errors.py` (which must inherit from `app/utils/errors.py` and reuse standard exception types).
 
 #### Functional Requirements
-- [ ] All standard system exceptions and error codes shall be imported and reused from `tools.utils.errors` to prevent duplicate declaration. Custom live exceptions must inherit from `tools.utils.errors.Error` or `HaruQuantError`.
+- [ ] All standard system exceptions and error codes shall be imported and reused from `app.utils.errors` to prevent duplicate declaration. Custom live exceptions must inherit from `app.utils.errors.Error` or `HaruQuantError`.
 - [ ] Each exported live tool shall return a standard envelope containing tool name, status, request ID, correlation ID, side-effect mode, data, errors, warnings, audit metadata, incident reference, and `retry_after_seconds` where applicable.
 - [ ] Live errors shall use documented error codes from a finite taxonomy and shall include request ID, correlation ID, failed gate where applicable, retry-safety classification, operator action hint, and audit reference when available.
 - [ ] Secrets, credentials, tokens, authorization headers, private broker payloads, and raw approval packets shall not leak through logs, errors, notifications, metrics, reports, or chat.
@@ -404,7 +405,7 @@ Contains functional, security, and testing requirements specifically assigned to
 
 #### Example 1
 ```python
-from tools.trading import submit_order
+from app.services.trader import submit_order
 
 blocked_or_packaged = submit_order(
     route="live",
@@ -425,7 +426,7 @@ assert blocked_or_packaged["metadata"]["side_effect_mode"] in {
 
 #### Example 2
 ```python
-from tools.trading import reconcile_state, build_trading_report
+from app.services.trader import reconcile_state, build_trading_report
 
 reconciliation = reconcile_state(
     route="live",
@@ -442,7 +443,7 @@ report = build_trading_report(
 
 #### Example 3
 ```python
-from tools.live import trigger_global_kill_switch
+from app.services.live import trigger_global_kill_switch
 
 kill_switch_request = trigger_global_kill_switch(
     route="live",
@@ -454,7 +455,7 @@ kill_switch_request = trigger_global_kill_switch(
 
 #### Example 4
 ```python
-from tools.trading import submit_order
+from app.services.trader import submit_order
 
 blocked = submit_order(
     route="live",
@@ -474,8 +475,8 @@ assert blocked["error"]["code"] in {
 
 #### Example 5
 ```python
-from tools.trading import submit_order
-from tools.trading import reconcile_state
+from app.services.trader import submit_order
+from app.services.trader import reconcile_state
 
 attempt = submit_order(
     route="live",

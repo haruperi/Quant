@@ -11,7 +11,7 @@ The module exists to answer: **what would have happened if a strategy had traded
 - [ ] The attached Hardened Draft v1.6 specification is the active source of truth.
 - [ ] Pending: the referenced Hardened Draft v1.6 specification, strategy contracts, indicator contracts, data contracts, broker-profile manifests, and market-data authority manifests must be attached or summarized before Builder handoff.
 - [ ] The simulator is intended for Python implementation.
-- [ ] The simulation module is intended to live under `tools/simulation/`.
+- [ ] The simulation module is intended to live under `app/services/simulation/`.
 - [ ] Indicator implementation requirements live in `docs/source-requirements/03-indicator.md`.
 - [ ] Strategy implementation requirements live in `docs/source-requirements/04-strategy.md`.
 - [ ] The simulator targets deterministic backtesting and simulation, not live order execution against a broker.
@@ -45,45 +45,52 @@ The module exists to answer: **what would have happened if a strategy had traded
 ### 4.1 Target Folder Structure
 
 ```text
-tools/
+app/
     __init__.py
-    simulation/
-        __init__.py
-        orchestrator.py
-        engine.py
-        trader.py
-        models/
-            __init__.py
-            tick.py
-            spread.py
-            slippage.py
-            liquidity.py
-            fee.py
-            swap.py
-            margin.py
-        validation/
-            __init__.py
-            quality.py
-            schema.py
-        journal.py
-        report.py
+    services/
+        services/
+                simulation/
+                    __init__.py
+                    orchestrator.py
+                    engine.py
+                    trader.py
+                    models/
+                        __init__.py
+                        tick.py
+                        spread.py
+                        slippage.py
+                        liquidity.py
+                        fee.py
+                        swap.py
+                        margin.py
+                    validation/
+                        __init__.py
+                        quality.py
+                        schema.py
+                    journal.py
+                    report.py
 tests/
     unit/
-        tools/
-            simulation/
-                test_orchestrator.py
-                test_engine.py
-                test_models.py
-                test_validation.py
+        app/
+            services/
+                services/
+                        simulation/
+                            test_orchestrator.py
+                            test_engine.py
+                            test_models.py
+                            test_validation.py
     integration/
-        tools/
-            simulation/
-                test_simulation_integration.py
+        app/
+            services/
+                services/
+                        simulation/
+                            test_simulation_integration.py
     usage/
-        tools/
-            simulation/
-                test_simulation_usage.py
-```
+        app/
+            services/
+                services/
+                        simulation/
+                            test_simulation_usage.py```
 
 ### 4.2 Class Diagrams
 
@@ -120,7 +127,7 @@ classDiagram
 - [ ] Compliance records shall provide evidence of pre-trade checks and risk decisions.
 - [ ] Parent-child order lineage shall be auditable when order chaining is enabled.
 - [ ] The system shall not silently fail.
-- [ ] Controlled tool boundaries MUST return a deterministic `SIM_*` error code and safe redacted error envelope for all handled failures. Custom simulation exceptions and error codes must inherit and reuse exceptions from `tools.utils.errors` to prevent duplicate declaration.
+- [ ] Controlled tool boundaries MUST return a deterministic `SIM_*` error code and safe redacted error envelope for all handled failures. Custom simulation exceptions and error codes must inherit and reuse exceptions from `app.utils.errors` to prevent duplicate declaration.
 - [ ] Unhandled exceptions at controlled tool boundaries MUST be mapped to `SIM_INTERNAL_ERROR`, logged at `ERROR` level with redacted context, and must not expose secrets, raw strategy code, credentials, or private payloads.
 - [ ] The system shall return deterministic error codes for rejections, skipped trades, invalid config, invalid data, validation failures, sizing failures, and execution failures.
 - [ ] The system shall log all failures.
@@ -310,10 +317,10 @@ classDiagram
 
 ### 5.1 Other Global and Cross-Cutting Requirements
 
-- [ ] Mandatory inbound-contract validation for `MarketDataAuthorityManifest` supplied by `tools/data/` and strategy registry references supplied by `tools/strategies/` before official runs.
-- [ ] The module does not own strategy logic, strategy lifecycle approval, or strategy-generated signal logic; those belong to `tools/strategies/`.
-- [ ] The module does not own indicator formula implementation or indicator result contracts; those belong to `tools/indicators/`.
-- [ ] The module does not own raw market-data acquisition, source readiness, external source adapters, or normalized data contracts; those belong to `tools/data/`.
+- [ ] Mandatory inbound-contract validation for `MarketDataAuthorityManifest` supplied by `app/services/data/` and strategy registry references supplied by `app/services/strategies/` before official runs.
+- [ ] The module does not own strategy logic, strategy lifecycle approval, or strategy-generated signal logic; those belong to `app/services/strategies/`.
+- [ ] The module does not own indicator formula implementation or indicator result contracts; those belong to `app/services/indicators/`.
+- [ ] The module does not own raw market-data acquisition, source readiness, external source adapters, or normalized data contracts; those belong to `app/services/data/`.
 - [ ] The module does not own final live broker execution against real accounts.
 - [ ] The module does not own production risk-governor policy, external governance policy, or human approval workflows.
 - [ ] The module does not execute arbitrary user-provided Python strategy code through `run_backtest`.
@@ -889,10 +896,10 @@ classDiagram
 
 ## 6. Detailed Requirements by File
 
-### File: tools/__init__.py
+### File: app/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/__init__.py`.
 
 #### Functional Requirements
 - [ ] The module may simulate configured simulation risk-rule effects for replay and evidence, but external policy definition, live approval authority, and human governance decisions live outside Simulation.
@@ -908,10 +915,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] Import-time tests shall verify public module import performs no filesystem writes, network access, worker startup, secret reads, market-data access, broker access, or long-running initialization.
 
-### File: tools/simulation/__init__.py
+### File: app/services/simulation/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/simulation/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/simulation/__init__.py`.
 
 #### Functional Requirements
 - [ ] No file-specific functional requirements defined. Foundation properties apply.
@@ -922,10 +929,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/simulation/orchestrator.py
+### File: app/services/simulation/orchestrator.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/simulation/orchestrator.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/simulation/orchestrator.py`.
 
 #### Functional Requirements
 - [ ] Simulation orchestration through `BacktestOrchestrator`.
@@ -939,10 +946,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/simulation/engine.py
+### File: app/services/simulation/engine.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/simulation/engine.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/simulation/engine.py`.
 
 #### Functional Requirements
 - [ ] Canonical tick-based execution through `EventDrivenExecutionEngine`.
@@ -1005,10 +1012,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] Optimization uses the same canonical tick execution engine as normal backtests.
 
-### File: tools/simulation/trader.py
+### File: app/services/simulation/trader.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/simulation/trader.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/simulation/trader.py`.
 
 #### Functional Requirements
 - [ ] Conversion of timestamped `TradeIntent` objects into sized `TradeRequest` objects.
@@ -1065,10 +1072,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/simulation/models/__init__.py
+### File: app/services/simulation/models/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/simulation/models/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/simulation/models/__init__.py`.
 
 #### Functional Requirements
 - [ ] No file-specific functional requirements defined. Foundation properties apply.
@@ -1079,10 +1086,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/simulation/models/tick.py
+### File: app/services/simulation/models/tick.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/simulation/models/tick.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/simulation/models/tick.py`.
 
 #### Functional Requirements
 - [ ] Tick generation, tick stream construction, spread modelling, slippage modelling, liquidity modelling, matching, partial-fill handling, same-tick event priority, gap handling, commission/fee/swap/funding/borrow-fee accounting, and portfolio-level simulation state.
@@ -1271,10 +1278,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] Tick-batching boundary proof tests shall pass when tick batching is enabled.
 - [ ] Official fills are produced only by the canonical tick loop.
 
-### File: tools/simulation/models/spread.py
+### File: app/services/simulation/models/spread.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/simulation/models/spread.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/simulation/models/spread.py`.
 
 #### Functional Requirements
 - [ ] The system shall support `NATIVE_SPREAD`.
@@ -1314,10 +1321,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] Futures-rollover tests shall cover contract expiry, roll date selection, continuous adjustment, calendar-spread roll, roll PnL attribution, and missing contract-chain failure.
 - [ ] Severe missing bars, duplicate timestamps, negative spreads, invalid OHLC bars, or lookahead-sensitive feature data block production runs.
 
-### File: tools/simulation/models/slippage.py
+### File: app/services/simulation/models/slippage.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/simulation/models/slippage.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/simulation/models/slippage.py`.
 
 #### Functional Requirements
 - [ ] The system shall provide an `ExecutionRealismConfig` containing liquidity, slippage, latency, commission, swap, borrow-fee, market-hours, gap-handling, broker-rules, portfolio-risk, data-quality, corporate-action, futures-rollover, perpetual-funding, and currency-conversion configuration.
@@ -1367,10 +1374,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] Liquidity and slippage tests shall verify that liquidity constraints are evaluated before slippage and that slippage applies only to actually filled volume.
 - [ ] Execution-quality tests shall verify that liquidity shortfall is distinguished from slippage cost.
 
-### File: tools/simulation/models/liquidity.py
+### File: app/services/simulation/models/liquidity.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/simulation/models/liquidity.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/simulation/models/liquidity.py`.
 
 #### Functional Requirements
 - [ ] The system shall support infinite liquidity for MT5-parity or early research use only.
@@ -1401,10 +1408,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] Short-recall tests shall cover deterministic recall events, seeded probabilistic recall, forced buy-ins, market-halt interaction, liquidity, fees, and journal attribution.
 - [ ] Liquidity and partial-fill tests shall pass.
 
-### File: tools/simulation/models/fee.py
+### File: app/services/simulation/models/fee.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/simulation/models/fee.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/simulation/models/fee.py`.
 
 #### Functional Requirements
 - [ ] The system shall support no commission.
@@ -1464,10 +1471,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] Multi-currency-accounting tests shall cover realized PnL conversion, floating PnL conversion, margin conversion, fee/swap/dividend/funding conversion, and stale FX-rate rejection.
 - [ ] Borrow-fee tests shall pass before equity or ETF short-selling runs are production-promoted.
 
-### File: tools/simulation/models/swap.py
+### File: app/services/simulation/models/swap.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/simulation/models/swap.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/simulation/models/swap.py`.
 
 #### Functional Requirements
 - [ ] The system shall support swap types in points, money, percent, and interest.
@@ -1507,10 +1514,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] Distributed-worker tests shall cover poison-pill work-unit quarantine, idempotent journal writes, distributed-lock or compare-and-swap commits, and duplicate checkpoint prevention.
 - [ ] Swap and gap tests shall pass.
 
-### File: tools/simulation/models/margin.py
+### File: app/services/simulation/models/margin.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/simulation/models/margin.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/simulation/models/margin.py`.
 
 #### Functional Requirements
 - [ ] Official simulated orders, deals, positions, pending orders, account state, balance, equity, margin, free margin, margin level, realized PnL, floating PnL, execution timestamps, and immutable simulation journal.
@@ -1558,10 +1565,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] Kill-switch tests shall cover drawdown, loss, exposure, margin, volatility, and error-triggered trading halt behavior.
 - [ ] Validation tests shall cover volume, stops, freeze, price, margin, portfolio, max positions/orders, and unsupported fill policy.
 
-### File: tools/simulation/validation/__init__.py
+### File: app/services/simulation/validation/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/simulation/validation/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/simulation/validation/__init__.py`.
 
 #### Functional Requirements
 - [ ] No file-specific functional requirements defined. Foundation properties apply.
@@ -1572,10 +1579,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/simulation/validation/quality.py
+### File: app/services/simulation/validation/quality.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/simulation/validation/quality.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/simulation/validation/quality.py`.
 
 #### Functional Requirements
 - [ ] Simulation-specific data-quality gating, realism classification, asset-class realism disclosures, benchmark manifests, model-governance evidence, research-integrity evidence, and execution-calibration evidence.
@@ -1638,10 +1645,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] The response returns a deterministic `SIM_*` error code, bounded diagnostics, and any safe partial artifacts.
 - [ ] The run is not labelled `production_realistic` or `mt5_parity_oriented` after severe data-quality failure.
 
-### File: tools/simulation/validation/schema.py
+### File: app/services/simulation/validation/schema.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/simulation/validation/schema.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/simulation/validation/schema.py`.
 
 #### Functional Requirements
 - [ ] Before Builder handoff, each public simulator capability shall define name, purpose, caller type, stability level, official/internal status, request schema, response schema, deterministic error codes, side effects, required permissions, artifact behavior, network behavior, persistence behavior, compatibility guarantees, and at least one success and one deterministic-error example.
@@ -1682,10 +1689,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] No official tool shall be exported without metadata/schema tests.
 - [ ] Response schema and artifact manifest tests shall pass.
 
-### File: tools/simulation/journal.py
+### File: app/services/simulation/journal.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/simulation/journal.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/simulation/journal.py`.
 
 #### Functional Requirements
 - [ ] Simulation reports, metrics, artifact manifests, replay metadata, journal persistence, run lifecycle, run idempotency, optimization/walk-forward/Monte Carlo execution evidence, and production-promotion evidence.
@@ -1839,10 +1846,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] Journals are streamed to disk instead of held fully in memory.
 - [ ] Ranking is deterministic when objective scores tie.
 
-### File: tools/simulation/report.py
+### File: app/services/simulation/report.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/simulation/report.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/simulation/report.py`.
 
 #### Functional Requirements
 - [ ] The module does not treat research approximation, visual mode, notebook objects, or derived exports as canonical execution or reporting artifacts.

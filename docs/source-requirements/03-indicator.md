@@ -31,40 +31,45 @@
 ### 4.1 Target Folder Structure
 
 ```text
-tools/
+app/
     __init__.py
-    indicators/
-        __init__.py
-        registry.py
-        protocols.py
-        errors.py
-        calculations.py
-        batch/
-            __init__.py
-            trend.py
-            volatility.py
-            momentum.py
-        incremental/
-            __init__.py
-            state.py
-            accumulators.py
-        adapters/
-            __init__.py
-            cache.py
-            audit.py
+    services/
+        services/
+                indicators/
+                    __init__.py
+                    registry.py
+                    protocols.py
+                    errors.py
+                    calculations.py
+                    batch/
+                        __init__.py
+                        trend.py
+                        volatility.py
+                        momentum.py
+                    incremental/
+                        __init__.py
+                        state.py
+                        accumulators.py
+                    adapters/
+                        __init__.py
+                        cache.py
+                        audit.py
 tests/
     unit/
-        tools/
-            indicators/
-                test_trend.py
-                test_volatility.py
-                test_momentum.py
-                test_registry.py
+        app/
+            services/
+                services/
+                        indicators/
+                            test_trend.py
+                            test_volatility.py
+                            test_momentum.py
+                            test_registry.py
     usage/
-        tools/
-            indicators/
-                test_indicator_usage.py
-```
+        app/
+            services/
+                services/
+                        indicators/
+                            test_indicator_usage.py```
 
 ### 4.2 Class Diagrams
 
@@ -154,7 +159,7 @@ classDiagram
 - [x] The indicator module shall provide reusable indicator calculation primitives for strategy, research, and simulation workflows.
 - [x] The indicator module shall not determine final official position size, margin acceptance, risk approval, or order matching.
 - [x] The indicator module shall expose typed, deterministic functions or classes that can be consumed by strategies and simulation orchestration.
-- [x] Indicator outputs shall be treated as decision inputs only; official execution remains owned by `tools/simulation/`.
+- [x] Indicator outputs shall be treated as decision inputs only; official execution remains owned by `app/services/simulation/`.
 - [x] Indicator implementations shall define required input columns, output column names, parameter schema, warmup length, and missing-data behavior.
 - [x] Indicator implementations shall validate parameter ranges before calculation.
 - [x] Indicators shall accept normalized historical market data from the data module contract.
@@ -240,7 +245,7 @@ classDiagram
 - [x] Williams %R shall define behavior when highest high equals lowest low.
 - [x] Indicator formulas shall be documented with enough precision that an independent implementation can reproduce the same output.
 - [x] Each official built-in indicator shall include a formula specification table defining indicator id, required columns, default source column, parameters, default parameter values, valid parameter ranges, formula, smoothing convention, seed behavior, warmup length, window inclusivity, null handling, degenerate-window behavior, output columns, and precision tolerance.
-- [x] Formula tables must be approved before any Core MVP implementation begins; their absence shall halt coding for `tools/indicators/`.
+- [x] Formula tables must be approved before any Core MVP implementation begins; their absence shall halt coding for `app/services/indicators/`.
 - [x] The HaruQuant formula specification shall remain the source of truth when third-party library conventions differ.
 - [x] Any formula, seed, warmup, tolerance, or default-parameter change shall require an implementation version update, golden fixture review, and documented migration or changelog note.
 - [x] Formula specification tables shall use this minimum template:
@@ -600,10 +605,10 @@ classDiagram
 
 ## 6. Detailed Requirements by File
 
-### File: tools/__init__.py
+### File: app/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/__init__.py`.
 
 #### Functional Requirements
 - [x] Every smoothed indicator shall define smoothing method, alpha convention, and initial seed behavior.
@@ -624,10 +629,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [x] Numeric tests shall verify NaN propagation, infinity rejection in official workflows, division-by-zero unavailable outputs, negative-zero normalization, and overflow/underflow deterministic handling.
 - [x] Property-based mutation fuzz tests shall inject NaN, infinity, extreme outliers, zero volume, flat prices, negative values, malformed timestamps, duplicate timestamps, and random missing intervals.
 
-### File: tools/indicators/__init__.py
+### File: app/services/indicators/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/indicators/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/indicators/__init__.py`.
 
 #### Functional Requirements
 - [x] No file-specific functional requirements defined. Foundation properties apply.
@@ -638,10 +643,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [x] No file-specific testing requirements defined.
 
-### File: tools/indicators/registry.py
+### File: app/services/indicators/registry.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/indicators/registry.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/indicators/registry.py`.
 
 #### Functional Requirements
 - [x] The module shall provide an indicator registry for approved indicator implementations.
@@ -668,10 +673,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [x] Built-in convenience function tests shall verify `ema`, `sma`, `adx`, `atr`, `adr`, `rolling_volatility`, `rsi`, and `williams_r` return `IndicatorResult` and follow the same validation, naming, manifest, cache, availability, and no-lookahead rules as registry execution.
 - [x] Deprecation lifecycle tests shall verify deprecation warning phase, deprecation error with opt-in phase, removal phase, registry machine-readable phase, `IND_DEPRECATED`, and migration-guide coverage.
 
-### File: tools/indicators/protocols.py
+### File: app/services/indicators/protocols.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/indicators/protocols.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/indicators/protocols.py`.
 
 #### Functional Requirements
 - [x] No file-specific functional requirements defined. Foundation properties apply.
@@ -682,13 +687,13 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [x] No file-specific testing requirements defined.
 
-### File: tools/indicators/errors.py
+### File: app/services/indicators/errors.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/indicators/errors.py` (which must inherit from `tools/utils/errors.py` and reuse standard exception types).
+Contains functional, security, and testing requirements specifically assigned to `app/services/indicators/errors.py` (which must inherit from `app/utils/errors.py` and reuse standard exception types).
 
 #### Functional Requirements
-- [x] All standard system exceptions and error codes shall be imported and reused from `tools.utils.errors` to prevent duplicate declaration. Custom indicator exceptions must inherit from `tools.utils.errors.Error` or `HaruQuantError`.
+- [x] All standard system exceptions and error codes shall be imported and reused from `app.utils.errors` to prevent duplicate declaration. Custom indicator exceptions must inherit from `app.utils.errors.Error` or `HaruQuantError`.
 - [x] Indicator implementations shall return deterministic errors for invalid input schema, invalid parameter values, insufficient data, non-monotonic timestamps, duplicate timestamps, or impossible OHLCV values.
 - [x] The module shall provide metadata required for downstream layers to raise their own lookahead errors while keeping simulation-layer errors outside indicator ownership.
 - [x] Out-of-core processing shall expose deterministic errors when an indicator requires full in-memory context and cannot be safely chunked.
@@ -715,10 +720,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [x] Output contract tests shall verify custom output names, invalid output names, output naming policies, output modes, column conflict policies, and deterministic collision errors.
 - [x] Simulation integration tests shall verify simulation-layer lookahead detection uses indicator-provided availability metadata without making the indicator module own simulation errors.
 
-### File: tools/indicators/calculations.py
+### File: app/services/indicators/calculations.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/indicators/calculations.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/indicators/calculations.py`.
 
 #### Functional Requirements
 - [x] Indicator calculations shall not use current incomplete bar high, low, close, volume, or derived values for previous-closed-bar decisions.
@@ -738,10 +743,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [x] Input immutability tests shall verify indicator calculations do not mutate the input dataframe by default and raise `IND_INPUT_MUTATION_DETECTED` when official calculation detects unexpected mutation.
 
-### File: tools/indicators/batch/__init__.py
+### File: app/services/indicators/batch/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/indicators/batch/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/indicators/batch/__init__.py`.
 
 #### Functional Requirements
 - [x] No file-specific functional requirements defined. Foundation properties apply.
@@ -752,10 +757,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [x] No file-specific testing requirements defined.
 
-### File: tools/indicators/batch/trend.py
+### File: app/services/indicators/batch/trend.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/indicators/batch/trend.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/indicators/batch/trend.py`.
 
 #### Functional Requirements
 - [x] The module shall support trend indicators including EMA, SMA, and ADX.
@@ -767,10 +772,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [x] No file-specific testing requirements defined.
 
-### File: tools/indicators/batch/volatility.py
+### File: app/services/indicators/batch/volatility.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/indicators/batch/volatility.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/indicators/batch/volatility.py`.
 
 #### Functional Requirements
 - Provide typed built-in convenience functions for `ema(...)`, `sma(...)`, `adx(...)`, `atr(...)`, `adr(...)`, `rolling_volatility(...)`, `rsi(...)`, and `williams_r(...)`.
@@ -789,10 +794,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [x] Golden fixtures shall cover normal data, flat markets, gaps, missing bars, duplicated timestamps, extreme volatility, zero volume, all-null windows, and insufficient warmup.
 - [x] Property-based tests shall verify rolling volatility is non-negative.
 
-### File: tools/indicators/batch/momentum.py
+### File: app/services/indicators/batch/momentum.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/indicators/batch/momentum.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/indicators/batch/momentum.py`.
 
 #### Functional Requirements
 - [x] The module shall support momentum indicators including RSI and Williams %R.
@@ -803,10 +808,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [x] No file-specific testing requirements defined.
 
-### File: tools/indicators/incremental/__init__.py
+### File: app/services/indicators/incremental/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/indicators/incremental/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/indicators/incremental/__init__.py`.
 
 #### Functional Requirements
 - [x] No file-specific functional requirements defined. Foundation properties apply.
@@ -817,10 +822,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [x] No file-specific testing requirements defined.
 
-### File: tools/indicators/incremental/state.py
+### File: app/services/indicators/incremental/state.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/indicators/incremental/state.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/indicators/incremental/state.py`.
 
 #### Functional Requirements
 - [x] Official fills, orders, account state, journals, and reports are produced by the simulation module.
@@ -882,10 +887,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [x] Concurrency tests shall verify stateless function thread safety, single-owner incremental-state behavior, immutable snapshot reads, parallel symbol execution, cache concurrent reads, and atomic synchronized cache writes.
 - [x] Fuzz tests shall verify graceful unavailable outputs or deterministic rejection for invalid mutated inputs without crashes, nondeterminism, cache corruption, or state corruption.
 
-### File: tools/indicators/incremental/accumulators.py
+### File: app/services/indicators/incremental/accumulators.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/indicators/incremental/accumulators.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/indicators/incremental/accumulators.py`.
 
 #### Functional Requirements
 - [x] No file-specific functional requirements defined. Foundation properties apply.
@@ -896,10 +901,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [x] No file-specific testing requirements defined.
 
-### File: tools/indicators/adapters/__init__.py
+### File: app/services/indicators/adapters/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/indicators/adapters/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/indicators/adapters/__init__.py`.
 
 #### Functional Requirements
 - [x] No file-specific functional requirements defined. Foundation properties apply.
@@ -910,10 +915,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [x] No file-specific testing requirements defined.
 
-### File: tools/indicators/adapters/cache.py
+### File: app/services/indicators/adapters/cache.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/indicators/adapters/cache.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/indicators/adapters/cache.py`.
 
 #### Functional Requirements
 - [x] Cache hits shall be deterministic and shall never reuse results across incompatible input data, parameter sets, implementation versions, or schema versions.
@@ -988,10 +993,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [x] SLO tests shall verify latency, cache-hit ratio, non-transient error rate, timeout rate, measurement windows, excluded error categories, alert routing metadata, and synchronous enforcement behavior when configured.
 - [x] Proprietary indicator tests shall verify access checks before execution, unauthorized request rejection before data or cache access, non-sensitive access-control manifest metadata, and deterministic parity for protected-source packages.
 
-### File: tools/indicators/adapters/audit.py
+### File: app/services/indicators/adapters/audit.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/indicators/adapters/audit.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/indicators/adapters/audit.py`.
 
 #### Functional Requirements
 - [x] `IndicatorManifest` shall contain calculation identity, formula identity, input checksum, output checksum, parameter hash, output schema version, output column contract, data provenance, execution backend, timing, environment, and audit metadata.
@@ -1025,7 +1030,7 @@ Contains functional, security, and testing requirements specifically assigned to
 
 #### Example 1
 ```python
-from tools.indicators import ema
+from app.services.indicators import ema
 
 result = ema(data, period=10, source="close")
 assert result.output_columns == ["ema_10"]
@@ -1034,7 +1039,7 @@ joined = result.join_to(data, mode="copy")
 
 #### Example 2
 ```python
-from tools.indicators import adx
+from app.services.indicators import adx
 
 result = adx(data, period=14)
 assert {"adx_14", "plus_di_14", "minus_di_14"}.issubset(result.output_columns)
@@ -1049,7 +1054,7 @@ decision_ready = result.values[result.values["available_at"] <= decision_time]
 
 #### Example 4
 ```python
-from tools.indicators import register_indicator, validate_indicator
+from app.services.indicators import register_indicator, validate_indicator
 
 validation = validate_indicator(custom_indicator)
 if validation.valid:
@@ -1058,7 +1063,7 @@ if validation.valid:
 
 #### Example 5
 ```python
-from tools.indicators import IndicatorError, ema
+from app.services.indicators import IndicatorError, ema
 
 try:
     result = ema(data, period=-5, source="close")
@@ -1068,7 +1073,7 @@ except IndicatorError as exc:
 
 #### Example 6
 ```python
-from tools.indicators import ema
+from app.services.indicators import ema
 
 result = ema(short_data, period=200, source="close", error_mode="result")
 assert result.errors[0].code == "IND_INSUFFICIENT_DATA"

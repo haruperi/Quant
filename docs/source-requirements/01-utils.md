@@ -1,7 +1,7 @@
 # 01-utils.md - Requirements
 
 **Target path:** `docs/planning/DOMAIN.md`
-**Target module:** `tools/utils/`
+**Target module:** `app/utils/`
 **Status:** Restructured production-ready requirements by expected implementation file
 **Source basis:** Uploaded `01-utils.md`; all unchecked checklist items were extracted and mapped exactly once.
 **Source checkbox count:** `1,163` unchecked items; `0` checked items.
@@ -10,9 +10,9 @@
 
 ## 1. Purpose
 
-This document reorganizes the HaruQuant `tools/utils/` domain requirements into implementation-file ownership sections. It preserves the high-level planning context while making each file responsible for a clear, testable slice of the utility foundation.
+This document reorganizes the HaruQuant `app/utils/` domain requirements into implementation-file ownership sections. It preserves the high-level planning context while making each file responsible for a clear, testable slice of the utility foundation.
 
-The `tools/utils/` module is the shared production-grade utility foundation for HaruQuantAI. It provides stable, typed, documented, deterministic, logged, testable, and secure primitives consumed by data, research, simulation, risk, portfolio, execution, analytics, governance, and agentic workflows.
+The `app/utils/` module is the shared production-grade utility foundation for HaruQuantAI. It provides stable, typed, documented, deterministic, logged, testable, and secure primitives consumed by data, research, simulation, risk, portfolio, execution, analytics, governance, and agentic workflows.
 
 ---
 
@@ -24,7 +24,7 @@ The `tools/utils/` module is the shared production-grade utility foundation for 
 - Official AI tools use the standard HaruQuant response envelope.
 - Optional dependencies remain lazy-loaded and feature-scoped.
 - External provider credentials are supplied through secure runtime configuration, not hard-coded utilities.
-- `tools.data` owns market-data repair, cleaning, persistence, enrichment, and resampling; `tools.utils` only validates and reports diagnostics.
+- `app.services.data` owns market-data repair, cleaning, persistence, enrichment, and resampling; `app.utils` only validates and reports diagnostics.
 
 ---
 
@@ -73,23 +73,23 @@ No unresolved open questions remain for the baseline production-ready utils modu
 
 | File                             | Contract Area                | Primary API Shape                                          | Boundary Rule                     |
 | -------------------------------- | ---------------------------- | ---------------------------------------------------------- | --------------------------------- |
-| tools/utils/__init__.py    | Public registry              | Exports approved names only                                | No runtime side effects           |
-| tools/utils/standard.py          | Tool envelope + constants    | `status`, `message`, `data`, `error`, `metadata` | Official tool contract owner      |
-| tools/utils/logger.py            | Structured logging           | JSON-compatible production logs; human console logs        | No secrets, no implicit config    |
-| tools/utils/errors.py            | Error registry               | Typed exceptions + deterministic codes                     | Safe fallback mapping             |
-| tools/utils/identity.py          | Trace IDs                    | Request/workflow/correlation/event/idempotency helpers     | Safe for logs/audit               |
-| tools/utils/normalization.py     | Time normalization           | UTC-first timestamps + monotonic durations                 | No local timezone assumption      |
-| tools/utils/paths.py             | Safe paths                   | Normalized `Path` outputs                                | Base-dir traversal protection     |
-| tools/utils/dataframe_tools.py   | DataFrame helpers            | Native values / JSON-safe records                          | Lazy pandas import                |
-| tools/utils/data_quality.py      | OHLCV quality tool           | Standard envelope for official tool                        | Diagnostic-only, no mutation      |
-| tools/utils/schema_validation.py | Schema validators            | Native validation + official wrappers                      | Bounded invalid-field diagnostics |
-| tools/utils/security.py          | Redaction/encryption         | Redacted scalars/mappings/text; encryption helpers         | No key/plaintext leakage          |
-| tools/utils/settings.py          | Runtime settings             | Immutable typed settings                                   | Explicit load/injection only      |
-| tools/utils/auth.py              | Auth context + authorization | Allow/deny decisions                                       | Deny by default                   |
-| tools/utils/event_bus.py         | Event envelope + pub/sub     | Publish/subscribe delivery result                          | Bounded queues/idempotency        |
-| tools/utils/error_routing.py     | Error events + routing       | Routed/suppressed/deduped status                           | No recursive alert storms         |
-| tools/utils/notifications.py     | Notification routing         | Sent/suppressed/throttled/deduped/failed status            | Fake adapters for tests           |
-| tools/utils/observability.py     | Metrics + health             | Prometheus-compatible metrics + health snapshots           | No-op when not configured         |
+| app/utils/__init__.py    | Public registry              | Exports approved names only                                | No runtime side effects           |
+| app/utils/standard.py          | Tool envelope + constants    | `status`, `message`, `data`, `error`, `metadata` | Official tool contract owner      |
+| app/utils/logger.py            | Structured logging           | JSON-compatible production logs; human console logs        | No secrets, no implicit config    |
+| app/utils/errors.py            | Error registry               | Typed exceptions + deterministic codes                     | Safe fallback mapping             |
+| app/utils/identity.py          | Trace IDs                    | Request/workflow/correlation/event/idempotency helpers     | Safe for logs/audit               |
+| app/utils/normalization.py     | Time normalization           | UTC-first timestamps + monotonic durations                 | No local timezone assumption      |
+| app/utils/paths.py             | Safe paths                   | Normalized `Path` outputs                                | Base-dir traversal protection     |
+| app/utils/dataframe_tools.py   | DataFrame helpers            | Native values / JSON-safe records                          | Lazy pandas import                |
+| app/utils/data_quality.py      | OHLCV quality tool           | Standard envelope for official tool                        | Diagnostic-only, no mutation      |
+| app/utils/schema_validation.py | Schema validators            | Native validation + official wrappers                      | Bounded invalid-field diagnostics |
+| app/utils/security.py          | Redaction/encryption         | Redacted scalars/mappings/text; encryption helpers         | No key/plaintext leakage          |
+| app/utils/settings.py          | Runtime settings             | Immutable typed settings                                   | Explicit load/injection only      |
+| app/utils/auth.py              | Auth context + authorization | Allow/deny decisions                                       | Deny by default                   |
+| app/utils/event_bus.py         | Event envelope + pub/sub     | Publish/subscribe delivery result                          | Bounded queues/idempotency        |
+| app/utils/error_routing.py     | Error events + routing       | Routed/suppressed/deduped status                           | No recursive alert storms         |
+| app/utils/notifications.py     | Notification routing         | Sent/suppressed/throttled/deduped/failed status            | Fake adapters for tests           |
+| app/utils/observability.py     | Metrics + health             | Prometheus-compatible metrics + health snapshots           | No-op when not configured         |
 
 ---
 
@@ -97,25 +97,25 @@ No unresolved open questions remain for the baseline production-ready utils modu
 
 | Setting / Policy                           | Default / Rule                                                                      | Expected Owner               |
 | ------------------------------------------ | ----------------------------------------------------------------------------------- | ---------------------------- |
-| DEFAULT_TIMEZONE                           | `UTC`                                                                             | tools/utils/normalization.py |
-| Tool response top-level keys               | `status`, `message`, `data`, `error`, `metadata`                          | tools/utils/standard.py      |
-| Execution timer                            | `time.perf_counter()` rounded to 3 ms decimals                                    | tools/utils/standard.py      |
-| OHLCV quality pass threshold               | `90.0`                                                                            | tools/utils/data_quality.py  |
-| OHLCV penalty model                        | critical `-40`, error `-20`, warning `-5`, info `-1`                        | tools/utils/data_quality.py  |
-| Runtime settings precedence                | explicit mapping/function args → environment variables →`.env` → safe defaults | tools/utils/settings.py      |
-| Default HaruQuant home                     | `HARUQUANT_HOME` or deterministic `.haruquant` under CWD                        | tools/utils/settings.py      |
-| Default directories                        | `data`, `cache`, `audit` under HaruQuant home                                 | tools/utils/settings.py      |
-| Encryption key env var                     | `ENCRYPTION_KEY`                                                                  | tools/utils/security.py      |
-| Password hashing                           | Argon2id preferred; fail clearly unless approved fallback configured                | tools/utils/security.py      |
-| Production desktop notifications           | Disabled by default unless explicitly enabled                                       | tools/utils/notifications.py |
-| Production Event Bus critical queue policy | Fail-fast by default                                                                | tools/utils/event_bus.py     |
+| DEFAULT_TIMEZONE                           | `UTC`                                                                             | app/utils/normalization.py |
+| Tool response top-level keys               | `status`, `message`, `data`, `error`, `metadata`                          | app/utils/standard.py      |
+| Execution timer                            | `time.perf_counter()` rounded to 3 ms decimals                                    | app/utils/standard.py      |
+| OHLCV quality pass threshold               | `90.0`                                                                            | app/utils/data_quality.py  |
+| OHLCV penalty model                        | critical `-40`, error `-20`, warning `-5`, info `-1`                        | app/utils/data_quality.py  |
+| Runtime settings precedence                | explicit mapping/function args → environment variables →`.env` → safe defaults | app/utils/settings.py      |
+| Default HaruQuant home                     | `HARUQUANT_HOME` or deterministic `.haruquant` under CWD                        | app/utils/settings.py      |
+| Default directories                        | `data`, `cache`, `audit` under HaruQuant home                                 | app/utils/settings.py      |
+| Encryption key env var                     | `ENCRYPTION_KEY`                                                                  | app/utils/security.py      |
+| Password hashing                           | Argon2id preferred; fail clearly unless approved fallback configured                | app/utils/security.py      |
+| Production desktop notifications           | Disabled by default unless explicitly enabled                                       | app/utils/notifications.py |
+| Production Event Bus critical queue policy | Fail-fast by default                                                                | app/utils/event_bus.py     |
 
 ---
 
 ## 7. Target Folder Structure
 
 ```text
-tools/
+app/
     __init__.py
 
     utils/
@@ -139,7 +139,7 @@ tools/
 
 tests/
     unit/
-        tools/
+        app/
             utils/
                 test_utils_registry.py
                 test_logger.py
@@ -160,7 +160,7 @@ tests/
                 test_observability.py
 
     usage/
-        tools/
+        app/
             utils/
                 standard.py
                 data_quality.py
@@ -170,8 +170,7 @@ tests/
                 auth.py
                 event_bus.py
                 notifications.py
-                observability.py
-```
+                observability.py```
 
 ---
 
@@ -263,11 +262,11 @@ Detailed checklist items for these cross-cutting requirements are mapped exactly
 
 ## 10. Requirements by Expected Implementation File
 
-### 10.1. `tools/__init__.py`
+### 10.1. `app/__init__.py`
 
 Root package marker for the tools package. Must stay import-safe and side-effect free.
 
-**Related test / usage files:** `tests/unit/tools/test_package_imports.py`
+**Related test / usage files:** `tests/unit/app/test_package_imports.py`
 
 **Mapped source checklist items:** `2`
 
@@ -277,8 +276,8 @@ _No source checklist items mapped to this subgroup._
 
 #### Functional Requirements
 
-- [X] Implement `tools/__init__.py` first to establish a clean side-effect-free package.  _Source: 14. Implementation Priority Order, line 1327_
-- [X] `tools/__init__.py` exists and is side-effect free.  _Source: 15. Definition of Done, line 1354_
+- [X] Implement `app/__init__.py` first to establish a clean side-effect-free package.  _Source: 14. Implementation Priority Order, line 1327_
+- [X] `app/__init__.py` exists and is side-effect free.  _Source: 15. Definition of Done, line 1354_
 
 #### Non-Functional & Security Requirements
 
@@ -290,11 +289,11 @@ _No source checklist items mapped to this subgroup._
 
 ---
 
-### 10.2. `tools/utils/__init__.py`
+### 10.2. `app/utils/__init__.py`
 
 Public registry for the utilities domain. Owns approved exports and public API boundaries.
 
-**Related test / usage files:** `tests/unit/tools/utils/test_utils_registry.py`
+**Related test / usage files:** `tests/unit/app/utils/test_utils_registry.py`
 
 **Mapped source checklist items:** `15`
 
@@ -304,7 +303,7 @@ Public registry for the utilities domain. Owns approved exports and public API b
 
 #### Functional Requirements
 
-- [X] `tools/utils/__init__.py` must act as the public registry for the utility domain.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 147_
+- [X] `app/utils/__init__.py` must act as the public registry for the utility domain.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 147_
 - [X] Only intentionally imported names listed in `__all__` may be public.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 148_
 - [X] Support helpers may return native Python values when they are not agent-callable tools.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 151_
 - [X] Internal helpers must remain private unless explicitly intended for public import.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 154_
@@ -312,12 +311,12 @@ Public registry for the utilities domain. Owns approved exports and public API b
 - [X] No compatibility shims, aliases, fallback import modules, or duplicate wrapper modules may exist.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 156_
 - [X] New public exports must be justified by real cross-domain reuse.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 157_
 - [X] Public exports may not be renamed or removed after v8 acceptance without a new versioned specification and registry review.  _Source: 3. Functional Requirements > 3.2 Public API and Registry, line 158_
-- [X] Implement `tools/utils/__init__.py` only after modules exist and public names are finalized.  _Source: 14. Implementation Priority Order, line 1344_
-- [X] `tools/utils/__init__.py` exposes only approved public names.  _Source: 15. Definition of Done, line 1355_
+- [X] Implement `app/utils/__init__.py` only after modules exist and public names are finalized.  _Source: 14. Implementation Priority Order, line 1344_
+- [X] `app/utils/__init__.py` exposes only approved public names.  _Source: 15. Definition of Done, line 1355_
 
 #### Non-Functional & Security Requirements
 
-- [X] `tools/utils/__init__.py` must not eagerly import pandas, cryptography, dotenv, broker SDKs, network clients, notification clients, Prometheus exporters, or other heavy optional dependencies unless absolutely necessary.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 689_
+- [X] `app/utils/__init__.py` must not eagerly import pandas, cryptography, dotenv, broker SDKs, network clients, notification clients, Prometheus exporters, or other heavy optional dependencies unless absolutely necessary.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 689_
 - [X] Documentation must maintain compatibility review notes for future public API changes.  _Source: 12. Documentation Requirements, line 1289_
 - [X] Internal helpers are not accidentally exported.  _Source: 15. Definition of Done, line 1357_
 - [X] No compatibility shims, aliases, fallback import modules, or duplicate wrapper modules exist.  _Source: 15. Definition of Done, line 1358_
@@ -328,11 +327,11 @@ _No source checklist items mapped to this subgroup._
 
 ---
 
-### 10.3. `tools/utils/logger.py`
+### 10.3. `app/utils/logger.py`
 
 Project-wide logging helpers, structured logging configuration, safe file logging, and logger lifecycle behavior.
 
-**Related test / usage files:** `tests/unit/tools/utils/test_logger.py`
+**Related test / usage files:** `tests/unit/app/utils/test_logger.py`
 
 **Mapped source checklist items:** `44`
 
@@ -376,7 +375,7 @@ _No source checklist items mapped to this subgroup._
 - [X] Auth logs must include sanitized auth validation and authorization decisions.  _Source: 3. Functional Requirements > 3.5 Logging, line 234_
 - [X] Observability logs must include metrics/export/health-check failures where detectable.  _Source: 3. Functional Requirements > 3.5 Logging, line 235_
 - [X] Production files must never log passwords, API keys, broker credentials, encryption keys, tokens, raw private payloads, full approval packets, notification provider credentials, authorization headers, or Telegram bot tokens.  _Source: 3. Functional Requirements > 3.5 Logging, line 236_
-- [X] Implement `tools/utils/logger.py` before modules that need production logging.  _Source: 14. Implementation Priority Order, line 1328_
+- [X] Implement `app/utils/logger.py` before modules that need production logging.  _Source: 14. Implementation Priority Order, line 1328_
 
 #### Non-Functional & Security Requirements
 
@@ -395,11 +394,11 @@ _No source checklist items mapped to this subgroup._
 
 ---
 
-### 10.4. `tools/utils/standard.py`
+### 10.4. `app/utils/standard.py`
 
 Standard tool envelopes, metadata constants, side-effect flags, canonical JSON behavior, shared constants, and official tool contract helpers.
 
-**Related test / usage files:** `tests/unit/tools/utils/test_standard.py`, `tests/usage/tools/utils.py`
+**Related test / usage files:** `tests/unit/app/utils/test_standard.py`, `tests/usage/app/utils.py`
 
 **Mapped source checklist items:** `144`
 
@@ -426,9 +425,9 @@ Standard tool envelopes, metadata constants, side-effect flags, canonical JSON b
 - [X] This is a domain-level requirements document for `docs/planning/DOMAIN.md`, not a sprint-specific requirements document.  _Source: 13. Assumptions, line 1302_
 - [X] Support helpers remain native unless explicitly classified as official AI tools.  _Source: 13. Assumptions, line 1304_
 - [X] Conditional AI tools remain support helpers unless direct agent use is approved.  _Source: 13. Assumptions, line 1305_
-- [X] `tools.data` will own repair, resampling, enrichment, persistence, and cleaning workflows for market data.  _Source: 13. Assumptions, line 1306_
+- [X] `app.services.data` will own repair, resampling, enrichment, persistence, and cleaning workflows for market data.  _Source: 13. Assumptions, line 1306_
 - [X] Optional dependencies may or may not be installed; importability must remain intact either way.  _Source: 13. Assumptions, line 1308_
-- [X] No UI, broker runtime, database repository, or LLM framework dependency is required inside `tools.utils`.  _Source: 13. Assumptions, line 1311_
+- [X] No UI, broker runtime, database repository, or LLM framework dependency is required inside `app.utils`.  _Source: 13. Assumptions, line 1311_
 
 #### Functional Requirements
 
@@ -459,7 +458,7 @@ Standard tool envelopes, metadata constants, side-effect flags, canonical JSON b
 - [X] Error events must include sanitized details only.  _Source: 9. Error Handling Expectations, line 1041_
 - [X] Every public function must document return value.  _Source: 12. Documentation Requirements, line 1241_
 - [X] Documentation must include an operational runbook for critical utility-layer failures.  _Source: 12. Documentation Requirements, line 1293_
-- [X] Implement `tools/utils/standard.py` before official AI tools.  _Source: 14. Implementation Priority Order, line 1329_
+- [X] Implement `app/utils/standard.py` before official AI tools.  _Source: 14. Implementation Priority Order, line 1329_
 - [X] Implement usage examples for official AI tools and production primitives.  _Source: 14. Implementation Priority Order, line 1346_
 - [X] Run CI quality gates before accepting the implementation.  _Source: 14. Implementation Priority Order, line 1347_
 - [X] The target folder structure exists.  _Source: 15. Definition of Done, line 1353_
@@ -514,7 +513,7 @@ Standard tool envelopes, metadata constants, side-effect flags, canonical JSON b
 - [X] Inputs are validated where appropriate.  _Source: 15. Definition of Done, line 1362_
 - [X] Errors are explicit and deterministic.  _Source: 15. Definition of Done, line 1363_
 - [X] No production `print()` calls exist.  _Source: 15. Definition of Done, line 1366_
-- [X] Data repair and cleaning workflows are explicitly excluded from `tools.utils` and reserved for `tools.data`.  _Source: 15. Definition of Done, line 1380_
+- [X] Data repair and cleaning workflows are explicitly excluded from `app.utils` and reserved for `app.services.data`.  _Source: 15. Definition of Done, line 1380_
 - [X] Future domain-specific errors inherit from `Error` or expose a compatible `code` attribute.  _Source: 15. Definition of Done, line 1383_
 - [X] Standard response builders can map `Error` subclasses generically without hardcoding every future domain error.  _Source: 15. Definition of Done, line 1384_
 - [X] Usage examples exist for official AI tools.  _Source: 15. Definition of Done, line 1411_
@@ -541,7 +540,7 @@ Standard tool envelopes, metadata constants, side-effect flags, canonical JSON b
 - [X] Open circuit state must fail fast.  _Source: 8. Edge Cases, line 997_
 - [X] Unit tests must exist for every utility module.  _Source: 11. Testing Requirements, line 1125_
 - [X] Usage examples must exist for official AI tools.  _Source: 11. Testing Requirements, line 1126_
-- [X] Minimum line coverage must be at least 80% for `tools.utils`.  _Source: 11. Testing Requirements, line 1127_
+- [X] Minimum line coverage must be at least 80% for `app.utils`.  _Source: 11. Testing Requirements, line 1127_
 - [X] Tests must cover edge cases.  _Source: 11. Testing Requirements, line 1131_
 - [X] Official AI tool tests must verify metadata correctness.  _Source: 11. Testing Requirements, line 1134_
 - [X] Official AI tool tests must verify `execution_ms` existence.  _Source: 11. Testing Requirements, line 1136_
@@ -561,11 +560,11 @@ Standard tool envelopes, metadata constants, side-effect flags, canonical JSON b
 
 ---
 
-### 10.5. `tools/utils/errors.py`
+### 10.5. `app/utils/errors.py`
 
 Typed HaruQuant exceptions, deterministic error-code registry, and safe exception-to-envelope mapping.
 
-**Related test / usage files:** `tests/unit/tools/utils/test_errors.py`, `tests/usage/tools/utils.py`
+**Related test / usage files:** `tests/unit/app/utils/test_errors.py`, `tests/usage/app/utils.py`
 
 **Mapped source checklist items:** `50`
 
@@ -594,7 +593,7 @@ _No source checklist items mapped to this subgroup._
 - [X] Official error responses must include `status="error"`, message, `data=None`, error code/details, and metadata.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 868_
 - [X] Support helpers may return native Python values or raise typed exceptions.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 880_
 - [X] Unexpected execution failures must return `TOOL_EXECUTION_FAILED` or another safe deterministic error code.  _Source: 9. Error Handling Expectations, line 1013_
-- [X] Implement `tools/utils/errors.py` before deterministic failure behavior is needed.  _Source: 14. Implementation Priority Order, line 1330_
+- [X] Implement `app/utils/errors.py` before deterministic failure behavior is needed.  _Source: 14. Implementation Priority Order, line 1330_
 - [X] Support helpers return clear native values or raise typed exceptions.  _Source: 15. Definition of Done, line 1365_
 
 #### Non-Functional & Security Requirements
@@ -634,11 +633,11 @@ _No source checklist items mapped to this subgroup._
 
 ---
 
-### 10.6. `tools/utils/identity.py`
+### 10.6. `app/utils/identity.py`
 
 IDs, version helpers, request/workflow/correlation/causation/event/idempotency traceability primitives.
 
-**Related test / usage files:** `tests/unit/tools/utils/test_identity.py`
+**Related test / usage files:** `tests/unit/app/utils/test_identity.py`
 
 **Mapped source checklist items:** `37`
 
@@ -671,7 +670,7 @@ _No source checklist items mapped to this subgroup._
 - [X] `ensure_version(None)` must return the configured default.  _Source: 3. Functional Requirements > 3.9 Identity and Traceability, line 314_
 - [X] Official AI tools must accept optional `request_id`.  _Source: 6. Inputs and Outputs > 6.1 Inputs, line 837_
 - [X] Identity helpers must accept prefixes and version strings.  _Source: 6. Inputs and Outputs > 6.1 Inputs, line 850_
-- [X] Implement `tools/utils/identity.py` before request/workflow/event trace helpers are needed.  _Source: 14. Implementation Priority Order, line 1331_
+- [X] Implement `app/utils/identity.py` before request/workflow/event trace helpers are needed.  _Source: 14. Implementation Priority Order, line 1331_
 - [X] Official tools accept `request_id`.  _Source: 15. Definition of Done, line 1372_
 
 #### Non-Functional & Security Requirements
@@ -694,11 +693,11 @@ _No source checklist items mapped to this subgroup._
 
 ---
 
-### 10.7. `tools/utils/normalization.py`
+### 10.7. `app/utils/normalization.py`
 
 UTC-first timestamp normalization, datetime parsing, stale checks, and wall-clock versus monotonic duration policy.
 
-**Related test / usage files:** `tests/unit/tools/utils/test_normalization.py`
+**Related test / usage files:** `tests/unit/app/utils/test_normalization.py`
 
 **Mapped source checklist items:** `41`
 
@@ -733,21 +732,21 @@ _No source checklist items mapped to this subgroup._
 - [X] Health checks should include clock-drift status where supported by runtime environment.  _Source: 3. Functional Requirements > 3.6 Time and Clock Handling, line 260_
 - [X] Timestamp helpers must accept datetime-like values and explicit timezone assumptions.  _Source: 6. Inputs and Outputs > 6.1 Inputs, line 851_
 - [X] Timestamp formatting must return UTC ISO strings ending in `Z`.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 878_
-- [X] Implement `tools/utils/normalization.py` before data quality, settings, freshness checks, and event timestamp validation.  _Source: 14. Implementation Priority Order, line 1332_
+- [X] Implement `app/utils/normalization.py` before data quality, settings, freshness checks, and event timestamp validation.  _Source: 14. Implementation Priority Order, line 1332_
 
 #### Non-Functional & Security Requirements
 
-- [X] Importing `tools.utils` must be lightweight.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 688_
+- [X] Importing `app.utils` must be lightweight.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 688_
 - [X] Heavy dependencies must be imported inside the specific submodule or function that needs them.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 690_
-- [X] Importing any `tools.utils` module must not open network connections.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 696_
-- [X] Importing any `tools.utils` module must not initialize broker clients.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 697_
-- [X] Importing any `tools.utils` module must not run validation jobs.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 701_
+- [X] Importing any `app.utils` module must not open network connections.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 696_
+- [X] Importing any `app.utils` module must not initialize broker clients.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 697_
+- [X] Importing any `app.utils` module must not run validation jobs.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 701_
 - [X] Documentation must describe UTC-first time policy.  _Source: 12. Documentation Requirements, line 1254_
 - [X] Documentation must describe monotonic execution timing policy.  _Source: 12. Documentation Requirements, line 1255_
 
 #### Testing & Edge Cases
 
-- [X] Importing `tools.utils` must be safe in tests, CLI scripts, FastAPI startup, and agent runtime initialization.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 692_
+- [X] Importing `app.utils` must be safe in tests, CLI scripts, FastAPI startup, and agent runtime initialization.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 692_
 - [X] Naive datetimes must be normalized using the explicit assumed timezone.  _Source: 8. Edge Cases, line 916_
 - [X] Stale checks must be deterministic when `now` is injected.  _Source: 8. Edge Cases, line 917_
 - [X] Unparseable datetimes must be reported.  _Source: 8. Edge Cases, line 928_
@@ -758,11 +757,11 @@ _No source checklist items mapped to this subgroup._
 
 ---
 
-### 10.8. `tools/utils/paths.py`
+### 10.8. `app/utils/paths.py`
 
 Safe path normalization and explicit directory creation helpers.
 
-**Related test / usage files:** `tests/unit/tools/utils/test_paths.py`
+**Related test / usage files:** `tests/unit/app/utils/test_paths.py`
 
 **Mapped source checklist items:** `22`
 
@@ -785,11 +784,11 @@ _No source checklist items mapped to this subgroup._
 - [X] File and directory permissions must use platform-safe defaults.  _Source: 3. Functional Requirements > 3.10 Path Utilities, line 328_
 - [X] Path helpers must accept string or `Path` values and optional `base_dir`.  _Source: 6. Inputs and Outputs > 6.1 Inputs, line 852_
 - [X] Path helpers must return `Path` objects.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 873_
-- [X] Implement `tools/utils/paths.py` before settings and artifact helpers.  _Source: 14. Implementation Priority Order, line 1333_
+- [X] Implement `app/utils/paths.py` before settings and artifact helpers.  _Source: 14. Implementation Priority Order, line 1333_
 
 #### Non-Functional & Security Requirements
 
-- [X] Importing any `tools.utils` module must not create files or directories.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 693_
+- [X] Importing any `app.utils` module must not create files or directories.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 693_
 
 #### Testing & Edge Cases
 
@@ -803,11 +802,11 @@ _No source checklist items mapped to this subgroup._
 
 ---
 
-### 10.9. `tools/utils/dataframe_tools.py`
+### 10.9. `app/utils/dataframe_tools.py`
 
 Lazy-pandas DataFrame helpers, serialization, comparison, chunking, and parameter-combination support.
 
-**Related test / usage files:** `tests/unit/tools/utils/test_dataframe_tools.py`
+**Related test / usage files:** `tests/unit/app/utils/test_dataframe_tools.py`
 
 **Mapped source checklist items:** `31`
 
@@ -834,15 +833,15 @@ _No source checklist items mapped to this subgroup._
 - [X] `chunked` must reject `size <= 0` with a clear validation error.  _Source: 3. Functional Requirements > 3.11 Dataframe Utilities, line 346_
 - [X] Comparisons must support tolerance.  _Source: 3. Functional Requirements > 3.11 Dataframe Utilities, line 347_
 - [X] Empty dataframes must be handled deterministically.  _Source: 3. Functional Requirements > 3.11 Dataframe Utilities, line 348_
-- [X] Importing `tools.utils` must not eagerly import pandas.  _Source: 3. Functional Requirements > 3.11 Dataframe Utilities, line 349_
+- [X] Importing `app.utils` must not eagerly import pandas.  _Source: 3. Functional Requirements > 3.11 Dataframe Utilities, line 349_
 - [X] Missing pandas must fail only when a dataframe helper is called.  _Source: 3. Functional Requirements > 3.11 Dataframe Utilities, line 350_
 - [X] Dataframe serialization must return JSON-safe records where practical.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 876_
-- [X] Implement `tools/utils/dataframe_tools.py` after normalization and errors.  _Source: 14. Implementation Priority Order, line 1341_
+- [X] Implement `app/utils/dataframe_tools.py` after normalization and errors.  _Source: 14. Implementation Priority Order, line 1341_
 
 #### Non-Functional & Security Requirements
 
 - [X] Dataframe helpers must use lazy pandas imports or `TYPE_CHECKING` guards.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 691_
-- [X] Importing any `tools.utils` module must not execute expensive dataframe operations.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 702_
+- [X] Importing any `app.utils` module must not execute expensive dataframe operations.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 702_
 - [X] Dataframe helpers must avoid repeated full-dataframe scans where possible.  _Source: 4. Non-Functional Requirements > 4.6 Performance, line 758_
 - [X] Dataframe helpers use lazy pandas imports or `TYPE_CHECKING` guards.  _Source: 15. Definition of Done, line 1377_
 
@@ -857,11 +856,11 @@ _No source checklist items mapped to this subgroup._
 
 ---
 
-### 10.10. `tools/utils/data_quality.py`
+### 10.10. `app/utils/data_quality.py`
 
 Diagnostic-only OHLCV quality preparation and validation official tool behavior.
 
-**Related test / usage files:** `tests/unit/tools/utils/test_data_quality.py`, `tests/usage/tools/utils/data_quality.py`
+**Related test / usage files:** `tests/unit/app/utils/test_data_quality.py`, `tests/usage/app/utils/data_quality.py`
 
 **Mapped source checklist items:** `68`
 
@@ -878,7 +877,7 @@ Diagnostic-only OHLCV quality preparation and validation official tool behavior.
 - [X] `validate_ohlcv_quality` must be stateless and diagnostic-only.  _Source: 3. Functional Requirements > 3.12 OHLCV Data Quality, line 356_
 - [X] `validate_ohlcv_quality` must not repair, enrich, persist, resample, clean, or mutate input data.  _Source: 3. Functional Requirements > 3.12 OHLCV Data Quality, line 357_
 - [X] `validate_ohlcv_quality` may inspect, profile, score, report issues, and provide descriptive remediation recommendations.  _Source: 3. Functional Requirements > 3.12 OHLCV Data Quality, line 358_
-- [X] Data repair, resampling, enrichment, persistence, and cleaning workflows must be reserved for `tools.data`.  _Source: 3. Functional Requirements > 3.12 OHLCV Data Quality, line 359_
+- [X] Data repair, resampling, enrichment, persistence, and cleaning workflows must be reserved for `app.services.data`.  _Source: 3. Functional Requirements > 3.12 OHLCV Data Quality, line 359_
 - [X] Caller-owned dataframes must not be mutated.  _Source: 3. Functional Requirements > 3.12 OHLCV Data Quality, line 360_
 - [X] Validation must verify the input is a pandas DataFrame.  _Source: 3. Functional Requirements > 3.12 OHLCV Data Quality, line 361_
 - [X] Validation must verify mandatory OHLC columns exist.  _Source: 3. Functional Requirements > 3.12 OHLCV Data Quality, line 362_
@@ -923,7 +922,7 @@ Diagnostic-only OHLCV quality preparation and validation official tool behavior.
 - [X] OHLCV validation must accept a pandas DataFrame.  _Source: 6. Inputs and Outputs > 6.1 Inputs, line 838_
 - [X] OHLCV validation must accept optional symbol and timeframe context.  _Source: 6. Inputs and Outputs > 6.1 Inputs, line 839_
 - [X] `validate_ohlcv_quality` success data must include symbol, timeframe, rows checked, quality score, pass/fail state, severity, issues, summary, profile, and remediation.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 869_
-- [X] Implement `tools/utils/data_quality.py` after standard, errors, normalization, dataframe tools, and schema validation.  _Source: 14. Implementation Priority Order, line 1343_
+- [X] Implement `app/utils/data_quality.py` after standard, errors, normalization, dataframe tools, and schema validation.  _Source: 14. Implementation Priority Order, line 1343_
 
 #### Non-Functional & Security Requirements
 
@@ -947,11 +946,11 @@ Diagnostic-only OHLCV quality preparation and validation official tool behavior.
 
 ---
 
-### 10.11. `tools/utils/schema_validation.py`
+### 10.11. `app/utils/schema_validation.py`
 
 Reusable contract validators and official schema validation wrappers for agent/workflow artifacts.
 
-**Related test / usage files:** `tests/unit/tools/utils/test_schema_validation.py`, `tests/usage/tools/utils/schema_validation.py`
+**Related test / usage files:** `tests/unit/app/utils/test_schema_validation.py`, `tests/usage/app/utils/schema_validation.py`
 
 **Mapped source checklist items:** `94`
 
@@ -1019,7 +1018,7 @@ Reusable contract validators and official schema validation wrappers for agent/w
 - [X] Schema validation failures must include bounded invalid-field diagnostics with deterministic field paths.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 872_
 - [X] Schema validation errors must include invalid-field path, error code, sanitized message, and bounded details.  _Source: 9. Error Handling Expectations, line 1038_
 - [X] Documentation must include schema examples for evidence packs, approval packets, registry entries, freshness metadata, and artifact references.  _Source: 12. Documentation Requirements, line 1288_
-- [X] Implement `tools/utils/schema_validation.py` after standard, errors, normalization, security, auth, and observability foundations.  _Source: 14. Implementation Priority Order, line 1342_
+- [X] Implement `app/utils/schema_validation.py` after standard, errors, normalization, security, auth, and observability foundations.  _Source: 14. Implementation Priority Order, line 1342_
 - [X] Validators accept supported enum values and strings where practical, then normalize to canonical JSON-safe strings.  _Source: 15. Definition of Done, line 1381_
 - [X] Schema validation errors include deterministic invalid-field paths.  _Source: 15. Definition of Done, line 1396_
 - [X] Official schema validation errors include bounded `invalid_fields` diagnostics where practical.  _Source: 15. Definition of Done, line 1397_
@@ -1063,11 +1062,11 @@ Reusable contract validators and official schema validation wrappers for agent/w
 
 ---
 
-### 10.12. `tools/utils/security.py`
+### 10.12. `app/utils/security.py`
 
 Redaction, hashing, encryption/decryption boundaries, secret-version selection, and no-leak safeguards.
 
-**Related test / usage files:** `tests/unit/tools/utils/test_security.py`, `tests/usage/tools/utils/security.py`
+**Related test / usage files:** `tests/unit/app/utils/test_security.py`, `tests/usage/app/utils/security.py`
 
 **Mapped source checklist items:** `83`
 
@@ -1122,7 +1121,7 @@ Redaction, hashing, encryption/decryption boundaries, secret-version selection, 
 - [X] Security helpers must accept text, scalars, mappings, passwords, hashed passwords, encryption keys, encrypted tokens, and secret-version mappings.  _Source: 6. Inputs and Outputs > 6.1 Inputs, line 853_
 - [X] Event metadata must not include secrets.  _Source: 10. Security Requirements, line 1098_
 - [X] Documentation must include safe examples that do not contain real secrets.  _Source: 12. Documentation Requirements, line 1286_
-- [X] Implement `tools/utils/security.py` before logging, settings, events, notifications, and audit-safe behavior are finalized.  _Source: 14. Implementation Priority Order, line 1334_
+- [X] Implement `app/utils/security.py` before logging, settings, events, notifications, and audit-safe behavior are finalized.  _Source: 14. Implementation Priority Order, line 1334_
 
 #### Non-Functional & Security Requirements
 
@@ -1168,11 +1167,11 @@ Redaction, hashing, encryption/decryption boundaries, secret-version selection, 
 
 ---
 
-### 10.13. `tools/utils/settings.py`
+### 10.13. `app/utils/settings.py`
 
 Immutable runtime settings, source precedence, safe defaults, and explicit settings injection.
 
-**Related test / usage files:** `tests/unit/tools/utils/test_settings.py`, `tests/usage/tools/utils/settings.py`
+**Related test / usage files:** `tests/unit/app/utils/test_settings.py`, `tests/usage/app/utils/settings.py`
 
 **Mapped source checklist items:** `51`
 
@@ -1201,7 +1200,7 @@ _No source checklist items mapped to this subgroup._
 - [X] Path settings must use `Path` objects.  _Source: 3. Functional Requirements > 3.15 Runtime Settings, line 503_
 - [X] `.env` loading must be optional and dependency-aware.  _Source: 3. Functional Requirements > 3.15 Runtime Settings, line 504_
 - [X] Settings source precedence must be explicit mapping/function arguments, then environment variables, then `.env` file, then safe defaults.  _Source: 3. Functional Requirements > 3.15 Runtime Settings, line 505_
-- [X] Importing `tools.utils` must not read `.env`.  _Source: 3. Functional Requirements > 3.15 Runtime Settings, line 506_
+- [X] Importing `app.utils` must not read `.env`.  _Source: 3. Functional Requirements > 3.15 Runtime Settings, line 506_
 - [X] Optional dependency absence must not break import.  _Source: 3. Functional Requirements > 3.15 Runtime Settings, line 507_
 - [X] Optional dependency absence must fail only when the requested feature requires the dependency.  _Source: 3. Functional Requirements > 3.15 Runtime Settings, line 508_
 - [X] Invalid settings must fail clearly with configuration errors.  _Source: 3. Functional Requirements > 3.15 Runtime Settings, line 509_
@@ -1218,12 +1217,12 @@ _No source checklist items mapped to this subgroup._
 - [X] Settings loaders must accept mappings and optional `.env` file paths.  _Source: 6. Inputs and Outputs > 6.1 Inputs, line 854_
 - [X] Settings loaders must return `RuntimeSettings`.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 874_
 - [X] Settings injection must return the same target mapping it mutates.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 875_
-- [X] Implement `tools/utils/settings.py` before adapters and runtime configuration consumers.  _Source: 14. Implementation Priority Order, line 1335_
+- [X] Implement `app/utils/settings.py` before adapters and runtime configuration consumers.  _Source: 14. Implementation Priority Order, line 1335_
 
 #### Non-Functional & Security Requirements
 
-- [X] Importing any `tools.utils` module must not read `.env` files.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 694_
-- [X] Importing any `tools.utils` module must not mutate environment variables.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 700_
+- [X] Importing any `app.utils` module must not read `.env` files.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 694_
+- [X] Importing any `app.utils` module must not mutate environment variables.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 700_
 - [X] Time handling must be deterministic and timezone-safe across supported runtime environments.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 712_
 - [X] Missing optional dependency failures must use `HaruQuantConfigurationError`, `CONFIGURATION_ERROR`, or the standard tool error envelope where applicable.  _Source: 4. Non-Functional Requirements > 4.4 Optional Dependencies, line 732_
 - [X] Missing pandas fails only when dataframe helpers are called, with a clear configuration/dependency error.  _Source: 15. Definition of Done, line 1378_
@@ -1242,17 +1241,17 @@ _No source checklist items mapped to this subgroup._
 
 ---
 
-### 10.14. `tools/utils/auth.py`
+### 10.14. `app/utils/auth.py`
 
 Auth context model, validation, deny-by-default authorization, and tool allowlist checks.
 
-**Related test / usage files:** `tests/unit/tools/utils/test_auth.py`, `tests/usage/tools/utils/auth.py`
+**Related test / usage files:** `tests/unit/app/utils/test_auth.py`, `tests/usage/app/utils/auth.py`
 
 **Mapped source checklist items:** `83`
 
 #### Purpose & Scope
 
-- [X] The system must implement `tools/utils/` as the shared utility foundation for HaruQuantAI.  _Source: 3. Functional Requirements > 3.1 Module Foundation and Scope, line 114_
+- [X] The system must implement `app/utils/` as the shared utility foundation for HaruQuantAI.  _Source: 3. Functional Requirements > 3.1 Module Foundation and Scope, line 114_
 - [X] The module must support higher-level domains including data, research, simulation, risk, portfolio, execution, analytics, governance, and agentic workflows.  _Source: 3. Functional Requirements > 3.1 Module Foundation and Scope, line 115_
 - [X] The module must provide project-wide structured logging.  _Source: 3. Functional Requirements > 3.1 Module Foundation and Scope, line 116_
 - [X] The module must provide standard HaruQuant tool response envelopes.  _Source: 3. Functional Requirements > 3.1 Module Foundation and Scope, line 117_
@@ -1280,7 +1279,7 @@ Auth context model, validation, deny-by-default authorization, and tool allowlis
 - [X] **Authorized tool caller:** A caller with explicit permission to invoke an official AI tool.  _Source: 7. User Roles, line 894_
 - [X] **Authenticated principal:** A user, service, workflow, or agent identity represented in auth context.  _Source: 7. User Roles, line 895_
 - [X] **Workflow caller:** Uses validation, tracing, metadata, event, alert, and handoff utilities in automated workflows.  _Source: 7. User Roles, line 896_
-- [X] **Production module developer:** Imports support helpers from `tools.utils` and uses typed native helper APIs.  _Source: 7. User Roles, line 897_
+- [X] **Production module developer:** Imports support helpers from `app.utils` and uses typed native helper APIs.  _Source: 7. User Roles, line 897_
 - [X] **Higher-level domain module:** Data, research, simulation, risk, portfolio, execution, analytics, governance, and agentic workflow modules consume utility functionality.  _Source: 7. User Roles, line 898_
 - [X] **Human approver:** Uses or is represented by approval packets requiring action, reason, evidence, risk class, and approval status.  _Source: 7. User Roles, line 899_
 - [X] **Maintainer/reviewer:** Governs public API changes, CI gates, quality checks, and acceptance criteria.  _Source: 7. User Roles, line 905_
@@ -1308,7 +1307,7 @@ Auth context model, validation, deny-by-default authorization, and tool allowlis
 - [X] Auth helpers must return allow/deny decisions with sanitized reason details.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 881_
 - [X] Redaction allowlist misuse must return `SECURITY_ERROR` or a more specific deterministic security code.  _Source: 9. Error Handling Expectations, line 1039_
 - [X] Documentation must include examples of safe redaction allowlist use.  _Source: 12. Documentation Requirements, line 1283_
-- [X] Implement `tools/utils/auth.py` before tool allowlists and side-effect permission checks.  _Source: 14. Implementation Priority Order, line 1336_
+- [X] Implement `app/utils/auth.py` before tool allowlists and side-effect permission checks.  _Source: 14. Implementation Priority Order, line 1336_
 
 #### Non-Functional & Security Requirements
 
@@ -1347,11 +1346,11 @@ Auth context model, validation, deny-by-default authorization, and tool allowlis
 
 ---
 
-### 10.15. `tools/utils/event_bus.py`
+### 10.15. `app/utils/event_bus.py`
 
 Event envelope, in-process pub/sub, idempotency, backpressure, retry, dead-letter, and external adapter boundaries.
 
-**Related test / usage files:** `tests/unit/tools/utils/test_event_bus.py`, `tests/usage/tools/utils/event_bus.py`
+**Related test / usage files:** `tests/unit/app/utils/test_event_bus.py`, `tests/usage/app/utils/event_bus.py`
 
 **Mapped source checklist items:** `151`
 
@@ -1420,13 +1419,13 @@ Event envelope, in-process pub/sub, idempotency, backpressure, retry, dead-lette
 - [X] Queue-full errors must include sanitized queue diagnostics.  _Source: 9. Error Handling Expectations, line 1027_
 - [X] Queue diagnostics must not include raw payloads.  _Source: 10. Security Requirements, line 1111_
 - [X] Circuit-breaker diagnostics must not include credentials, provider tokens, message bodies, or raw event payloads.  _Source: 10. Security Requirements, line 1112_
-- [X] Implement `tools/utils/event_bus.py` before error routing and notification routing.  _Source: 14. Implementation Priority Order, line 1337_
+- [X] Implement `app/utils/event_bus.py` before error routing and notification routing.  _Source: 14. Implementation Priority Order, line 1337_
 - [X] Queue-full publishing returns deterministic `QUEUE_FULL` or `BACKPRESSURE_EXCEEDED` diagnostics.  _Source: 15. Definition of Done, line 1391_
 
 #### Non-Functional & Security Requirements
 
-- [X] Importing any `tools.utils` module must not configure global logging handlers unexpectedly.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 695_
-- [X] Importing any `tools.utils` module must not initialize external pub/sub clients.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 699_
+- [X] Importing any `app.utils` module must not configure global logging handlers unexpectedly.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 695_
+- [X] Importing any `app.utils` module must not initialize external pub/sub clients.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 699_
 - [X] Event Bus handler registration, unregistration, publishing, retry, dead-letter handling, and idempotency tracking must be thread-safe and/or async-safe.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 718_
 - [X] Event Bus handlers must not share mutable event payloads unless payloads are explicitly copied or treated as immutable by contract.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 719_
 - [X] Event Bus event versioning must support forward compatibility for event consumers.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 720_
@@ -1520,11 +1519,11 @@ Event envelope, in-process pub/sub, idempotency, backpressure, retry, dead-lette
 
 ---
 
-### 10.16. `tools/utils/error_routing.py`
+### 10.16. `app/utils/error_routing.py`
 
 Standard error event model, severity routing, deduplication, suppression, and alert storm prevention.
 
-**Related test / usage files:** `tests/unit/tools/utils/test_error_routing.py`
+**Related test / usage files:** `tests/unit/app/utils/test_error_routing.py`
 
 **Mapped source checklist items:** `34`
 
@@ -1554,7 +1553,7 @@ Standard error event model, severity routing, deduplication, suppression, and al
 - [X] Error routing must accept sanitized exception context, deterministic error code, severity, request ID, workflow ID, and correlation ID.  _Source: 6. Inputs and Outputs > 6.1 Inputs, line 859_
 - [X] Error routing must return routed, suppressed, deduplicated, throttled, or failed status.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 884_
 - [X] Documentation must include a production readiness checklist for secrets, auth, alert routing, and metrics before enabling live workflows.  _Source: 12. Documentation Requirements, line 1292_
-- [X] Implement `tools/utils/error_routing.py` before notification routing.  _Source: 14. Implementation Priority Order, line 1338_
+- [X] Implement `app/utils/error_routing.py` before notification routing.  _Source: 14. Implementation Priority Order, line 1338_
 
 #### Non-Functional & Security Requirements
 
@@ -1576,11 +1575,11 @@ Standard error event model, severity routing, deduplication, suppression, and al
 
 ---
 
-### 10.17. `tools/utils/notifications.py`
+### 10.17. `app/utils/notifications.py`
 
 Email, Telegram, and desktop notification routing, templates, fake adapters, throttling, deduplication, and delivery diagnostics.
 
-**Related test / usage files:** `tests/unit/tools/utils/test_notifications.py`, `tests/usage/tools/utils/notifications.py`
+**Related test / usage files:** `tests/unit/app/utils/test_notifications.py`, `tests/usage/app/utils/notifications.py`
 
 **Mapped source checklist items:** `109`
 
@@ -1632,13 +1631,13 @@ Email, Telegram, and desktop notification routing, templates, fake adapters, thr
 - [X] Notification routing must return sent, suppressed, throttled, deduplicated, failed, or disabled status.  _Source: 6. Inputs and Outputs > 6.2 Outputs, line 885_
 - [X] Desktop notification content must not include secrets.  _Source: 10. Security Requirements, line 1096_
 - [X] Documentation must include runbook sections for Event Bus backpressure incidents, notification outage incidents, clock-drift incidents, and schema-validation performance regressions.  _Source: 12. Documentation Requirements, line 1294_
-- [X] Implement `tools/utils/notifications.py` before alert delivery is attached to workflows.  _Source: 14. Implementation Priority Order, line 1339_
+- [X] Implement `app/utils/notifications.py` before alert delivery is attached to workflows.  _Source: 14. Implementation Priority Order, line 1339_
 - [X] Prometheus-compatible metrics include circuit-breaker state, queue depth, idempotency cache size, backpressure count, notification failures, and clock drift.  _Source: 15. Definition of Done, line 1394_
 
 #### Non-Functional & Security Requirements
 
 - [X] Production code must not leak secrets in logs, errors, events, notifications, metrics, or health snapshots.  _Source: 4. Non-Functional Requirements > 4.1 Code Quality, line 682_
-- [X] Importing any `tools.utils` module must not initialize notification clients.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 698_
+- [X] Importing any `app.utils` module must not initialize notification clients.  _Source: 4. Non-Functional Requirements > 4.2 Import-Time Performance and Side Effects, line 698_
 - [X] Wall-clock timestamp serialization must be UTC-first and safe for logs, events, notifications, metrics, health snapshots, and audit metadata.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 713_
 - [X] Notification routing, deduplication, throttling, rate-limit counters, and circuit-breaker state must be thread-safe and/or async-safe.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 722_
 - [X] Notification delivery diagnostics must remain consistent under concurrent alert bursts.  _Source: 4. Non-Functional Requirements > 4.3 Determinism, Concurrency, and Shared State, line 723_
@@ -1669,7 +1668,7 @@ Email, Telegram, and desktop notification routing, templates, fake adapters, thr
 - [X] Documentation must describe notification throttling and deduplication behavior.  _Source: 12. Documentation Requirements, line 1270_
 - [X] Documentation must describe notification markdown and plain-text template fallback behavior.  _Source: 12. Documentation Requirements, line 1271_
 - [X] Documentation must describe circuit-breaker configuration for notification adapters.  _Source: 12. Documentation Requirements, line 1272_
-- [X] Importing `tools.utils` does not import pandas, cryptography, dotenv, broker SDKs, notification clients, pub/sub clients, Prometheus exporters, or network clients unless the specific feature is used.  _Source: 15. Definition of Done, line 1376_
+- [X] Importing `app.utils` does not import pandas, cryptography, dotenv, broker SDKs, notification clients, pub/sub clients, Prometheus exporters, or network clients unless the specific feature is used.  _Source: 15. Definition of Done, line 1376_
 - [X] Notification routing, throttling, deduplication, and circuit-breaker state are thread-safe and/or async-safe.  _Source: 15. Definition of Done, line 1390_
 - [X] External notification adapters have circuit breakers.  _Source: 15. Definition of Done, line 1392_
 - [X] Notification templates support markdown and plain-text fallback rendering.  _Source: 15. Definition of Done, line 1400_
@@ -1707,11 +1706,11 @@ Email, Telegram, and desktop notification routing, templates, fake adapters, thr
 
 ---
 
-### 10.18. `tools/utils/observability.py`
+### 10.18. `app/utils/observability.py`
 
 Prometheus-compatible metrics, Grafana expectations, health snapshots, clock drift, circuit-breaker visibility, and trace correlation.
 
-**Related test / usage files:** `tests/unit/tools/utils/test_observability.py`, `tests/usage/tools/utils/observability.py`
+**Related test / usage files:** `tests/unit/app/utils/test_observability.py`, `tests/usage/app/utils/observability.py`
 
 **Mapped source checklist items:** `104`
 
@@ -1780,7 +1779,7 @@ Prometheus-compatible metrics, Grafana expectations, health snapshots, clock dri
 - [X] Clock-drift health failures must return `CLOCK_DRIFT_DETECTED` where the error boundary requires a deterministic code.  _Source: 9. Error Handling Expectations, line 1037_
 - [X] Metrics labels must not include secrets, tokens, raw payloads, full exception strings, or user-provided arbitrary values.  _Source: 10. Security Requirements, line 1099_
 - [X] Documentation must include a dashboard review checklist to ensure Grafana panels cover system health, not only trading or business outcomes.  _Source: 12. Documentation Requirements, line 1295_
-- [X] Implement `tools/utils/observability.py` before production health gates are accepted.  _Source: 14. Implementation Priority Order, line 1340_
+- [X] Implement `app/utils/observability.py` before production health gates are accepted.  _Source: 14. Implementation Priority Order, line 1340_
 - [X] Health checks include clock-drift monitoring or explicit no-op status.  _Source: 15. Definition of Done, line 1395_
 
 #### Non-Functional & Security Requirements
@@ -1845,24 +1844,24 @@ Prometheus-compatible metrics, Grafana expectations, health snapshots, clock dri
 
 | Expected File                    | Mapped Checklist Items |
 | -------------------------------- | ---------------------- |
-| tools/__init__.py          | 2                      |
-| tools/utils/__init__.py    | 15                     |
-| tools/utils/logger.py            | 44                     |
-| tools/utils/standard.py          | 144                    |
-| tools/utils/errors.py            | 50                     |
-| tools/utils/identity.py          | 37                     |
-| tools/utils/normalization.py     | 41                     |
-| tools/utils/paths.py             | 22                     |
-| tools/utils/dataframe_tools.py   | 31                     |
-| tools/utils/data_quality.py      | 68                     |
-| tools/utils/schema_validation.py | 94                     |
-| tools/utils/security.py          | 83                     |
-| tools/utils/settings.py          | 51                     |
-| tools/utils/auth.py              | 83                     |
-| tools/utils/event_bus.py         | 151                    |
-| tools/utils/error_routing.py     | 34                     |
-| tools/utils/notifications.py     | 109                    |
-| tools/utils/observability.py     | 104                    |
+| app/__init__.py          | 2                      |
+| app/utils/__init__.py    | 15                     |
+| app/utils/logger.py            | 44                     |
+| app/utils/standard.py          | 144                    |
+| app/utils/errors.py            | 50                     |
+| app/utils/identity.py          | 37                     |
+| app/utils/normalization.py     | 41                     |
+| app/utils/paths.py             | 22                     |
+| app/utils/dataframe_tools.py   | 31                     |
+| app/utils/data_quality.py      | 68                     |
+| app/utils/schema_validation.py | 94                     |
+| app/utils/security.py          | 83                     |
+| app/utils/settings.py          | 51                     |
+| app/utils/auth.py              | 83                     |
+| app/utils/event_bus.py         | 151                    |
+| app/utils/error_routing.py     | 34                     |
+| app/utils/notifications.py     | 109                    |
+| app/utils/observability.py     | 104                    |
 
 ### 11.2 Source Section Count Audit
 
@@ -1914,67 +1913,67 @@ Prometheus-compatible metrics, Grafana expectations, health snapshots, clock dri
 
 | Expected File                    | Subgroup                               | Mapped Checklist Items |
 | -------------------------------- | -------------------------------------- | ---------------------- |
-| tools/__init__.py          | Functional Requirements                | 2                      |
-| tools/utils/__init__.py    | Purpose & Scope                        | 1                      |
-| tools/utils/__init__.py    | Functional Requirements                | 10                     |
-| tools/utils/__init__.py    | Non-Functional & Security Requirements | 4                      |
-| tools/utils/logger.py            | Functional Requirements                | 35                     |
-| tools/utils/logger.py            | Non-Functional & Security Requirements | 7                      |
-| tools/utils/logger.py            | Testing & Edge Cases                   | 2                      |
-| tools/utils/standard.py          | Purpose & Scope                        | 24                     |
-| tools/utils/standard.py          | Functional Requirements                | 36                     |
-| tools/utils/standard.py          | Non-Functional & Security Requirements | 51                     |
-| tools/utils/standard.py          | Testing & Edge Cases                   | 33                     |
-| tools/utils/errors.py            | Functional Requirements                | 21                     |
-| tools/utils/errors.py            | Non-Functional & Security Requirements | 24                     |
-| tools/utils/errors.py            | Testing & Edge Cases                   | 5                      |
-| tools/utils/identity.py          | Functional Requirements                | 25                     |
-| tools/utils/identity.py          | Non-Functional & Security Requirements | 4                      |
-| tools/utils/identity.py          | Testing & Edge Cases                   | 8                      |
-| tools/utils/normalization.py     | Functional Requirements                | 26                     |
-| tools/utils/normalization.py     | Non-Functional & Security Requirements | 7                      |
-| tools/utils/normalization.py     | Testing & Edge Cases                   | 8                      |
-| tools/utils/paths.py             | Functional Requirements                | 14                     |
-| tools/utils/paths.py             | Non-Functional & Security Requirements | 1                      |
-| tools/utils/paths.py             | Testing & Edge Cases                   | 7                      |
-| tools/utils/dataframe_tools.py   | Functional Requirements                | 21                     |
-| tools/utils/dataframe_tools.py   | Non-Functional & Security Requirements | 4                      |
-| tools/utils/dataframe_tools.py   | Testing & Edge Cases                   | 6                      |
-| tools/utils/data_quality.py      | Purpose & Scope                        | 2                      |
-| tools/utils/data_quality.py      | Functional Requirements                | 52                     |
-| tools/utils/data_quality.py      | Non-Functional & Security Requirements | 3                      |
-| tools/utils/data_quality.py      | Testing & Edge Cases                   | 11                     |
-| tools/utils/schema_validation.py | Purpose & Scope                        | 1                      |
-| tools/utils/schema_validation.py | Functional Requirements                | 62                     |
-| tools/utils/schema_validation.py | Non-Functional & Security Requirements | 12                     |
-| tools/utils/schema_validation.py | Testing & Edge Cases                   | 19                     |
-| tools/utils/security.py          | Purpose & Scope                        | 2                      |
-| tools/utils/security.py          | Functional Requirements                | 45                     |
-| tools/utils/security.py          | Non-Functional & Security Requirements | 23                     |
-| tools/utils/security.py          | Testing & Edge Cases                   | 13                     |
-| tools/utils/settings.py          | Functional Requirements                | 37                     |
-| tools/utils/settings.py          | Non-Functional & Security Requirements | 5                      |
-| tools/utils/settings.py          | Testing & Edge Cases                   | 9                      |
-| tools/utils/auth.py              | Purpose & Scope                        | 34                     |
-| tools/utils/auth.py              | Functional Requirements                | 20                     |
-| tools/utils/auth.py              | Non-Functional & Security Requirements | 12                     |
-| tools/utils/auth.py              | Testing & Edge Cases                   | 17                     |
-| tools/utils/event_bus.py         | Purpose & Scope                        | 7                      |
-| tools/utils/event_bus.py         | Functional Requirements                | 55                     |
-| tools/utils/event_bus.py         | Non-Functional & Security Requirements | 48                     |
-| tools/utils/event_bus.py         | Testing & Edge Cases                   | 41                     |
-| tools/utils/error_routing.py     | Purpose & Scope                        | 3                      |
-| tools/utils/error_routing.py     | Functional Requirements                | 19                     |
-| tools/utils/error_routing.py     | Non-Functional & Security Requirements | 6                      |
-| tools/utils/error_routing.py     | Testing & Edge Cases                   | 6                      |
-| tools/utils/notifications.py     | Purpose & Scope                        | 12                     |
-| tools/utils/notifications.py     | Functional Requirements                | 33                     |
-| tools/utils/notifications.py     | Non-Functional & Security Requirements | 37                     |
-| tools/utils/notifications.py     | Testing & Edge Cases                   | 27                     |
-| tools/utils/observability.py     | Purpose & Scope                        | 10                     |
-| tools/utils/observability.py     | Functional Requirements                | 52                     |
-| tools/utils/observability.py     | Non-Functional & Security Requirements | 24                     |
-| tools/utils/observability.py     | Testing & Edge Cases                   | 18                     |
+| app/__init__.py          | Functional Requirements                | 2                      |
+| app/utils/__init__.py    | Purpose & Scope                        | 1                      |
+| app/utils/__init__.py    | Functional Requirements                | 10                     |
+| app/utils/__init__.py    | Non-Functional & Security Requirements | 4                      |
+| app/utils/logger.py            | Functional Requirements                | 35                     |
+| app/utils/logger.py            | Non-Functional & Security Requirements | 7                      |
+| app/utils/logger.py            | Testing & Edge Cases                   | 2                      |
+| app/utils/standard.py          | Purpose & Scope                        | 24                     |
+| app/utils/standard.py          | Functional Requirements                | 36                     |
+| app/utils/standard.py          | Non-Functional & Security Requirements | 51                     |
+| app/utils/standard.py          | Testing & Edge Cases                   | 33                     |
+| app/utils/errors.py            | Functional Requirements                | 21                     |
+| app/utils/errors.py            | Non-Functional & Security Requirements | 24                     |
+| app/utils/errors.py            | Testing & Edge Cases                   | 5                      |
+| app/utils/identity.py          | Functional Requirements                | 25                     |
+| app/utils/identity.py          | Non-Functional & Security Requirements | 4                      |
+| app/utils/identity.py          | Testing & Edge Cases                   | 8                      |
+| app/utils/normalization.py     | Functional Requirements                | 26                     |
+| app/utils/normalization.py     | Non-Functional & Security Requirements | 7                      |
+| app/utils/normalization.py     | Testing & Edge Cases                   | 8                      |
+| app/utils/paths.py             | Functional Requirements                | 14                     |
+| app/utils/paths.py             | Non-Functional & Security Requirements | 1                      |
+| app/utils/paths.py             | Testing & Edge Cases                   | 7                      |
+| app/utils/dataframe_tools.py   | Functional Requirements                | 21                     |
+| app/utils/dataframe_tools.py   | Non-Functional & Security Requirements | 4                      |
+| app/utils/dataframe_tools.py   | Testing & Edge Cases                   | 6                      |
+| app/utils/data_quality.py      | Purpose & Scope                        | 2                      |
+| app/utils/data_quality.py      | Functional Requirements                | 52                     |
+| app/utils/data_quality.py      | Non-Functional & Security Requirements | 3                      |
+| app/utils/data_quality.py      | Testing & Edge Cases                   | 11                     |
+| app/utils/schema_validation.py | Purpose & Scope                        | 1                      |
+| app/utils/schema_validation.py | Functional Requirements                | 62                     |
+| app/utils/schema_validation.py | Non-Functional & Security Requirements | 12                     |
+| app/utils/schema_validation.py | Testing & Edge Cases                   | 19                     |
+| app/utils/security.py          | Purpose & Scope                        | 2                      |
+| app/utils/security.py          | Functional Requirements                | 45                     |
+| app/utils/security.py          | Non-Functional & Security Requirements | 23                     |
+| app/utils/security.py          | Testing & Edge Cases                   | 13                     |
+| app/utils/settings.py          | Functional Requirements                | 37                     |
+| app/utils/settings.py          | Non-Functional & Security Requirements | 5                      |
+| app/utils/settings.py          | Testing & Edge Cases                   | 9                      |
+| app/utils/auth.py              | Purpose & Scope                        | 34                     |
+| app/utils/auth.py              | Functional Requirements                | 20                     |
+| app/utils/auth.py              | Non-Functional & Security Requirements | 12                     |
+| app/utils/auth.py              | Testing & Edge Cases                   | 17                     |
+| app/utils/event_bus.py         | Purpose & Scope                        | 7                      |
+| app/utils/event_bus.py         | Functional Requirements                | 55                     |
+| app/utils/event_bus.py         | Non-Functional & Security Requirements | 48                     |
+| app/utils/event_bus.py         | Testing & Edge Cases                   | 41                     |
+| app/utils/error_routing.py     | Purpose & Scope                        | 3                      |
+| app/utils/error_routing.py     | Functional Requirements                | 19                     |
+| app/utils/error_routing.py     | Non-Functional & Security Requirements | 6                      |
+| app/utils/error_routing.py     | Testing & Edge Cases                   | 6                      |
+| app/utils/notifications.py     | Purpose & Scope                        | 12                     |
+| app/utils/notifications.py     | Functional Requirements                | 33                     |
+| app/utils/notifications.py     | Non-Functional & Security Requirements | 37                     |
+| app/utils/notifications.py     | Testing & Edge Cases                   | 27                     |
+| app/utils/observability.py     | Purpose & Scope                        | 10                     |
+| app/utils/observability.py     | Functional Requirements                | 52                     |
+| app/utils/observability.py     | Non-Functional & Security Requirements | 24                     |
+| app/utils/observability.py     | Testing & Edge Cases                   | 18                     |
 
 ---
 
@@ -1985,7 +1984,7 @@ black tools tests
 isort tools tests
 flake8 tools tests
 mypy tools tests
-pytest tests/unit/tools/utils tests/usage/tools/utils --cov=tools.utils --cov-fail-under=80
+pytest tests/unit/app/utils tests/usage/app/utils --cov=app.utils --cov-fail-under=80
 
 # Full-project gate
 black .

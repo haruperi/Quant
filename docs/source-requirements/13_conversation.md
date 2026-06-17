@@ -42,24 +42,25 @@ Conversation defers governed execution, risk-control authority, and action appro
 ### 4.1 Target Folder Structure
 
 ```text
-tools/
-  conversation/
-    __init__.py          # Exposed namespace initialization
-    service.py           # Durable ConversationService
-    config.py            # Conversation configurations validator
-    retention.py         # ConversationRetentionService and redaction engine
-    prompt_builder.py    # Composes prompts from layers
-    ceo_gateway.py       # CEOChatGateway turn runner
-    memory.py            # Durable conversation summaries & pinned facts
-    context/
-      __init__.py
-      service.py         # PageContextService & ContextAssembler
-      builders.py        # Route-aware context builders
-    providers/
-      __init__.py
-      stream.py          # OpenAICompatibleStreamClient & StreamManager
-    errors.py            # Conversation errors definition
-```
+app/
+  services/
+    services/
+        conversation/
+          __init__.py          # Exposed namespace initialization
+          service.py           # Durable ConversationService
+          config.py            # Conversation configurations validator
+          retention.py         # ConversationRetentionService and redaction engine
+          prompt_builder.py    # Composes prompts from layers
+          ceo_gateway.py       # CEOChatGateway turn runner
+          memory.py            # Durable conversation summaries & pinned facts
+          context/
+            __init__.py
+            service.py         # PageContextService & ContextAssembler
+            builders.py        # Route-aware context builders
+          providers/
+            __init__.py
+            stream.py          # OpenAICompatibleStreamClient & StreamManager
+          errors.py            # Conversation errors definition```
 
 ### 4.2 Class Diagrams
 
@@ -81,7 +82,7 @@ classDiagram
 
 ## 5. General / Cross-Cutting Non-Functional Requirements
 
-- [ ] Importing `tools.conversation` shall not require provider credentials, network access, database access, optional provider SDKs, or model availability.
+- [ ] Importing `app.services.conversation` shall not require provider credentials, network access, database access, optional provider SDKs, or model availability.
 - [ ] Conversation persistence shall redact secrets before storing user or assistant message content.
 - [ ] Chat shall remain usable when LLM providers are disabled or unavailable.
 - [ ] Standard and regulated inactive conversations shall be archived rather than immediately purged.
@@ -91,8 +92,8 @@ classDiagram
 
 ### 5.1 Other Global and Cross-Cutting Requirements
 
-- [ ] `tools.conversation.__all__` shall remain the package-level exposed function-tool registry for the conversation domain.
-- [ ] `tools.conversation.__all__` shall be allowed to be empty when no conversation functions are registered as external tools.
+- [ ] `app.services.conversation.__all__` shall remain the package-level exposed function-tool registry for the conversation domain.
+- [ ] `app.services.conversation.__all__` shall be allowed to be empty when no conversation functions are registered as external tools.
 - [ ] Duplicate chat turn requests shall be idempotent by `(user_id, thread_id, request_id)` and shall not create duplicate user messages, duplicate assistant messages, duplicate action drafts, or duplicate lifecycle events.
 - [ ] `list_threads` shall list a user's threads, optionally include archived threads, apply a limit, and filter by case-insensitive title query when supplied.
 - [ ] `rename_thread` shall trim a supplied title, fall back to the default title when the result is empty, persist the title, and return updated thread detail.
@@ -147,7 +148,7 @@ classDiagram
 - [ ] Conversation shall describe unavailable evidence as pending instead of inventing market data, backtest results, risk approvals, owner decisions, or provider behavior.
 - [ ] Conversation shall not claim to execute trades or irreversible actions from chat.
 - [ ] Action drafts shall require human approval and shall preserve side-effect status as draft-only unless external governance changes it.
-- Unit tests proving importing `tools.conversation` does not require provider credentials, network access, database access, optional SDKs, or model availability.
+- Unit tests proving importing `app.services.conversation` does not require provider credentials, network access, database access, optional SDKs, or model availability.
 - [ ] Usage examples shall include expected return shape or representative output for each public capability shown.
 - [ ] Usage examples shall include at least one invalid-input example and one provider-disabled fallback example.
 - [ ] Usage examples shall include an action draft creation example that demonstrates draft-only side-effect status and human approval requirement.
@@ -159,10 +160,10 @@ classDiagram
 
 ## 6. Detailed Requirements by File
 
-### File: tools/conversation/__init__.py
+### File: app/services/conversation/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/conversation/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/conversation/__init__.py`.
 
 #### Functional Requirements
 - [ ] Package initialization shall standardize conversation domain export metadata with tool category `conversation`.
@@ -174,15 +175,15 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/conversation/service.py
+### File: app/services/conversation/service.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/conversation/service.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/conversation/service.py`.
 
 #### Functional Requirements
 - User authentication, identity provisioning, access-token validation, or independent validation that a supplied `user_id` is authentic. Conversation trusts the authenticated actor context supplied by API/UI or an approved service boundary and must fail closed when that context is missing or invalid.
 - [ ] `ConversationService` public methods shall document whether they mutate persistent state, emit audit events, require user ownership checks, or trigger retention escalation.
-- [ ] Package initialization shall make `ConversationService` importable from `tools.conversation`.
+- [ ] Package initialization shall make `ConversationService` importable from `app.services.conversation`.
 - [ ] `ConversationService` shall provide durable chat operations used by the UI API and CEO gateway.
 - [ ] `ConversationService` shall provide the durable conversation API for UI API and CEO gateway callers, including thread lifecycle, redacted message persistence, retention detail, context metadata update, export, memory summary retrieval, pinned fact retrieval, and governed action draft operations.
 - [ ] Request IDs shall be generated by the API/UI gateway or service caller using the approved Utils identity helper once available; missing request IDs may be generated by `stream_turn`, but malformed, oversized, or unsafe request IDs shall return a documented validation error.
@@ -201,10 +202,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/conversation/config.py
+### File: app/services/conversation/config.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/conversation/config.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/conversation/config.py`.
 
 #### Functional Requirements
 - [ ] Each public capability shall document machine-readable error codes for validation, authorization, idempotency, concurrency, provider, persistence, configuration, cancellation, and internal failure paths.
@@ -253,10 +254,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/conversation/retention.py
+### File: app/services/conversation/retention.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/conversation/retention.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/conversation/retention.py`.
 
 #### Functional Requirements
 - [ ] Conversation mutations shall enforce user ownership before reading, writing, exporting, deleting, archiving, restoring, updating retention, creating action drafts, or listing action drafts.
@@ -292,10 +293,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/conversation/prompt_builder.py
+### File: app/services/conversation/prompt_builder.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/conversation/prompt_builder.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/conversation/prompt_builder.py`.
 
 #### Functional Requirements
 - [ ] Public conversation exports shall be documented in a capability contract table before Builder handoff.
@@ -328,10 +329,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/conversation/ceo_gateway.py
+### File: app/services/conversation/ceo_gateway.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/conversation/ceo_gateway.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/conversation/ceo_gateway.py`.
 
 #### Functional Requirements
 - [ ] `CEOChatGateway` shall record telemetry, usage/cost metadata when available, deterministic-decision metadata, planner metadata, CEO memo metadata, page context, attached tools, tool results, generation source, and provider name.
@@ -343,10 +344,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/conversation/memory.py
+### File: app/services/conversation/memory.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/conversation/memory.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/conversation/memory.py`.
 
 #### Functional Requirements
 - [ ] `get_thread` shall return a user's thread detail with thread fields, messages, latest memory summary, and pinned facts, and shall raise a lookup error when the thread is missing.
@@ -365,10 +366,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/conversation/context/__init__.py
+### File: app/services/conversation/context/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/conversation/context/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/conversation/context/__init__.py`.
 
 #### Functional Requirements
 - [ ] No file-specific functional requirements defined. Foundation properties apply.
@@ -379,10 +380,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/conversation/context/service.py
+### File: app/services/conversation/context/service.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/conversation/context/service.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/conversation/context/service.py`.
 
 #### Functional Requirements
 - [ ] No file-specific functional requirements defined. Foundation properties apply.
@@ -393,10 +394,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/conversation/context/builders.py
+### File: app/services/conversation/context/builders.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/conversation/context/builders.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/conversation/context/builders.py`.
 
 #### Functional Requirements
 - [ ] No file-specific functional requirements defined. Foundation properties apply.
@@ -407,10 +408,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/conversation/providers/__init__.py
+### File: app/services/conversation/providers/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/conversation/providers/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/conversation/providers/__init__.py`.
 
 #### Functional Requirements
 - [ ] No file-specific functional requirements defined. Foundation properties apply.
@@ -421,10 +422,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/conversation/providers/stream.py
+### File: app/services/conversation/providers/stream.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/conversation/providers/stream.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/conversation/providers/stream.py`.
 
 #### Functional Requirements
 - [ ] `CEOChatGateway.stream_turn` shall document stable event names, event ordering, required payload fields, terminal event behavior, cancellation behavior, degraded-provider behavior, and error event behavior.
@@ -475,13 +476,13 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/conversation/errors.py
+### File: app/services/conversation/errors.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/conversation/errors.py` (which must inherit from `tools/utils/errors.py` and reuse standard exception types).
+Contains functional, security, and testing requirements specifically assigned to `app/services/conversation/errors.py` (which must inherit from `app/utils/errors.py` and reuse standard exception types).
 
 #### Functional Requirements
-- [ ] All standard system exceptions and error codes shall be imported and reused from `tools.utils.errors` to prevent duplicate declaration. Custom conversation exceptions must inherit from `tools.utils.errors.Error` or `HaruQuantError`.
+- [ ] All standard system exceptions and error codes shall be imported and reused from `app.utils.errors` to prevent duplicate declaration. Custom conversation exceptions must inherit from `app.utils.errors.Error` or `HaruQuantError`.
 - [ ] Each public capability shall document intended consumers, input schema, output schema, documented errors, side effects, authorization expectations, idempotency behavior, risk level, network behavior, persistence behavior, and stability.
 
 #### Non-Functional & Security Requirements
@@ -497,7 +498,7 @@ Contains functional, security, and testing requirements specifically assigned to
 
 #### Example 1
 ```python
-from tools.conversation import ConversationService
+from app.services.conversation import ConversationService
 
 service = ConversationService(repository)
 thread = service.create_thread(user_id="user-1", current_route="/dashboard")
@@ -511,14 +512,14 @@ message = service.add_message(
 
 #### Example 2
 ```python
-from tools.conversation.context.service import ContextAssembler
+from app.services.conversation.context.service import ContextAssembler
 
 page_context = ContextAssembler().from_chat_request(chat_turn_request)
 ```
 
 #### Example 3
 ```python
-from tools.conversation.prompt_builder import PromptBuilder
+from app.services.conversation.prompt_builder import PromptBuilder
 
 prompt = PromptBuilder().build(
     request=chat_turn_request,
@@ -532,7 +533,7 @@ prompt = PromptBuilder().build(
 
 #### Example 4
 ```python
-from tools.conversation.ceo_gateway import CEOChatGateway
+from app.services.conversation.ceo_gateway import CEOChatGateway
 
 gateway = CEOChatGateway(conversation_service)
 for event_name, payload in gateway.stream_turn(
@@ -545,14 +546,14 @@ for event_name, payload in gateway.stream_turn(
 
 #### Example 5
 ```python
-from tools.conversation.retention import redact_sensitive_text
+from app.services.conversation.retention import redact_sensitive_text
 
 safe_text = redact_sensitive_text("api_key=example_secret_value_12345 user@example.com")
 ```
 
 #### Example 6
 ```python
-from tools.conversation import ConversationService
+from app.services.conversation import ConversationService
 
 service = ConversationService(repository)
 try:
@@ -568,7 +569,7 @@ except ConversationArchivedError as exc:
 
 #### Example 7
 ```python
-from tools.conversation.ceo_gateway import CEOChatGateway
+from app.services.conversation.ceo_gateway import CEOChatGateway
 
 gateway = CEOChatGateway(conversation_service, chat_enabled=False)
 events = list(gateway.stream_turn(
@@ -583,7 +584,7 @@ assert events[-1][1]["generation_source"] == "deterministic_fallback"
 
 #### Example 8
 ```python
-from tools.conversation import ConversationService
+from app.services.conversation import ConversationService
 
 service = ConversationService(repository)
 try:

@@ -32,39 +32,44 @@ The Optimization module shall never provide live-trading approval, broker execut
 ### 4.1 Target Folder Structure
 
 ```text
-tools/
+app/
     __init__.py
-    optimization/
-        __init__.py
-        sweeps.py
-        robustness.py
-        splitting.py
-        scoring.py
-        algorithms/
-            __init__.py
-            grid.py
-            random.py
-            bayesian.py
-            genetic.py
-        persistence/
-            __init__.py
-            checkpoint.py
-            repository.py
-        helpers.py
-        models.py
+    services/
+        services/
+                optimization/
+                    __init__.py
+                    sweeps.py
+                    robustness.py
+                    splitting.py
+                    scoring.py
+                    algorithms/
+                        __init__.py
+                        grid.py
+                        random.py
+                        bayesian.py
+                        genetic.py
+                    persistence/
+                        __init__.py
+                        checkpoint.py
+                        repository.py
+                    helpers.py
+                    models.py
 tests/
     unit/
-        tools/
-            optimization/
-                test_sweeps.py
-                test_robustness.py
-                test_splitting.py
-                test_scoring.py
+        app/
+            services/
+                services/
+                        optimization/
+                            test_sweeps.py
+                            test_robustness.py
+                            test_splitting.py
+                            test_scoring.py
     usage/
-        tools/
-            optimization/
-                test_optimization_usage.py
-```
+        app/
+            services/
+                services/
+                        optimization/
+                            test_optimization_usage.py```
 
 ### 4.2 Class Diagrams
 
@@ -112,14 +117,14 @@ classDiagram
 - [ ] Resource overrides shall include approver, reason, requested cap, approved cap, timestamp, request ID, and workflow trust context in audit metadata.
 - [ ] Production signoff shall be blocked when required institutional evidence fields are missing or when performance benchmarks exceed configured limits without approved exception.
 - [ ] Official optimization tools shall not possess live broker credentials, live broker gateway network access, or permission to place or close trades.
-- [ ] Error codes shall use deterministic enum-style values and optimization-specific errors shall use the `OPT_` prefix. Custom optimization exceptions and error codes must inherit and reuse exceptions from `tools.utils.errors` to prevent duplicate declaration.
+- [ ] Error codes shall use deterministic enum-style values and optimization-specific errors shall use the `OPT_` prefix. Custom optimization exceptions and error codes must inherit and reuse exceptions from `app.utils.errors` to prevent duplicate declaration.
 
 ### 5.1 Other Global and Cross-Cutting Requirements
 
 - [ ] Each requirement shall include a stable requirement ID, priority, scope tier, owner, acceptance criteria, and one or more mapped tests before Builder handoff.
 - [ ] Requirement priorities shall distinguish `P0 safety`, `P0 contract`, `P1 current public tool`, `P2 internal rebuild`, and `P3 future`.
 - [ ] Confirmed requirements, assumptions, proposed decisions, pending decisions, and future improvements shall remain separated.
-- [ ] The optimization registry must expose only intentional public service tools through `tools.optimization.__all__`.
+- [ ] The optimization registry must expose only intentional public service tools through `app.services.optimization.__all__`.
 - [ ] The optimization registry must keep exports unique, callable, documented, and synchronized with tests and catalog entries.
 - [ ] Public service tools shall return the documented standard optimization envelope containing `tool_name`, `status`, `request_id`, `data`, `errors`, `warnings`, `audit`, and `side_effects`; unit tests shall verify conformance to this contract.
 - [ ] Public service tools must include request/audit context including request ID, tool name, risk level, and approval requirement.
@@ -218,10 +223,10 @@ classDiagram
 
 ## 6. Detailed Requirements by File
 
-### File: tools/__init__.py
+### File: app/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/__init__.py`.
 
 #### Functional Requirements
 - [ ] Optimization workflows shall record reproducibility context including `strategy_id`, parameter-space definition including constraints, objective, data window start/end, engine type, engine version, seed, cost model hash, simulator realism profile hash, module version, parameter-space hash, candidate hashes, and all candidate results required to reproduce ranking and report outputs.
@@ -238,10 +243,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/optimization/__init__.py
+### File: app/services/optimization/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/optimization/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/optimization/__init__.py`.
 
 #### Functional Requirements
 - [ ] No file-specific functional requirements defined. Foundation properties apply.
@@ -252,10 +257,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/optimization/sweeps.py
+### File: app/services/optimization/sweeps.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/optimization/sweeps.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/optimization/sweeps.py`.
 
 #### Functional Requirements
 - [ ] No file-specific functional requirements defined. Foundation properties apply.
@@ -266,10 +271,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/optimization/robustness.py
+### File: app/services/optimization/robustness.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/optimization/robustness.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/optimization/robustness.py`.
 
 #### Functional Requirements
 - [ ] Optimization workflows must warn about overfitting, parameter instability, and robustness weaknesses instead of presenting candidate scores as live readiness.
@@ -306,10 +311,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/optimization/splitting.py
+### File: app/services/optimization/splitting.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/optimization/splitting.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/optimization/splitting.py`.
 
 #### Functional Requirements
 - [ ] No file-specific functional requirements defined. Foundation properties apply.
@@ -320,10 +325,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/optimization/scoring.py
+### File: app/services/optimization/scoring.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/optimization/scoring.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/optimization/scoring.py`.
 
 #### Functional Requirements
 - [ ] Inactive conditional parameters shall be excluded from executable candidate parameters, candidate hashes, backtest adapter payloads, scoring, and strategy invocation, while remaining available only in metadata or audit records.
@@ -352,10 +357,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/optimization/algorithms/__init__.py
+### File: app/services/optimization/algorithms/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/optimization/algorithms/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/optimization/algorithms/__init__.py`.
 
 #### Functional Requirements
 - [ ] No file-specific functional requirements defined. Foundation properties apply.
@@ -366,10 +371,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/optimization/algorithms/grid.py
+### File: app/services/optimization/algorithms/grid.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/optimization/algorithms/grid.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/optimization/algorithms/grid.py`.
 
 #### Functional Requirements
 - [ ] `run_parameter_sweep` shall package a grid or random parameter search request for downstream optimization execution.
@@ -386,10 +391,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/optimization/algorithms/random.py
+### File: app/services/optimization/algorithms/random.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/optimization/algorithms/random.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/optimization/algorithms/random.py`.
 
 #### Functional Requirements
 - [ ] `random_search` shall sample parameter combinations from distributions and evaluate candidates.
@@ -411,10 +416,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/optimization/algorithms/bayesian.py
+### File: app/services/optimization/algorithms/bayesian.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/optimization/algorithms/bayesian.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/optimization/algorithms/bayesian.py`.
 
 #### Functional Requirements
 - [ ] `bayesian_optimization` shall run Gaussian-process-style Bayesian optimization over a parameter space.
@@ -427,10 +432,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - Bayesian or exploitative optimizer runs must emit an independence warning when only `nominal_trial_count` is available.
 
-### File: tools/optimization/algorithms/genetic.py
+### File: app/services/optimization/algorithms/genetic.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/optimization/algorithms/genetic.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/optimization/algorithms/genetic.py`.
 
 #### Functional Requirements
 - [ ] `genetic_algorithm` shall evolve parameter candidates through population, selection, crossover, mutation, and elitism behavior.
@@ -442,10 +447,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/optimization/persistence/__init__.py
+### File: app/services/optimization/persistence/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/optimization/persistence/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/optimization/persistence/__init__.py`.
 
 #### Functional Requirements
 - [ ] No file-specific functional requirements defined. Foundation properties apply.
@@ -456,10 +461,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/optimization/persistence/checkpoint.py
+### File: app/services/optimization/persistence/checkpoint.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/optimization/persistence/checkpoint.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/optimization/persistence/checkpoint.py`.
 
 #### Functional Requirements
 - [ ] The module shall write optimization runs, candidates, candidate results, checkpoints, evidence packages, and audit records only through an approved repository interface.
@@ -479,10 +484,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - A checkpoint write interrupted mid-write must not corrupt the latest valid checkpoint.
 - A corrupted checkpoint must fail closed or fall back to the previous valid checkpoint with an audit warning.
 
-### File: tools/optimization/persistence/repository.py
+### File: app/services/optimization/persistence/repository.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/optimization/persistence/repository.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/optimization/persistence/repository.py`.
 
 #### Functional Requirements
 - [ ] Execution-capable workflows shall require an approved execution profile with resource caps, timeout policy, repository policy, and safety gates.
@@ -503,10 +508,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/optimization/helpers.py
+### File: app/services/optimization/helpers.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/optimization/helpers.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/optimization/helpers.py`.
 
 #### Functional Requirements
 - [ ] `service_strategy_class` shall normalize either a concrete strategy class or a callable strategy-class factory.
@@ -535,10 +540,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/optimization/models.py
+### File: app/services/optimization/models.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/optimization/models.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/optimization/models.py`.
 
 #### Functional Requirements
 - [ ] `OptimizationResult` shall represent one candidate optimization result with parameters, score, metrics, and metadata.
@@ -570,7 +575,7 @@ Contains functional, security, and testing requirements specifically assigned to
 
 #### Example 1
 ```python
-from tools.optimization import run_parameter_sweep, rank_parameter_sets
+from app.services.optimization import run_parameter_sweep, rank_parameter_sets
 
 sweep = run_parameter_sweep(
     request_id="req_optimization_sweep",
@@ -598,7 +603,7 @@ assert ranked["data"]["ranked"][0]["score"] == 1.1
 
 #### Example 2
 ```python
-from tools.optimization import detect_overfit_parameters, calculate_robustness_score
+from app.services.optimization import detect_overfit_parameters, calculate_robustness_score
 
 overfit = detect_overfit_parameters(
     in_sample_score=1.2,
@@ -619,7 +624,7 @@ robustness = calculate_robustness_score(
 
 #### Example 3
 ```python
-from tools.optimization import run_spread_stress_test, run_walk_forward_optimization
+from app.services.optimization import run_spread_stress_test, run_walk_forward_optimization
 
 stress = run_spread_stress_test(
     strategy_id="strategy_alpha",
@@ -664,7 +669,7 @@ evidence_metadata = {
 
 #### Example 5
 ```python
-from tools.optimization import run_parameter_sweep
+from app.services.optimization import run_parameter_sweep
 
 random_sweep = run_parameter_sweep(
     request_id="req_optimization_random_sweep",
@@ -687,7 +692,7 @@ assert random_sweep["side_effects"]["places_trade"] is False
 
 #### Example 6
 ```python
-from tools.optimization import calculate_parameter_stability
+from app.services.optimization import calculate_parameter_stability
 
 stability_error = calculate_parameter_stability(
     request_id="req_optimization_stability_error",
@@ -702,7 +707,7 @@ assert stability_error["errors"][0]["code"].startswith("OPT_")
 
 #### Example 7
 ```python
-from tools.optimization import run_parameter_sweep
+from app.services.optimization import run_parameter_sweep
 
 invalid_grid = run_parameter_sweep(
     request_id="req_optimization_invalid_grid",

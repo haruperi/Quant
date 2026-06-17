@@ -32,36 +32,41 @@ The module should produce canonical, versioned analytics evidence such as `Analy
 ### 4.1 Target Folder Structure
 
 ```text
-tools/
+app/
     __init__.py
-    analytics/
-        __init__.py
-        adapters.py
-        metrics/
-            __init__.py
-            trade.py
-            equity.py
-            drawdown.py
-            risk.py
-            ratios.py
-            distributions.py
-            benchmark.py
-            efficiency.py
-        scorecard.py
-        report.py
-        dashboard.py
+    services/
+        services/
+                analytics/
+                    __init__.py
+                    adapters.py
+                    metrics/
+                        __init__.py
+                        trade.py
+                        equity.py
+                        drawdown.py
+                        risk.py
+                        ratios.py
+                        distributions.py
+                        benchmark.py
+                        efficiency.py
+                    scorecard.py
+                    report.py
+                    dashboard.py
 tests/
     unit/
-        tools/
-            analytics/
-                test_metrics.py
-                test_report.py
-                test_scorecard.py
+        app/
+            services/
+                services/
+                        analytics/
+                            test_metrics.py
+                            test_report.py
+                            test_scorecard.py
     usage/
-        tools/
-            analytics/
-                test_analytics_usage.py
-```
+        app/
+            services/
+                services/
+                        analytics/
+                            test_analytics_usage.py```
 
 ### 4.2 Class Diagrams
 
@@ -112,7 +117,7 @@ classDiagram
 - [ ] Every official exported analytics tool must be callable, documented, and accept a `request_id` parameter for traceability.
 - [ ] Official analytics tools must validate `request_id`; missing, empty, malformed, or unsafe request IDs must return a structured validation error envelope.
 - [ ] Official analytics tools must return the standard tool envelope on success and on controlled validation failure.
-- [ ] Invalid or missing required inputs must fail with a structured error envelope, not an uncaught exception. Custom analytics exceptions and error codes must inherit and reuse exceptions from `tools.utils.errors` to prevent duplicate declaration.
+- [ ] Invalid or missing required inputs must fail with a structured error envelope, not an uncaught exception. Custom analytics exceptions and error codes must inherit and reuse exceptions from `app.utils.errors` to prevent duplicate declaration.
 - [ ] Date/time analytics must parse supplied open/close timestamps, support both datetime-like and numeric timestamp inputs where implemented, and return JSON-safe values for durations and timestamps.
 - [ ] Statistical validation tools must expose deterministic options such as seeds, bootstrap/permutation counts, block sizes, confidence levels, alpha levels, and sample-size thresholds where supported.
 - [ ] The module must separate calculated facts from warnings, caveats, decisions, and recommended actions.
@@ -123,7 +128,7 @@ classDiagram
 - [ ] Low-level metric helpers such as individual average, skewness, kurtosis, tail-ratio, tracking-error, ulcer-index, omega-ratio, payoff-ratio, and date helper functions must remain internal/support-only unless explicitly promoted by the Official Analytics Tool Catalog.
 - [ ] Low-level metric kernels must not be exposed as official agent/API tools unless explicitly approved in the Official Analytics Tool Catalog.
 - [ ] The analytics registry must distinguish official tools, internal metric kernels, compatibility aliases, and deprecated exports.
-- [ ] Agentic workflows must import analytics capabilities from `tools.analytics` rather than deep module files.
+- [ ] Agentic workflows must import analytics capabilities from `app.services.analytics` rather than deep module files.
 - [ ] Official analytics tools must log call start, validation failure, successful completion, controlled warning, and execution failure without logging secrets or full raw private payloads.
 - [ ] Warnings and quality flags must include code, severity, affected section, source context, and enough bounded detail for downstream review.
 - [ ] Warning severity must support at least informational, warning, major, critical, and blocker-level meanings.
@@ -226,7 +231,7 @@ classDiagram
 - [ ] Documentation must include success examples for each approved official high-level tool.
 - [ ] Documentation must include validation-failure examples showing the standard error envelope.
 - [ ] Low-level metric examples must be labeled as internal/developer examples when they are not official agent/API tools.
-- ADR Required: `ADR-ANALYTICS-PUBLIC-SURFACE` must classify existing `tools.analytics` metric functions as official high-level tools, internal kernels, compatibility exports, deprecated exports, or reference-only historical names before Builder handoff.
+- ADR Required: `ADR-ANALYTICS-PUBLIC-SURFACE` must classify existing `app.services.analytics` metric functions as official high-level tools, internal kernels, compatibility exports, deprecated exports, or reference-only historical names before Builder handoff.
 - Metric kernels must not be treated as agent/API-facing just because they exist in the repository or appear in historical examples.
 - Upstream result schemas from Simulation, Backtesting, Paper, Live, Optimization, Trading receipts, and Portfolio must be versioned and mapped through a schema compatibility matrix.
 - Adapter logic from approved upstream result schemas into canonical `TradingResult` is Analytics responsibility; breaking upstream schema changes must be recorded through the compatibility matrix before Analytics can safely consume them.
@@ -241,10 +246,10 @@ classDiagram
 
 ## 6. Detailed Requirements by File
 
-### File: tools/__init__.py
+### File: app/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/__init__.py`.
 
 #### Functional Requirements
 - [ ] Undefined or unsupported metric values must be represented as omitted fields or `None` according to the output schema plus structured warnings or skipped-section metadata; they must not be serialized as `NaN`, infinity, fabricated zero, or display-only caps.
@@ -268,10 +273,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/analytics/__init__.py
+### File: app/services/analytics/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/analytics/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/analytics/__init__.py`.
 
 #### Functional Requirements
 - [ ] No file-specific functional requirements defined. Foundation properties apply.
@@ -282,10 +287,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/analytics/adapters.py
+### File: app/services/analytics/adapters.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/analytics/adapters.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/analytics/adapters.py`.
 
 #### Functional Requirements
 - Deterministic analytics adapters that convert `BacktestResult`, `PaperTradingResult`, `LiveTradingResult`, portfolio results, and other normalized caller outputs into a canonical `TradingResult` view without silent field loss; adapters must fail closed with structured errors when required fields, schema versions, or compatibility mappings are missing or incompatible.
@@ -299,10 +304,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/analytics/metrics/__init__.py
+### File: app/services/analytics/metrics/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/analytics/metrics/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/analytics/metrics/__init__.py`.
 
 #### Functional Requirements
 - [ ] No file-specific functional requirements defined. Foundation properties apply.
@@ -313,10 +318,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/analytics/metrics/trade.py
+### File: app/services/analytics/metrics/trade.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/analytics/metrics/trade.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/analytics/metrics/trade.py`.
 
 #### Functional Requirements
 - [ ] Official analytics tools must not write files, modify databases, place trades, or require network access.
@@ -408,10 +413,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/analytics/metrics/equity.py
+### File: app/services/analytics/metrics/equity.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/analytics/metrics/equity.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/analytics/metrics/equity.py`.
 
 #### Functional Requirements
 - [ ] Equity and return analytics must sort and normalize supplied series deterministically; optional `NaN`/`NaT` observations may be filtered only with recorded warning metadata, required `NaN`/`NaT` fields must fail validation unless the Metric Definition Catalog marks them skippable, and `Infinity`/`-Infinity` at official boundaries must return `VALIDATION_FAILED`.
@@ -440,10 +445,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - Dashboard truncation that must preserve first/last points, important extrema, drawdown troughs, equity highs, and major warning timestamps.
 
-### File: tools/analytics/metrics/drawdown.py
+### File: app/services/analytics/metrics/drawdown.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/analytics/metrics/drawdown.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/analytics/metrics/drawdown.py`.
 
 #### Functional Requirements
 - [ ] Strategy-quality evaluation must rely only on the supplied report payload and must surface warnings for weak profitability, high drawdown, overfitting risk, small sample size, or other observable quality concerns.
@@ -483,10 +488,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/analytics/metrics/risk.py
+### File: app/services/analytics/metrics/risk.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/analytics/metrics/risk.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/analytics/metrics/risk.py`.
 
 #### Functional Requirements
 - [ ] Official analytics tools must be low-risk, read-only operations.
@@ -526,10 +531,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/analytics/metrics/ratios.py
+### File: app/services/analytics/metrics/ratios.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/analytics/metrics/ratios.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/analytics/metrics/ratios.py`.
 
 #### Functional Requirements
 - [ ] `benchmark_information_ratio` shall expose benchmark information ratio without colliding with the ratios module export.
@@ -567,10 +572,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/analytics/metrics/distributions.py
+### File: app/services/analytics/metrics/distributions.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/analytics/metrics/distributions.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/analytics/metrics/distributions.py`.
 
 #### Functional Requirements
 - [ ] `return_distribution` shall calculate a statistical summary of returns.
@@ -599,10 +604,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/analytics/metrics/benchmark.py
+### File: app/services/analytics/metrics/benchmark.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/analytics/metrics/benchmark.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/analytics/metrics/benchmark.py`.
 
 #### Functional Requirements
 - [ ] Benchmark analytics must align strategy and benchmark return streams before comparison and must handle missing or non-overlapping periods safely.
@@ -634,10 +639,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/analytics/metrics/efficiency.py
+### File: app/services/analytics/metrics/efficiency.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/analytics/metrics/efficiency.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/analytics/metrics/efficiency.py`.
 
 #### Functional Requirements
 - [ ] `capital_efficiency` shall calculate return per unit of nominal capital deployed.
@@ -652,10 +657,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/analytics/scorecard.py
+### File: app/services/analytics/scorecard.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/analytics/scorecard.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/analytics/scorecard.py`.
 
 #### Functional Requirements
 - [ ] No metric may be referenced in an official tool schema, report schema, dashboard payload, scorecard rule, warning rule, or quality-flag rule until its Metric Definition Catalog entry is approved.
@@ -668,10 +673,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: tools/analytics/report.py
+### File: app/services/analytics/report.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/analytics/report.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/analytics/report.py`.
 
 #### Functional Requirements
 - [ ] Overview/report tools must combine lower-level analytics into grouped payloads that remain serializable for API and dashboard consumers.
@@ -719,10 +724,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - Partial report outputs that must remain non-promotable and JSON-safe.
 
-### File: tools/analytics/dashboard.py
+### File: app/services/analytics/dashboard.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/analytics/dashboard.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/analytics/dashboard.py`.
 
 #### Functional Requirements
 - [ ] Dashboard payloads must include chart/table data, finite numeric values, ISO-8601 timestamps, units, warnings, and metadata sufficient for UI/API consumers.
@@ -754,7 +759,7 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Example 1
 ```python
 import pandas as pd
-from tools.analytics import total_trades, win_rate, profit_factor
+from app.services.analytics import total_trades, win_rate, profit_factor
 
 trades = pd.DataFrame(
     [
@@ -775,7 +780,7 @@ assert profit_factor_result["metadata"]["read_only"] is True
 #### Example 2
 ```python
 import pandas as pd
-from tools.analytics import get_analytics_overview
+from app.services.analytics import get_analytics_overview
 
 trades = pd.DataFrame(
     [
@@ -808,7 +813,7 @@ else:
 
 #### Example 3
 ```python
-from tools.analytics import sample_size_warning, bootstrap_probability_above_threshold
+from app.services.analytics import sample_size_warning, bootstrap_probability_above_threshold
 
 returns = [0.01, -0.005, 0.012, 0.004, -0.003]
 
@@ -828,7 +833,7 @@ probability = bootstrap_probability_above_threshold(
 
 #### Example 4
 ```python
-from tools.analytics import build_analytics_report, evaluate_strategy_quality
+from app.services.analytics import build_analytics_report, evaluate_strategy_quality
 
 trading_result = {
     "schema_version": "1.3.1",
@@ -873,7 +878,7 @@ if report_response["status"] == "success":
 
 #### Example 5
 ```python
-from tools.analytics import build_portfolio_analytics_report, compare_analytics_reports
+from app.services.analytics import build_portfolio_analytics_report, compare_analytics_reports
 
 portfolio_response = build_portfolio_analytics_report(
     {
@@ -895,7 +900,7 @@ comparison_response = compare_analytics_reports(
 
 #### Example 6
 ```python
-from tools.analytics import build_analytics_report
+from app.services.analytics import build_analytics_report
 
 response = build_analytics_report(
     {"schema_version": "1.3.1", "result_id": "missing_required_sections"},
@@ -912,7 +917,7 @@ assert response["metadata"]["places_trade"] is False
 
 #### Example 7
 ```python
-from tools.analytics import build_analytics_report
+from app.services.analytics import build_analytics_report
 
 response = build_analytics_report(
     {

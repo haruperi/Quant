@@ -45,28 +45,33 @@ The module may attach metadata about external domains to decisions and diagnosti
 ### 4.1 Target Folder Structure
 
 ```text
-tools/
+app/
     __init__.py
-    strategies/
-        __init__.py
-        registry.py
-        protocols.py
-        errors.py
-        vectorized.py
-        event.py
-        sandbox.py
+    services/
+        services/
+                strategies/
+                    __init__.py
+                    registry.py
+                    protocols.py
+                    errors.py
+                    vectorized.py
+                    event.py
+                    sandbox.py
 tests/
     unit/
-        tools/
-            strategies/
-                test_registry.py
-                test_vectorized.py
-                test_event.py
+        app/
+            services/
+                services/
+                        strategies/
+                            test_registry.py
+                            test_vectorized.py
+                            test_event.py
     usage/
-        tools/
-            strategies/
-                test_strategy_usage.py
-```
+        app/
+            services/
+                services/
+                        strategies/
+                            test_strategy_usage.py```
 
 ### 4.2 Class Diagrams
 
@@ -136,11 +141,11 @@ flowchart LR
 
 - [X] [REQ-STRAT-009] Public schema changes shall require a schema-version change and compatibility review.
 - [X] [REQ-STRAT-010] Error examples and diagnostics examples shall include `schema_version`, `request_id`, and `correlation_id`.
-- [X] [REQ-STRAT-023] The strategy module shall live under `tools/strategies/`.
+- [X] [REQ-STRAT-023] The strategy module shall live under `app/services/strategies/`.
 - [X] [REQ-STRAT-024] Strategies shall produce decisions, signals, trade intents, or strategy state updates.
 - [X] [REQ-STRAT-025] Strategies shall not directly mutate official account, order, deal, position, pending-order, margin, equity, journal, or execution timestamp state.
 - [X] [REQ-STRAT-027] Strategies shall not finalize official order volume, margin acceptance, execution price, fill status, or risk approval.
-- [X] [REQ-STRAT-028] Official execution, matching, accounting, journal, reporting, and production-realism classification shall remain owned by `tools/simulation/`.
+- [X] [REQ-STRAT-028] Official execution, matching, accounting, journal, reporting, and production-realism classification shall remain owned by `app/services/simulation/`.
 - [X] [REQ-STRAT-034] Martingale, grid, pyramiding, basket recovery, and trade-decomposition strategies shall execute through the canonical simulation tick engine.
 - [X] [REQ-STRAT-035] Advanced strategies shall query the simulation engine for actual fills, remaining volume, average price, and open exposure through approved read-only interfaces.
 - [X] [REQ-STRAT-036] Advanced strategies that need fills or open positions shall use `ReadOnlyExecutionStateQuery` and `ReadOnlyExecutionStateSnapshot`; direct access to official simulation, execution, account, or position state is prohibited.
@@ -458,10 +463,10 @@ flowchart LR
 
 ## 6. Detailed Requirements by File
 
-### File: tools/__init__.py
+### File: app/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/__init__.py`.
 
 #### Functional Requirements
 - [X] [REQ-STRAT-281] Strategies shall not assume infinite liquidity at the best bid or ask.
@@ -472,10 +477,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [X] No file-specific testing requirements defined.
 
-### File: tools/strategies/__init__.py
+### File: app/services/strategies/__init__.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/strategies/__init__.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/strategies/__init__.py`.
 
 #### Functional Requirements
 - [X] No file-specific functional requirements defined. Foundation properties apply.
@@ -486,10 +491,10 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [X] No file-specific testing requirements defined.
 
-### File: tools/strategies/registry.py
+### File: app/services/strategies/registry.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/strategies/registry.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/strategies/registry.py`.
 
 #### Functional Requirements
 - [X] [REQ-STRAT-038] A strategy registry entry may declare `min_expected_alpha`, `max_acceptable_transaction_cost`, both, or neither.
@@ -530,10 +535,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [X] [REQ-STRAT-401] Strategy registry tests shall verify unapproved modules are rejected.
 - [X] [REQ-STRAT-411] Strategy tests shall include contract tests against data, indicator, simulation, and registry interfaces.
 
-### File: tools/strategies/protocols.py
+### File: app/services/strategies/protocols.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/strategies/protocols.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/strategies/protocols.py`.
 
 #### Functional Requirements
 - [X] No file-specific functional requirements defined. Foundation properties apply.
@@ -544,13 +549,13 @@ Contains functional, security, and testing requirements specifically assigned to
 #### Testing & Edge Cases
 - [X] No file-specific testing requirements defined.
 
-### File: tools/strategies/errors.py
+### File: app/services/strategies/errors.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/strategies/errors.py` (which must inherit from `tools/utils/errors.py` and reuse standard exception types).
+Contains functional, security, and testing requirements specifically assigned to `app/services/strategies/errors.py` (which must inherit from `app/utils/errors.py` and reuse standard exception types).
 
 #### Functional Requirements
-- [X] [REQ-STRAT-DRY-01] All standard system exceptions and error codes shall be imported and reused from `tools.utils.errors` to prevent duplicate declaration. Custom strategy exceptions must inherit from `tools.utils.errors.Error` or `HaruQuantError`.
+- [X] [REQ-STRAT-DRY-01] All standard system exceptions and error codes shall be imported and reused from `app.utils.errors` to prevent duplicate declaration. Custom strategy exceptions must inherit from `app.utils.errors.Error` or `HaruQuantError`.
 - [X] [REQ-STRAT-054] Strategy access to prohibited current-bar or future data shall fail with the canonical strategy-domain error code `STRATEGY_LOOKAHEAD_DETECTED`; lower-level simulation lookahead errors, if any, shall be mapped to this code before returning strategy diagnostics.
 - [X] [REQ-STRAT-186] Repeated strategy errors shall trigger deterministic disablement or escalation according to configuration.
 - [X] [REQ-STRAT-307] Strategies shall return safe, deterministic errors for invalid configuration or unsupported inputs.
@@ -563,10 +568,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [X] [REQ-STRAT-422] Error-code tests shall verify lower-level lookahead errors map to `STRATEGY_LOOKAHEAD_DETECTED` at strategy-module boundaries.
 - [X] [REQ-STRAT-423] Dependency-failure tests shall verify data-layer failures map to `STRATEGY_DATA_NOT_READY` or approved data errors and indicator-layer failures map to `INDICATOR_MODULE_ERROR`.
 
-### File: tools/strategies/vectorized.py
+### File: app/services/strategies/vectorized.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/strategies/vectorized.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/strategies/vectorized.py`.
 
 #### Functional Requirements
 - [X] [REQ-STRAT-004] Each public capability shall define whether results are returned as a single batch, iterator, stream, or async stream; `run_vectorized_strategy_signals` shall be treated as batch output until a streaming contract is explicitly approved.
@@ -590,10 +595,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [X] [REQ-STRAT-342] Clock drift detected during a long-running vectorized batch shall not change the batch decision timestamp; the batch shall either complete under the original timestamp or fail atomically according to the configured clock-drift policy.
 - [X] [REQ-STRAT-394] Strategy tests shall cover vectorized signal strategies.
 
-### File: tools/strategies/event.py
+### File: app/services/strategies/event.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/strategies/event.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/strategies/event.py`.
 
 #### Functional Requirements
 - [X] [REQ-STRAT-026] Strategies shall not directly create official fills, deals, journal events, or reports.
@@ -631,10 +636,10 @@ Contains functional, security, and testing requirements specifically assigned to
 - [X] [REQ-STRAT-418] Boundary tests shall verify strategies cannot create fills, deals, official orders, reports, or journal events directly.
 - [X] [REQ-STRAT-425] Concurrency tests shall verify read-only state snapshot isolation and stable event ordering for simultaneous events.
 
-### File: tools/strategies/sandbox.py
+### File: app/services/strategies/sandbox.py
 
 #### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `tools/strategies/sandbox.py`.
+Contains functional, security, and testing requirements specifically assigned to `app/services/strategies/sandbox.py`.
 
 #### Functional Requirements
 - [X] [REQ-STRAT-078] The strategy input path shall accept only registered strategy identifiers, validated strategy configuration schemas, or code explicitly vetted and sandboxed by the orchestration layer.
