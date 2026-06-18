@@ -1,4 +1,4 @@
-﻿## Phase 5 Risk Governance â€” Institutional RiskGovernor Rewrite
+﻿## Phase 5 Risk Governance Institutional RiskGovernor Rewrite
 
 ### Goal
 

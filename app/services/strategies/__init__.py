@@ -55,6 +55,7 @@ from app.utils.errors import (
     StrategyConfigError,
     StrategyDataNotReadyError,
     StrategyDataQualityGateFailedError,
+    StrategyDependencyHashMismatchError,
     StrategyDeprecatedError,
     StrategyDriftDetectedError,
     StrategyDuplicateIntentError,
@@ -76,9 +77,11 @@ from app.utils.errors import (
     StrategySchemaValidationFailedError,
     StrategyStaleDataError,
     StrategyTimeoutError,
+    StrategyUnapprovedModuleError,
     StrategyUnsupportedTimingPolicyError,
     StrategyValidationArtifactRequiredError,
     StrategyVersionConstraintUnsatisfiableError,
+    StrategyVolumeParticipationExceededError,
     map_exception_to_strategy_error,
 )
 
