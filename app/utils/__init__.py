@@ -11,16 +11,25 @@ Export groups below are organized by implementation source file.
 # logger.py exports
 # security.py exports
 from app.core.security import (
+    MAX_REDACTION_DEPTH,
+    SECRET_VERSION_NOT_FOUND,
     SENSITIVE_KEY_PATTERN,
+    RedactionDiagnostics,
+    SecretVersion,
     classify_secret_key,
     decrypt_text,
+    decrypt_value,
     encrypt_text,
+    encrypt_value,
     generate_encryption_key,
     hash_password,
+    load_encryption_key,
     redact_mapping,
+    redact_mapping_with_diagnostics,
     redact_payload,
     redact_text,
     redact_value,
+    select_active_secret_version,
     verify_password,
 )
 from app.utils.auth import (
@@ -161,6 +170,17 @@ from app.utils.observability import (
 # paths.py exports
 from app.utils.paths import ensure_dir, ensure_parent_dir, normalize_path
 
+# settings.py exports
+from app.utils.settings import (
+    CONFIGURATION_ERROR,
+    HARUQUANT_HOME,
+    HaruQuantConfigurationError,
+    LoggingSettings,
+    RuntimeSettings,
+    inject_runtime_settings,
+    load_runtime_settings,
+)
+
 # standard.py exports
 from app.utils.standard import (
     AlertDeduplicator,
@@ -203,12 +223,16 @@ from app.utils.validations import (
 
 __all__ = [
     "APPROVED_ERROR_CODES",
+    "CONFIGURATION_ERROR",
     "DEFAULT_TIMEZONE",
     "DEFAULT_VERSION",
     "GRAFANA_DASHBOARD_EXPECTATIONS",
+    "HARUQUANT_HOME",
     "ID_PREFIXES",
+    "MAX_REDACTION_DEPTH",
     "OHLCV_COLUMNS",
     "OHLC_COLUMNS",
+    "SECRET_VERSION_NOT_FOUND",
     "SENSITIVE_KEY_PATTERN",
     "UTC",
     "AlertDeduplicator",
@@ -227,8 +251,10 @@ __all__ = [
     "EventEnvelope",
     "ExternalServiceError",
     "FakeNotificationAdapter",
+    "HaruQuantConfigurationError",
     "HealthSnapshot",
     "InMemoryEventBus",
+    "LoggingSettings",
     "MetricRecord",
     "MetricRegistry",
     "NotificationMessage",
@@ -237,6 +263,9 @@ __all__ = [
     "PublishResult",
     "QualityIssue",
     "QualityProfile",
+    "RedactionDiagnostics",
+    "RuntimeSettings",
+    "SecretVersion",
     "SecurityError",
     "StandardEnvelope",
     "StandardResponse",
@@ -267,8 +296,10 @@ __all__ = [
     "configure_logging",
     "dataframe_columns",
     "decrypt_text",
+    "decrypt_value",
     "details_for_exception",
     "encrypt_text",
+    "encrypt_value",
     "ensure_dir",
     "ensure_parent_dir",
     "ensure_version",
@@ -289,10 +320,13 @@ __all__ = [
     "get_execution_ms",
     "get_logger",
     "hash_password",
+    "inject_runtime_settings",
     "inspect_ohlcv_quality",
     "is_official_tool_allowed",
     "is_stale",
     "iter_dataframe_records",
+    "load_encryption_key",
+    "load_runtime_settings",
     "logger",
     "message_for",
     "normalize_error_code",
@@ -308,6 +342,7 @@ __all__ = [
     "record_metric",
     "record_tool_call_metric",
     "redact_mapping",
+    "redact_mapping_with_diagnostics",
     "redact_payload",
     "redact_text",
     "redact_value",
@@ -316,6 +351,7 @@ __all__ = [
     "response_from_exception",
     "route_error",
     "route_notification",
+    "select_active_secret_version",
     "serialize_dataframe_records",
     "set_trace_context",
     "stable_identifier",

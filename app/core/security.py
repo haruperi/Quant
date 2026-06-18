@@ -10,7 +10,7 @@ import os
 import re
 import time
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, TypedDict
 
 if TYPE_CHECKING:
     from app.utils.standard import StandardResponse
@@ -28,6 +28,10 @@ TRADES = False
 REQUIRES_NETWORK = False
 
 MIN_PASSWORD_HASH_ITERATIONS = 100_000
+MAX_REDACTION_DEPTH = 12
+SECRET_VERSION_NOT_FOUND = (
+    "SECRET_VERSION_NOT_FOUND"  # pragma: allowlist secret  # noqa: S105
+)
 SENSITIVE_KEY_PATTERN = re.compile(
     r"(password|passphrase|token|secret|credential|api_?key|authorization|private)",
     re.IGNORECASE,
@@ -36,6 +40,21 @@ SECRET_VALUE_PATTERN = re.compile(
     r"(?i)((?:password|token|secret|api_?key|authorization)\s*[:=]\s*)[^\s,;&]+"
 )
 LONG_SECRET_PATTERN = re.compile(r"(?i)\b(?:[a-f0-9]{32,}|eyJ[A-Za-z0-9_.=-]+)\b")
+
+
+class RedactionDiagnostics(TypedDict):
+    """Diagnostics describing redacted fields without exposing values."""
+
+    redacted_paths: list[str]
+    truncated_paths: list[str]
+
+
+class SecretVersion(TypedDict, total=False):
+    """Secret-version metadata accepted by selection helpers."""
+
+    version: int | str
+    active: bool
+    value: str
 
 
 def redact_text(text: str, *, replacement: str = "[REDACTED]") -> str:
@@ -48,27 +67,152 @@ def redact_text(text: str, *, replacement: str = "[REDACTED]") -> str:
     return LONG_SECRET_PATTERN.sub(replacement, redacted)
 
 
-def redact_mapping(payload: Mapping[str, object]) -> dict[str, object]:
+def redact_mapping(
+    payload: Mapping[str, object],
+    *,
+    allowlist: set[str] | None = None,
+    max_depth: int = MAX_REDACTION_DEPTH,
+) -> dict[str, object]:
     """Return a recursively redacted mapping copy."""
-    redacted: dict[str, object] = {}
-    for key, value in payload.items():
-        key_text = str(key)
-        if SENSITIVE_KEY_PATTERN.search(key_text):
-            redacted[key_text] = "[REDACTED]"
-        else:
-            redacted[key_text] = redact_value(value)
+    diagnostics = _new_diagnostics()
+    redacted = _redact_mapping(
+        payload,
+        allowlist=allowlist or set(),
+        diagnostics=diagnostics,
+        path="",
+        depth=0,
+        max_depth=max_depth,
+    )
     return redacted
 
 
-def redact_value(value: object) -> object:
+def redact_value(
+    value: object,
+    *,
+    allowlist: set[str] | None = None,
+    max_depth: int = MAX_REDACTION_DEPTH,
+) -> object:
     """Return a redacted JSON-like value."""
+    diagnostics = _new_diagnostics()
+    return _redact_value(
+        value,
+        allowlist=allowlist or set(),
+        diagnostics=diagnostics,
+        path="",
+        depth=0,
+        max_depth=max_depth,
+    )
+
+
+def redact_mapping_with_diagnostics(
+    payload: Mapping[str, object],
+    *,
+    allowlist: set[str] | None = None,
+    max_depth: int = MAX_REDACTION_DEPTH,
+) -> tuple[dict[str, object], RedactionDiagnostics]:
+    """Return a redacted copy and bounded field-level diagnostics.
+
+    Args:
+        payload: Mapping to redact.
+        allowlist: Narrow field-path allowlist for safe values.
+        max_depth: Maximum recursive redaction depth.
+
+    Returns:
+        Tuple of redacted mapping and diagnostics containing redacted/truncated
+        field paths only.
+    """
+    diagnostics = _new_diagnostics()
+    redacted = _redact_mapping(
+        payload,
+        allowlist=allowlist or set(),
+        diagnostics=diagnostics,
+        path="",
+        depth=0,
+        max_depth=max_depth,
+    )
+    return redacted, diagnostics
+
+
+def _new_diagnostics() -> RedactionDiagnostics:
+    """Build empty redaction diagnostics."""
+    return {"redacted_paths": [], "truncated_paths": []}
+
+
+def _redact_value(
+    value: object,
+    *,
+    allowlist: set[str],
+    diagnostics: RedactionDiagnostics,
+    path: str,
+    depth: int,
+    max_depth: int,
+) -> object:
+    """Return redacted JSON-like value with recursion protection."""
+    if depth > max_depth:
+        diagnostics["truncated_paths"].append(path or "$")
+        return "[TRUNCATED]"
     if isinstance(value, str):
         return redact_text(value)
     if isinstance(value, Mapping):
-        return redact_mapping(value)
+        return _redact_mapping(
+            value,
+            allowlist=allowlist,
+            diagnostics=diagnostics,
+            path=path,
+            depth=depth,
+            max_depth=max_depth,
+        )
     if isinstance(value, list | tuple | set):
-        return [redact_value(item) for item in value]
+        return [
+            _redact_value(
+                item,
+                allowlist=allowlist,
+                diagnostics=diagnostics,
+                path=f"{path}/{index}",
+                depth=depth + 1,
+                max_depth=max_depth,
+            )
+            for index, item in enumerate(value)
+        ]
     return value
+
+
+def _redact_mapping(
+    payload: Mapping[str, object],
+    *,
+    allowlist: set[str],
+    diagnostics: RedactionDiagnostics,
+    path: str,
+    depth: int,
+    max_depth: int,
+) -> dict[str, object]:
+    """Return a recursively redacted mapping copy."""
+    from app.utils.errors import SecurityError, ValidationError
+
+    if max_depth < 0:
+        raise ValidationError("max_depth must be non-negative.", code="INVALID_INPUT")
+    if any("*" in item for item in allowlist):
+        raise SecurityError("redaction allowlist cannot contain wildcards.")
+    if depth > max_depth:
+        diagnostics["truncated_paths"].append(path or "$")
+        return {"_truncated": True}
+    redacted: dict[str, object] = {}
+    for key, value in payload.items():
+        key_text = str(key)
+        field_path = f"{path}/{key_text}" if path else key_text
+        if SENSITIVE_KEY_PATTERN.search(key_text) and field_path not in allowlist:
+            redacted[key_text] = "[REDACTED]"
+            diagnostics["redacted_paths"].append(field_path)
+        else:
+            redacted[key_text] = _redact_value(
+                value,
+                allowlist=allowlist,
+                diagnostics=diagnostics,
+                path=field_path,
+                depth=depth + 1,
+                max_depth=max_depth,
+            )
+    return redacted
 
 
 def _validate_redactable_payload(payload: object) -> Mapping[str, object] | str:
@@ -146,6 +290,27 @@ def generate_encryption_key() -> str:
     return str(fernet.generate_key().decode())
 
 
+def load_encryption_key(environ: Mapping[str, str] | None = None) -> str:
+    """Load the active Fernet key from ``ENCRYPTION_KEY``.
+
+    Args:
+        environ: Optional environment mapping for deterministic tests.
+
+    Returns:
+        Fernet key string.
+
+    Raises:
+        SecurityError: If the key is missing.
+    """
+    from app.utils.errors import SecurityError
+
+    source = os.environ if environ is None else environ
+    key = source.get("ENCRYPTION_KEY", "")
+    if not key:
+        raise SecurityError("ENCRYPTION_KEY is not configured.")
+    return key
+
+
 def encrypt_text(plaintext: str, *, key: str) -> str:
     """Encrypt text with a caller-supplied Fernet key."""
     from app.utils.errors import SecurityError, ValidationError
@@ -168,6 +333,73 @@ def decrypt_text(ciphertext: str, *, key: str) -> str:
         raise SecurityError("encryption key is required.")
     fernet: Any = _fernet()
     return str(fernet(key.encode()).decrypt(ciphertext.encode()).decode())
+
+
+def encrypt_value(plaintext: str, *, key: str | None = None) -> str:
+    """Encrypt text using an explicit or environment-supplied Fernet key."""
+    return encrypt_text(plaintext, key=key or load_encryption_key())
+
+
+def decrypt_value(ciphertext: str, *, key: str | None = None) -> str:
+    """Decrypt text using an explicit or environment-supplied Fernet key."""
+    return decrypt_text(ciphertext, key=key or load_encryption_key())
+
+
+def select_active_secret_version(
+    versions: Mapping[str, SecretVersion | Mapping[str, object]],
+) -> SecretVersion:
+    """Select the active secret with the highest numeric version.
+
+    Args:
+        versions: Mapping of secret-version records. Active records must contain
+            ``active=True`` and numeric ``version``.
+
+    Returns:
+        The active secret-version metadata with the highest numeric version.
+
+    Raises:
+        SecurityError: If no active version exists or if the highest active
+            numeric version is duplicated.
+    """
+    from app.utils.errors import SecurityError, ValidationError
+
+    active: list[tuple[int, SecretVersion]] = []
+    for item in versions.values():
+        if not bool(item.get("active", False)):
+            continue
+        version_value = item.get("version")
+        if not isinstance(version_value, str | int):
+            raise ValidationError(
+                "active secret versions require numeric version.",
+                code="INVALID_INPUT",
+            )
+        try:
+            version = int(version_value)
+        except ValueError as exc:
+            raise ValidationError(
+                "active secret versions require numeric version.",
+                code="INVALID_INPUT",
+            ) from exc
+        selected: SecretVersion = {
+            "version": version,
+            "active": True,
+        }
+        value = item.get("value")
+        if isinstance(value, str):
+            selected["value"] = value
+        active.append((version, selected))
+    if not active:
+        raise SecurityError(
+            "No active secret version exists.", code=SECRET_VERSION_NOT_FOUND
+        )
+    highest = max(version for version, _item in active)
+    matches = [item for version, item in active if version == highest]
+    if len(matches) > 1:
+        raise SecurityError(
+            "Duplicate active secret versions conflict.",
+            code="SECRET_VERSION_CONFLICT",
+        )
+    return matches[0]
 
 
 def redact_payload(

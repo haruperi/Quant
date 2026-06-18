@@ -330,16 +330,3 @@ def configure_logging(
         except (OSError, PermissionError) as e:
             # Degrade safely
             sys.stderr.write(f"Logging file configuration failed safely: {e}\n")
-
-
-# Set up default project-wide logging configuration on import.
-# Defaults to level=DEBUG, colorized human-readable console, and writing
-# logs to data/logs/ under workspace root.
-_root_dir = Path(__file__).resolve().parent.parent.parent
-_default_logs_dir = _root_dir / "data" / "logs"
-configure_logging(
-    level="DEBUG",
-    use_json=False,
-    use_color=True,
-    log_dir_path=_default_logs_dir,
-)

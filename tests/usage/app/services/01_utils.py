@@ -148,7 +148,7 @@ def example_03_identities() -> None:
     print("All ID validations completed successfully.")
 
 
-def example_04_datetimes_and_normalizations() -> None:
+def example_04_datetimes_and_normalization() -> None:
     """Demonstrate timezone-aware UTC datetime parsing, staleness checks, and drift detection."""
     print("\n--- 4. Datetime Normalizations Demo ---")
     now_utc = utc_now()
@@ -304,7 +304,7 @@ def example_09_event_bus() -> None:
     publish_event(bus, envelope)
 
 
-def example_10_circuit_breakers() -> None:
+def example_10_circuit_breakers_and_observability() -> None:
     """Demonstrate circuit-breaker triggers and telemetry counters."""
     print("\n--- 10. Circuit Breakers & Metrics Demo ---")
     cb = CircuitBreaker(name="demo_breaker", failure_threshold=2, cooldown_seconds=1.0)
@@ -371,13 +371,13 @@ if __name__ == "__main__":
     example_01_logging_and_tracing()
     example_02_standard_responses()
     example_03_identities()
-    example_04_datetimes_and_normalizations()
+    example_04_datetimes_and_normalization()
     example_05_security_and_redaction()
     example_06_dataframe_and_combinations()
     example_07_data_quality()
     example_08_validations()
     example_09_event_bus()
-    example_10_circuit_breakers()
+    example_10_circuit_breakers_and_observability()
     example_11_notifications()
     example_12_paths()
 

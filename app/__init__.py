@@ -10,3 +10,5 @@ Because it:
 - Works great with tools like pytest, Docker, and CI/CD.
 Inside app/, everything has a purpose.
 """
+
+__all__: list[str] = []

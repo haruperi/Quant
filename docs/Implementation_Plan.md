@@ -1,7 +1,5 @@
 ﻿# HaruQuantAI Implementation Plan
 
-**Version:** `Implementation_Plan_v1.md` hardened baseline.
-
 **Purpose:** Provide the standalone phased Builder implementation plan for HaruQuantAI.
 
 Each phase is a standalone implementation phase. A task is any unchecked Markdown checkbox in this file.
@@ -10,24 +8,24 @@ Each phase is a standalone implementation phase. A task is any unchecked Markdow
 
 ## Task Inventory
 
-| Phase | Area | Target area | Tasks | Checked | Unchecked |
-|---:|---|---|---:|---:|---:|
-| 0 | Project Scaffold and CI Foundation | Repository scaffold / CI / docs | 49 | 0 | 49 |
-| 1 | Utils Foundation | `app/utils/` | 1,168 | 0 | 1,168 |
-| 1.5 | Core Domain Contracts | `app/contracts/` | 73 | 0 | 73 |
-| 2 | Data Foundation | `app/services/data/` | 711 | 0 | 711 |
-| 3 | Indicator Library | `app/services/indicators/` | 743 | 0 | 743 |
-| 4 | Strategy Service | `app/services/strategies/` | 463 | 0 | 463 |
-| 5 | Risk Governance | `app/services/risk/` | 876 | 0 | 876 |
-| 6 | Analytics Service | `app/services/analytics/` | 465 | 0 | 465 |
-| 7 | Trading Service | `app/services/trader/` + broker integrations | 91 | 0 | 91 |
-| 8 | Simulation Engine | `app/services/simulation/` | 1,678 | 0 | 1,678 |
-| 9 | Optimization Service | `app/services/optimization/` | 285 | 0 | 285 |
-| 10 | Live Runtime | `app/services/live/` | 243 | 0 | 243 |
-| 11 | UI and API Gateway | `api/ and ui/` | 381 | 0 | 381 |
-| 12 | Research Edge Lab | `app/services/research/` | 297 | 0 | 297 |
-| 13 | Conversation AI Layer | `app/services/conversation/` | 263 | 0 | 263 |
-| **Total** |  |  | **7,786** | **0** | **7,786** |
+|           Phase | Area                               | Target area                                    |           Tasks |     Checked |       Unchecked |
+| --------------: | ---------------------------------- | ---------------------------------------------- | --------------: | ----------: | --------------: |
+|               0 | Project Scaffold and CI Foundation | Repository scaffold / CI / docs                |              49 |           0 |              49 |
+|               1 | Utils Foundation                   | `app/utils/`                                 |           1,168 |           0 |           1,168 |
+|             1.5 | Core Domain Contracts              | `app/contracts/`                             |              73 |           0 |              73 |
+|               2 | Data Foundation                    | `app/services/data/`                         |             711 |           0 |             711 |
+|               3 | Indicator Library                  | `app/services/indicators/`                   |             743 |           0 |             743 |
+|               4 | Strategy Service                   | `app/services/strategies/`                   |             463 |           0 |             463 |
+|               5 | Risk Governance                    | `app/services/risk/`                         |             876 |           0 |             876 |
+|               6 | Analytics Service                  | `app/services/analytics/`                    |             465 |           0 |             465 |
+|               7 | Trading Service                    | `app/services/trader/` + broker integrations |              91 |           0 |              91 |
+|               8 | Simulation Engine                  | `app/services/simulation/`                   |           1,678 |           0 |           1,678 |
+|               9 | Optimization Service               | `app/services/optimization/`                 |             285 |           0 |             285 |
+|              10 | Live Runtime                       | `app/services/live/`                         |             243 |           0 |             243 |
+|              11 | UI and API Gateway                 | `api/ and ui/`                               |             381 |           0 |             381 |
+|              12 | Research Edge Lab                  | `app/services/research/`                     |             297 |           0 |             297 |
+|              13 | Conversation AI Layer              | `app/services/conversation/`                 |             263 |           0 |             263 |
+| **Total** |                                    |                                                | **7,786** | **0** | **7,786** |
 
 **Hardening amendment delta:** 428 additional unchecked tasks were added to the original 7,358 unchecked tasks, bringing the total to 7,786 unchecked tasks.
 
@@ -40,7 +38,6 @@ Each phase is a standalone implementation phase. A task is any unchecked Markdow
 - Done criterion: Preserve module ownership boundaries and fail-closed safety behavior.
 - Done criterion: Update active docs and `CHANGELOG.md` whenever project meaning changes.
 - Done criterion: Run validation in the required order: pre-commit hooks, Ruff check, Ruff format, mypy strict, pytest, and coverage as applicable.
-
 
 ## Final Hardening Amendments Incorporated
 
@@ -73,8 +70,6 @@ Mandatory live promotion: offline test -> simulation -> replay -> read-only -> p
 
 ```
 
-
-
 ## Phase Files
 
 Each implementation phase now lives in its own file for sprint-pack execution, review, and maintenance. The task inventory above remains the canonical cross-phase count.
@@ -106,7 +101,6 @@ Each implementation phase now lives in its own file for sprint-pack execution, r
 - Done criterion: UI/API and Conversation delegate domain logic instead of bypassing governed services.
 - Done criterion: Active documentation, changelog, tests, and usage examples are synchronized with implemented behavior.
 
-
 ### Final Hardening Acceptance Additions
 
 - Done criterion: Phase 0 scaffold/CI and Phase 1.5 Core Contracts are complete or explicitly deferred with owner-approved rationale before dependent domain implementation proceeds.
@@ -118,8 +112,6 @@ Each implementation phase now lives in its own file for sprint-pack execution, r
 - Done criterion: Canonical contracts are used across domain boundaries and raw provider SDK objects do not leak past integration adapters.
 - Done criterion: Research evidence, optimization candidates, UI actions, and conversation requests cannot bypass risk, approval, execution, reconciliation, or kill-switch governance.
 
-
-
 ### Institutional Risk Governance Acceptance Additions
 
 - Done criterion: Phase 5 Risk Governance implements a layered institutional RiskGovernor rather than a single risk formula.
@@ -130,6 +122,5 @@ Each implementation phase now lives in its own file for sprint-pack execution, r
 - Done criterion: Risk decisions are deterministic, auditable, replayable, and tokenized.
 - Done criterion: LLM agents may explain or summarize risk outcomes but cannot approve, reject, override, or bypass deterministic safety gates.
 - Done criterion: Trading and Live services reject broker mutation without a fresh, scoped, config-compatible risk approval token.
-
 
 End of plan.

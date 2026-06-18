@@ -94,6 +94,7 @@ APPROVED_ERROR_CODES = frozenset(
         "METRICS_EXPORT_FAILED",
         "CLOCK_DRIFT_DETECTED",
         "CIRCUIT_OPEN",
+        "SECRET_VERSION_NOT_FOUND",
         "SECRET_VERSION_CONFLICT",
         "DATA_DROPPED",
         "CIRCUIT_BREAKER_OPEN",
@@ -322,6 +323,7 @@ ERROR_MESSAGES: dict[str, str] = {
     "METRICS_EXPORT_FAILED": "Metrics export failed.",
     "CLOCK_DRIFT_DETECTED": "Clock drift was detected.",
     "CIRCUIT_OPEN": "The circuit is open and the operation was blocked.",
+    "SECRET_VERSION_NOT_FOUND": "No active secret version was found.",  # pragma: allowlist secret
     "SECRET_VERSION_CONFLICT": "Secret conflict detected.",  # pragma: allowlist secret
     "DATA_DROPPED": "Data record was dropped due to buffer overflow or constraints.",
     "CIRCUIT_BREAKER_OPEN": "Circuit breaker is open for the source.",

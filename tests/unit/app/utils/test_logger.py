@@ -1,5 +1,6 @@
 """Unit tests for app/utils/logger.py."""
 
+import importlib
 import io
 import json
 import logging
@@ -16,6 +17,19 @@ from app.utils.logger import (
     redact_message,
     set_trace_context,
 )
+
+
+def test_logger_import_does_not_configure_handlers() -> None:
+    """Importing logger utilities does not attach application handlers."""
+    root_logger = logging.getLogger("haruquant")
+    for handler in list(root_logger.handlers):
+        root_logger.removeHandler(handler)
+        handler.close()
+
+    logger_module = importlib.import_module("app.utils.logger")
+    importlib.reload(logger_module)
+
+    assert logging.getLogger("haruquant").handlers == []
 
 
 def test_secret_redaction() -> None:

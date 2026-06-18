@@ -2,14 +2,21 @@
 
 import pytest
 from app.core.security import (
+    MAX_REDACTION_DEPTH,
+    SECRET_VERSION_NOT_FOUND,
     classify_secret_key,
     decrypt_text,
+    decrypt_value,
     encrypt_text,
+    encrypt_value,
     generate_encryption_key,
     hash_password,
+    load_encryption_key,
     redact_mapping,
+    redact_mapping_with_diagnostics,
     redact_payload,
     redact_text,
+    select_active_secret_version,
     verify_password,
 )
 from app.utils.errors import SecurityError, ValidationError
@@ -25,6 +32,30 @@ def test_redaction_removes_sensitive_values() -> None:
     assert mapping["api_key"] == "[REDACTED]"
     assert response["status"] == "success"
     assert classify_secret_key("password") == "sensitive"
+
+
+def test_redaction_diagnostics_depth_and_allowlist() -> None:
+    """Redaction diagnostics expose field paths without leaking values."""
+    payload: dict[str, object] = {"token": "secret", "public": {"password": "hidden"}}
+    redacted, diagnostics = redact_mapping_with_diagnostics(
+        payload,
+        allowlist={"public/password"},
+    )
+    deep: object = {"safe": "value"}
+    for _index in range(MAX_REDACTION_DEPTH + 2):
+        deep = {"next": deep}
+
+    truncated, truncated_diagnostics = redact_mapping_with_diagnostics(
+        {"root": deep},
+        max_depth=MAX_REDACTION_DEPTH,
+    )
+
+    assert redacted["token"] == "[REDACTED]"
+    assert isinstance(redacted["public"], dict)
+    assert redacted["public"]["password"] == "hidden"  # pragma: allowlist secret
+    assert diagnostics["redacted_paths"] == ["token"]
+    assert truncated != {"root": deep}
+    assert truncated_diagnostics["truncated_paths"]
 
 
 def test_redaction_rejects_invalid_inputs_with_clear_errors() -> None:
@@ -91,6 +122,36 @@ def test_hashing_and_encryption_reject_invalid_inputs() -> None:
         decrypt_text("", key=key)
     with pytest.raises(SecurityError, match="encryption key is required"):
         decrypt_text("payload", key="")
+
+
+def test_environment_encryption_key_and_secret_version_selection() -> None:
+    """Security helpers load keys explicitly and select active versions safely."""
+    pytest.importorskip("cryptography")
+    key = generate_encryption_key()
+    ciphertext = encrypt_value("payload", key=key)
+
+    assert decrypt_value(ciphertext, key=key) == "payload"
+    assert load_encryption_key({"ENCRYPTION_KEY": key}) == key
+
+    selected = select_active_secret_version(
+        {
+            "old": {"version": 1, "active": True, "value": "old"},
+            "new": {"version": 2, "active": True, "value": "new"},
+        }
+    )
+    assert selected["value"] == "new"
+
+    with pytest.raises(SecurityError) as missing:
+        select_active_secret_version({"old": {"version": 1, "active": False}})
+    assert missing.value.code == SECRET_VERSION_NOT_FOUND
+
+    with pytest.raises(SecurityError, match="Duplicate active"):
+        select_active_secret_version(
+            {
+                "a": {"version": 2, "active": True, "value": "a"},
+                "b": {"version": 2, "active": True, "value": "b"},
+            }
+        )
 
 
 def test_classify_secret_key_rejects_empty_keys() -> None:
