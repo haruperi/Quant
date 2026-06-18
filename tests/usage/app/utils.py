@@ -324,7 +324,7 @@ def example_07_dataframe_tools() -> None:
     )
 
 
-def example_08_schema_validation() -> None:
+def example_08_validations() -> None:
     """Demonstrate schema validation official tool envelopes."""
     print("\n" + "=" * 100)
     print("--- 8. Schema Validation Helpers ---")
@@ -493,7 +493,7 @@ if __name__ == "__main__":
     example_05_normalization_utilities()
     example_06_path_utilities()
     example_07_dataframe_tools()
-    example_08_schema_validation()
+    example_08_validations()
     example_09_data_quality()
     example_10_security()
     example_12_auth()

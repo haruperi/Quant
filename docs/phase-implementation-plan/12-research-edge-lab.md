@@ -1,156 +1,95 @@
-# 12_research.md - Requirements
+﻿## Phase 12 Research Edge Lab
 
-## 1. Purpose
+### Goal
 
-The research module provides sandboxed market-research, edge-discovery, feature-engineering, statistical-validation, market-structure, and report-generation capabilities for HaruQuant. It converts OHLCV/OHLCVS market data and research inputs into reproducible evidence artifacts, hypotheses, profiles, scorecards, summaries, and model-insight outputs without mutating live trading state or bypassing governance.
+Implement the Research Edge Lab requirements under `app/services/research/` while preserving the phase module boundaries and governance rules.
 
-The module exists to help developers and analysts explore whether observed market behavior is statistically meaningful, reproducible, free from obvious leakage, and suitable for later promotion into strategy, risk, optimization, or execution workflows. Research outputs are advisory evidence only and cannot be consumed as execution authorization, risk approval, or live signal-control policy.
+Task inventory: 290 checkbox tasks (0 checked, all unchecked).
 
-**Handoff Status**
+### Dependency Files and Functionality
 
-Status: revision required before Builder handoff.
-
-The requirements inventory is strong enough to describe the intended research domain, but implementation is blocked until public API overlaps are resolved, public API contracts, model schemas, standard envelope schema, exact behavior/error tables, reproducibility metadata, network-helper behavior, artifact persistence rules, measurable resource limits, usage failure paths, and requirement-to-test traceability are defined for the first approved implementation slice.
-
-### 1.1 Assumptions and resolved decisions
-
-
-### 1.2 Open Questions
-
-
-
-## 2. Ownership
-
-### 2.1 Owns
-
-### 2.2 Does Not Own
-
-## 3. Global API Contracts and Configuration
-
-### 3.1 Public Capabilities Summary
-- Each public export must be classified as stable public API, internal-support contract, compatibility re-export, experimental capability, or network-backed helper before Builder implementation.
-- Each item in `app.services.research.__all__` must carry a documented classification label such as `stable`, `internal-support`, `compatibility-re-export`, `experimental`, `network-backed`, or `optional-provider`.
-- `internal-support` and `compatibility-re-export` items must be excluded from agent-facing stable tool catalogs by default and must be documented as subject to breaking changes unless explicitly promoted through a versioned contract.
-- Network-backed exports must be marked as `network-backed` and `optional-provider` in the lazy registry and must define provider-missing behavior.
-- Each public callable must document input type, required fields, optional fields, output type, error behavior, side effects, determinism behavior, dependency behavior, and whether it may perform disk or network I/O.
-- Re-exported analytics functions must preserve upstream analytics contracts and must be covered by research compatibility tests.
-
-### 3.3 Configuration Defaults
-
-## 4. Module Architecture
-
-### 4.1 Target Folder Structure
+Required files:
 
 ```text
-app/
-  services/
-    services/
-        research/
-          __init__.py          # Lazy export definitions
-          config.py            # Configuration schemas (EdgeLabConfig, DataConfig)
-          data.py              # Data cleaning, normalization, enrichment
-          features.py          # Technical indicators and returns calculations
-          leakage.py           # Lookahead validators and time partitions
-          metrics.py           # MetricRegistry and metric calculators
-          studies/
-            __init__.py
-            eds.py             # Mean reversion and trend persistence EDS
-            null_models.py     # Resampling, bootstraps, and permutations
-            structure.py       # Directional swing legs and market structures
-            unsupervised.py    # PCA and clustering algorithms
-          helpers.py           # Standard news/sentiment/calendar evidence helpers
-          reporting.py         # Markdown reports and scorecards persistence
-          errors.py            # Mapped error codes and exception classes```
 
-### 4.2 Class Diagrams
+app/utils/__init__.py
 
-```mermaid
-classDiagram
-    class MetricCalculator {
-        <<interface>>
-        +calculate(context) MetricValue
-    }
-    class MetricRegistry {
-        +register(name, calculator)
-        +resolve(name) MetricCalculator
-        +calculate_all(context) CoreMetricProfile
-    }
-    class VolatilityCalculator {
-        +calculate(context) MetricValue
-    }
-    class ReturnsCalculator {
-        +calculate(context) MetricValue
-    }
-    MetricCalculator <|.. VolatilityCalculator
-    MetricCalculator <|.. ReturnsCalculator
-    MetricRegistry --> MetricCalculator
+app/utils/dataframe_tools.py
+
+app/services/data/__init__.py
+
+api/main.py
+
 ```
 
-## 5. General / Cross-Cutting Non-Functional Requirements
+Required functionality:
 
-- [ ] The module shall be sandboxed and shall not place, modify, cancel, or route live orders.
-- [ ] The module shall fail closed when a workflow attempts to mutate live trading state or bypass governance.
-- [ ] Research outputs shall clearly distinguish observations, assumptions, warnings, and validation evidence from approved trading decisions.
-- [ ] Multiple-comparison checks shall be available when evaluating many hypotheses or candidates.
-- [ ] Standard tool envelopes shall include side-effect, approval-required, dry-run, environment, risk-level, and timing audit fields.
-- [ ] The standard research envelope schema shall be versioned and referenced by every network-backed helper, standard helper, evidence-pack helper, and future agent-facing research tool.
-- [ ] Public exports shall remain unique and resolvable through the lazy namespace.
-- [ ] The module shall remain interoperable with analytics, optimization, risk, and execution modules only through documented public contracts.
-- [ ] `ResearchResourceLimits` shall define `max_duration_seconds`, `max_memory_mb`, `max_rows`, and behavior when a limit is exceeded.
-- [ ] Before production Builder handoff, the owner shall approve measurable resource targets for the first implementation slice, including maximum rows, runtime budget, memory budget, and reference hardware.
-- [ ] Until resource limits and reference hardware are approved, Research may not claim production-grade performance; oversized or long-running workflows must fail with a typed resource-limit error or standard-envelope resource-limit error instead of attempting unbounded work.
+- Data gateway retrieves cleaned historical bars for studies.
+- Dataframe alignment and comparison operations execute.
+- Gateway routes support API requests for feature extraction.
 
-### 5.1 Other Global and Cross-Cutting Requirements
+### Files to Create
 
-- Optional external-feed helper contracts. External-feed helper exports may be absent or disabled when the corresponding provider adapter is not installed; importing `app.services.research` must not fail because of a missing optional adapter.
-- [ ] `run_session_breakout_strategy` shall evaluate an opening-range breakout strategy for a session.
-- [ ] `run_session_fade_strategy` shall evaluate a mean-reversion fade strategy within a session.
-- [ ] `EdgeClass` shall represent the classification category assigned to an edge.
-- [ ] `EdgeSummary` shall summarize mean-reversion and trend-persistence evidence for a symbol.
-- [ ] `ClassificationResult` shall represent the result of classifying a symbol's edge profile.
-- [ ] `classify_symbol` shall classify a symbol based on mean-reversion and trend-persistence evidence.
-- [ ] `active_sessions_for_hour` shall return the active trading sessions for a given hour.
-- [ ] `session_label_for_hour` shall return the session label for a given hour.
-- [ ] `SeasonalityFilters` shall describe calendar, session, or symbol filters for seasonality analysis.
-- [ ] `calmar_ratio` shall expose the analytics Calmar ratio for research workflows.
-- [ ] `expectancy` shall expose the analytics expectancy calculation for research workflows.
-- [ ] `max_drawdown` shall expose the analytics maximum drawdown calculation for research workflows.
-- [ ] `median_mae_mfe` shall expose the analytics median MAE/MFE calculation for research workflows.
-- [ ] `profit_factor` shall expose the analytics profit-factor calculation for research workflows.
-- [ ] `sharpe_ratio` shall expose the analytics Sharpe ratio calculation for research workflows.
-- [ ] `sortino_ratio` shall expose the analytics Sortino ratio calculation for research workflows.
-- [ ] `win_rate` shall expose the analytics win-rate calculation for research workflows.
-- Research artifacts containing sensitive fields that must be masked before persistence.
-- Import-time safety tests proving `app.services.research` does not read secrets, access live trading state, call providers, write files, or perform heavy model execution at import time.
-- The overlap resolutions above must be moved into Functional Requirements before Builder handoff; this section cannot remain the only record of API responsibility.
-- Standard research envelope schema, canonical error taxonomy, and audit fields must be frozen before any network-backed or agent-facing research helper is implemented.
-- Measurable resource targets and reference hardware must be approved before claiming production-grade performance.
-- The public namespace exposes both the active `__all__` contract and additional local research classes that may be used internally; rebuild planning should treat `__all__` as the externally visible minimum and local public classes as important implementation-support contracts.
-- Research outputs should continue to be treated as evidence, not approval to trade.
-- Statistical evidence can be sensitive to sample size, market regime, timeframe, and multiple testing; reports should keep uncertainty and caveats visible.
+```text
 
-## 6. Detailed Requirements by File
+app/services/research/
 
-### File: app/services/research/__init__.py
+app/services/research/__init__.py
 
-#### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `app/services/research/__init__.py`.
+app/utils/settings.py
 
-#### Functional Requirements
+app/services/research/data.py
+
+app/services/research/features.py
+
+app/services/research/leakage.py
+
+app/services/research/metrics.py
+
+app/services/research/studies/__init__.py
+
+app/services/research/studies/eds.py
+
+app/services/research/studies/null_models.py
+
+app/services/research/studies/structure.py
+
+app/services/research/studies/unsupervised.py
+
+app/services/research/helpers.py
+
+app/services/research/reporting.py
+
+app/utils/errors.py
+
+app/utils/errors.py
+
+```
+
+### Functionality to Implement
+
+Tasks are grouped one source target at a time. Each requirement keeps its source line number from the phase requirements file for traceability.
+
+#### `app/services/research/__init__.py`
+
+Functions/classes:
+
+- `__all__`
+
+Requirements:
+
 - [ ] Importing `app.services.research` shall not perform network calls, disk writes, provider initialization, credential reads, live trading state access, or heavy model execution.
-
-#### Non-Functional & Security Requirements
 - [ ] No file-specific non-functional requirements defined.
-
-#### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: app/services/research/config.py
+#### `app/utils/settings.py`
 
-#### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `app/services/research/config.py`.
+Functions/classes:
 
-#### Functional Requirements
+- `CleaningConfig`
+
+Requirements:
+
 - [ ] `create_config` shall create an Edge Lab configuration object with common defaults for research workflows.
 - [ ] `DataConfig` shall describe source, symbol, timeframe, and date-range data inputs for research workflows.
 - [ ] `SessionConfig` shall describe trading-session windows and related session settings.
@@ -212,21 +151,23 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] Seeded research workflows shall produce equivalent outputs for fixed input data, configuration, random seed, dependency versions, and artifact schema version.
 - [ ] Report and artifact serialization shall prevent path traversal, accidental overwrite unless configured, and leakage of masked fields.
 - [ ] Long-running workflows shall expose duration metadata and shall support configured resource limits or fail with a typed resource-limit error.
-
-#### Non-Functional & Security Requirements
 - [ ] No file-specific non-functional requirements defined.
 
-#### Testing & Edge Cases
-- `CleaningConfig` strategy enums and exact cleaning actions must be approved before data-preparation implementation.
-- `CleaningConfig` defaults, including `missing_bar_strategy`, must be approved before implementation.
+#### `app/services/research/data.py`
 
-### File: app/services/research/data.py
+Functions/classes:
 
-#### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `app/services/research/data.py`.
+- `CanonicalOHLCVSSchema`
+- `validate_dataset`
+- `OHLCVSchema`
+- `LeakageReport`
+- `MetricContext`
+- `build_core_metric_profile`
+- `build_market_structure_profile`
+- `run_seasonality`
 
-#### Functional Requirements
-- DataFrame-returning functions must document required input columns, output columns, index behavior, timezone expectations, row alignment, NaN behavior, and whether the input is mutated.
+Requirements:
+
 - [ ] `CanonicalOHLCVSSchema` shall define the canonical research dataset schema for OHLCV data with spread support.
 - [ ] `DatasetIssue` shall represent a detected dataset quality issue.
 - [ ] `CleaningAction` shall represent a cleaning action applied to research data.
@@ -259,19 +200,17 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] Public standard tools shall return the standard HaruQuant envelope containing status, tool metadata, request metadata, data, errors, warnings, and audit metadata.
 - [ ] The module shall avoid storing real secrets, credentials, private broker data, or unredacted private artifacts.
 - [ ] Proposed benchmark placeholder: `prepare_research_dataset` should process up to 1,000,000 rows in no more than 30 seconds on approved reference hardware; this remains pending until owner approval.
-
-#### Non-Functional & Security Requirements
 - [ ] No file-specific non-functional requirements defined.
 
-#### Testing & Edge Cases
-- ForexFactory helper ownership must be explicitly scoped as optional external research-feed helper behavior, not broad market-data provider ownership.
+#### `app/services/research/features.py`
 
-### File: app/services/research/features.py
+Functions/classes:
 
-#### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `app/services/research/features.py`.
+- `build_market_regime_feature_frame`
+- `calculate_regime_features`
 
-#### Functional Requirements
+Requirements:
+
 - [ ] `log_returns` shall compute log returns from close prices.
 - [ ] `simple_returns` shall compute arithmetic returns from close prices.
 - [ ] `zscore` shall compute a close-price z-score relative to a moving average and standard deviation.
@@ -301,36 +240,45 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] `FeatureSetFrame` shall represent the feature frame used by unsupervised modeling.
 - [ ] `calculate_regime_features` shall calculate regime feature rows.
 - [ ] `detect_market_regime` shall classify market regime from supplied research features.
-
-#### Non-Functional & Security Requirements
 - [ ] No file-specific non-functional requirements defined.
+- [ ] `active_sessions_for_hour` shall return the active trading sessions for a given hour.
+- [ ] `session_label_for_hour` shall return the session label for a given hour.
 
-#### Testing & Edge Cases
-- `detect_volatility_regime`, `detect_trend_regime`, `detect_market_regime`, `calculate_regime_features`, and `build_market_regime_feature_frame` must have documented boundaries.
+#### `app/services/research/leakage.py`
 
-### File: app/services/research/leakage.py
+Functions/classes:
 
-#### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `app/services/research/leakage.py`.
+- `LeakageCheckResult`
+- `validate_no_lookahead`
+- `detect_feature_leakage`
+- `mask_forward_columns`
 
-#### Functional Requirements
+Requirements:
+
 - [ ] `TimeSplitResult` shall represent deterministic chronological train, validation, and test partitions.
 - [ ] `enforce_time_split` shall enforce deterministic chronological train, validation, and test splits.
 - [ ] `mask_research_artifact` shall remove or redact sensitive fields from research artifacts before persistence or sharing.
 - [ ] `dump_masked_research_json` shall serialize a masked research artifact to JSON.
-
-#### Non-Functional & Security Requirements
 - [ ] No file-specific non-functional requirements defined.
-
-#### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: app/services/research/metrics.py
+#### `app/services/research/metrics.py`
 
-#### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `app/services/research/metrics.py`.
+Functions/classes:
 
-#### Functional Requirements
+- `MetricCalculator`
+- `MetricRegistry`
+- `ReturnsCalculator`
+- `RocCalculator`
+- `CandlesCalculator`
+- `RangesCalculator`
+- `VolatilityCalculator`
+- `SpreadCalculator`
+- `VolumeActivityCalculator`
+- `build_default_registry`
+
+Requirements:
+
 - [ ] `MetricCalculator` shall define the calculator interface for research core metrics.
 - [ ] `MetricRegistry` shall register and resolve named metric calculators.
 - [ ] `ReturnsCalculator` shall calculate return-related core metrics.
@@ -341,51 +289,47 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] `SpreadCalculator` shall calculate spread-quality core metrics.
 - [ ] `VolumeActivityCalculator` shall calculate volume or activity core metrics.
 - [ ] `build_default_registry` shall build the default registry of research metric calculators.
-
-#### Non-Functional & Security Requirements
 - [ ] No file-specific non-functional requirements defined.
-
-#### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: app/services/research/studies/__init__.py
+#### `app/services/research/studies/__init__.py`
 
-#### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `app/services/research/studies/__init__.py`.
+Functions/classes:
 
-#### Functional Requirements
+- `__all__`
+
+Requirements:
+
 - [ ] No file-specific functional requirements defined. Foundation properties apply.
-
-#### Non-Functional & Security Requirements
 - [ ] No file-specific non-functional requirements defined.
-
-#### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: app/services/research/studies/eds.py
+#### `app/services/research/studies/eds.py`
 
-#### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `app/services/research/studies/eds.py`.
+Functions/classes:
 
-#### Functional Requirements
+- `run_eds_null_baseline`
+- `run_eds_mean_reversion`
+- `run_eds_trend_persistence`
+
+Requirements:
+
 - [ ] `run_eds_null_baseline` shall establish null-model baselines for edge-discovery studies.
 - [ ] `run_eds_mean_reversion` shall evaluate a mean-reversion detector based on compression and z-score fade behavior.
 - [ ] `run_eds_trend_persistence` shall evaluate a trend-persistence detector based on high-ATR breakout follow-through behavior.
 - [ ] Null-model functions shall define behavior for invalid sample sizes, non-finite statistics, empty distributions, random seeds, replacement/block settings, and multiple-comparison correction applicability.
 - [ ] Null-model behavior/error tables shall dictate exact outcomes for invalid sample sizes, non-finite statistics, empty distributions, invalid random seeds, invalid replacement/block settings, and inapplicable multiple-comparison corrections; these cases may not be left to Builder interpretation.
-
-#### Non-Functional & Security Requirements
 - [ ] No file-specific non-functional requirements defined.
-
-#### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: app/services/research/studies/null_models.py
+#### `app/services/research/studies/null_models.py`
 
-#### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `app/services/research/studies/null_models.py`.
+Functions/classes:
 
-#### Functional Requirements
+- `compute_null_percentile`
+
+Requirements:
+
 - [ ] `compare_to_null` shall compare observed expectancy or performance against a null distribution.
 - [ ] `get_acceptance_criteria` shall extract acceptance criteria from a null baseline.
 - [ ] `block_bootstrap_ci` shall compute a confidence interval using block bootstrap resampling.
@@ -399,19 +343,24 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] `holm_bonferroni` shall apply Holm-Bonferroni multiple-comparison correction.
 - [ ] `compute_null_percentile` shall compute the percentile of an observed value within a null distribution.
 - [ ] `null_distribution_stats` shall compute summary statistics for a null distribution.
-
-#### Non-Functional & Security Requirements
 - [ ] No file-specific non-functional requirements defined.
-
-#### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
+- [ ] Multiple-comparison checks shall be available when evaluating many hypotheses or candidates.
 
-### File: app/services/research/studies/structure.py
+#### `app/services/research/studies/structure.py`
 
-#### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `app/services/research/studies/structure.py`.
+Functions/classes:
 
-#### Functional Requirements
+- `build_calibration_grid`
+- `build_metric_calibration_grid`
+- `resolve_market_structure_profile`
+- `resolve_market_structure_profile_overrides`
+- `parse_news_items`
+- `generate_research_hypothesis`
+- `build_research_evidence_pack`
+
+Requirements:
+
 - [ ] `TrendSwingPoint` shall represent a detected swing point used in market-structure analysis.
 - [ ] `TrendLeg` shall represent a directional leg between swing points.
 - [ ] `TrendScoreRow` shall represent one market-structure score row.
@@ -438,19 +387,22 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] `generate_research_hypothesis` shall generate a structured research hypothesis from inputs and evidence.
 - [ ] `build_research_evidence_pack` shall build a structured research evidence pack containing source references, assumptions, warnings, and validation notes.
 - [ ] The module shall emit structured warnings or logs for validation failures, dropped rows, masking actions, provider failures, statistical insufficiency, and partial report generation.
-
-#### Non-Functional & Security Requirements
 - [ ] No file-specific non-functional requirements defined.
-
-#### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
+- [ ] `ClassificationResult` shall represent the result of classifying a symbol's edge profile.
 
-### File: app/services/research/studies/unsupervised.py
+#### `app/services/research/studies/unsupervised.py`
 
-#### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `app/services/research/studies/unsupervised.py`.
+Functions/classes:
 
-#### Functional Requirements
+- `UnsupervisedResearchRequest`
+- `UnsupervisedResearchResult`
+- `run_pca`
+- `compute_forward_returns`
+- `build_unsupervised_insight_report`
+
+Requirements:
+
 - [ ] `UnsupervisedResearchRequest` shall represent one unsupervised research request.
 - [ ] `UnsupervisedResearchResult` shall represent a complete unsupervised research result.
 - [ ] `UnsupervisedResearchService` shall orchestrate unsupervised research workflows.
@@ -467,19 +419,27 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] `analyze_cluster_outperformance` shall score clusters by future returns and assign semantic regime names.
 - [ ] `adapt_signals_by_cluster` shall produce advisory signal-adaptation recommendations identifying clusters where forward-return evidence is weak; it shall not mutate strategy runtime state, block live entries, or authorize execution changes.
 - [ ] `build_unsupervised_insight_report` shall build a complete unsupervised insight report for trading workflows.
-
-#### Non-Functional & Security Requirements
 - [ ] No file-specific non-functional requirements defined.
 
-#### Testing & Edge Cases
-- Seed source and propagation rules must be approved for bootstrap, permutation, null-model, clustering, and unsupervised workflows.
+#### `app/services/research/helpers.py`
 
-### File: app/services/research/helpers.py
+Functions/classes:
 
-#### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `app/services/research/helpers.py`.
+- `parse_calendar_events`
+- `parse_sentiment_snapshot`
+- `create_news_blackout_windows`
+- `calculate_returns`
+- `calculate_volatility`
+- `calculate_atr`
+- `calculate_adr`
+- `calculate_spread_statistics`
+- `calculate_session_statistics`
+- `calculate_seasonality_statistics`
+- `calculate_correlation_matrix`
+- `check_sample_size`
 
-#### Functional Requirements
+Requirements:
+
 - [ ] `parse_calendar_events` shall normalize economic calendar events.
 - [ ] `parse_sentiment_snapshot` shall normalize sentiment-positioning snapshots.
 - [ ] `filter_events_by_symbol` shall filter calendar events by the currencies or instruments relevant to a symbol.
@@ -503,19 +463,47 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] `check_contradictory_evidence` shall assess whether evidence contradicts the proposed hypothesis.
 - [ ] Network-backed research helpers shall be isolated from core deterministic calculations and shall be skippable in offline or heavy-environment tests.
 - [ ] Serialization helpers shall support masked JSON or Markdown output without leaking sensitive source details.
-
-#### Non-Functional & Security Requirements
 - [ ] No file-specific non-functional requirements defined.
-
-#### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
+- [ ] The module shall be sandboxed and shall not place, modify, cancel, or route live orders.
+- [ ] Research outputs shall clearly distinguish observations, assumptions, warnings, and validation evidence from approved trading decisions.
+- [ ] Standard tool envelopes shall include side-effect, approval-required, dry-run, environment, risk-level, and timing audit fields.
+- [ ] The standard research envelope schema shall be versioned and referenced by every network-backed helper, standard helper, evidence-pack helper, and future agent-facing research tool.
+- [ ] Public exports shall remain unique and resolvable through the lazy namespace.
+- [ ] The module shall remain interoperable with analytics, optimization, risk, and execution modules only through documented public contracts.
+- [ ] `ResearchResourceLimits` shall define `max_duration_seconds`, `max_memory_mb`, `max_rows`, and behavior when a limit is exceeded.
+- [ ] Before production Builder handoff, the owner shall approve measurable resource targets for the first implementation slice, including maximum rows, runtime budget, memory budget, and reference hardware.
+- [ ] `run_session_breakout_strategy` shall evaluate an opening-range breakout strategy for a session.
+- [ ] `run_session_fade_strategy` shall evaluate a mean-reversion fade strategy within a session.
+- [ ] `EdgeClass` shall represent the classification category assigned to an edge.
+- [ ] `EdgeSummary` shall summarize mean-reversion and trend-persistence evidence for a symbol.
+- [ ] `classify_symbol` shall classify a symbol based on mean-reversion and trend-persistence evidence.
+- [ ] `SeasonalityFilters` shall describe calendar, session, or symbol filters for seasonality analysis.
+- [ ] `calmar_ratio` shall expose the analytics Calmar ratio for research workflows.
+- [ ] `expectancy` shall expose the analytics expectancy calculation for research workflows.
+- [ ] `max_drawdown` shall expose the analytics maximum drawdown calculation for research workflows.
+- [ ] `median_mae_mfe` shall expose the analytics median MAE/MFE calculation for research workflows.
+- [ ] `profit_factor` shall expose the analytics profit-factor calculation for research workflows.
+- [ ] `sharpe_ratio` shall expose the analytics Sharpe ratio calculation for research workflows.
+- [ ] `sortino_ratio` shall expose the analytics Sortino ratio calculation for research workflows.
+- [ ] `win_rate` shall expose the analytics win-rate calculation for research workflows.
 
-### File: app/services/research/reporting.py
+#### `app/services/research/reporting.py`
 
-#### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `app/services/research/reporting.py`.
+Functions/classes:
 
-#### Functional Requirements
+- `save_markdown`
+- `save_json`
+- `generate_multi_symbol_report`
+- `build_edge_profile_snapshot`
+- `build_profile_summary`
+- `build_dashboard_summary`
+- `save_json_report`
+- `save_markdown_report`
+- `build_edge_lab_scorecard_report`
+
+Requirements:
+
 - [ ] `result_to_markdown` shall convert an edge result into a Markdown report.
 - [ ] `result_to_summary` shall generate a concise summary dictionary from an edge result.
 - [ ] `save_markdown` shall persist an edge result report as Markdown and shall expose an `overwrite: bool` contract.
@@ -532,86 +520,105 @@ Contains functional, security, and testing requirements specifically assigned to
 - [ ] `save_markdown_report` shall save one complete Markdown profile report.
 - [ ] `build_edge_lab_scorecard_report` shall build a deterministic backend scorecard report from progressive Edge Lab outputs.
 - [ ] Report persistence functions shall define allowed output paths, overwrite behavior, atomic write behavior, encoding, masking behavior, permission-failure behavior, and return value.
-
-#### Non-Functional & Security Requirements
 - [ ] No file-specific non-functional requirements defined.
-
-#### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-### File: app/services/research/errors.py
+#### `app/utils/errors.py`
 
-#### Purpose & Scope
-Contains functional, security, and testing requirements specifically assigned to `app/services/research/errors.py` (which must inherit from `app/utils/errors.py` and reuse standard exception types).
+Functions/classes:
 
-#### Functional Requirements
+- `Error`
+- `ValidationError`
+- `ConfigurationError`
+
+Requirements:
+
 - [ ] All standard system exceptions and error codes shall be imported and reused from `app.utils.errors` to prevent duplicate declaration. Custom research exceptions must inherit from `app.utils.errors.Error` or `HaruQuantError`.
-
-#### Non-Functional & Security Requirements
 - [ ] No file-specific non-functional requirements defined.
-
-#### Testing & Edge Cases
 - [ ] No file-specific testing requirements defined.
 
-## 7. Global Testing, Quality Gates, and Usage Examples
 
+### Hardening Amendments
 
-### 7.3 Usage Examples
+#### Lightweight Research Core dependency
 
-#### Example 1
-```python
-from app.services.research import prepare_research_dataset, build_core_metric_profile
+Requirements:
 
-prepared = prepare_research_dataset(raw_data, config=config.data)
-if getattr(prepared, "errors", None):
-    raise RuntimeError("Research dataset preparation failed.")
-profile = build_core_metric_profile(prepared)
+- [ ] Split Research into an earlier lightweight Research Core and the later full Research Edge Lab when implementation begins.
+- [ ] Implement Research Core before Strategy/Optimization promotion workflows depend on research evidence.
+- [ ] Research Core must include leakage checks, chronological split helpers, null baselines, simple feature studies, and statistical evidence summaries.
+- [ ] Research Core must produce evidence packs that Strategy, Analytics, and Optimization can consume without requiring the full Research Edge Lab UI/workbench.
+- [ ] Research Core must use canonical DataSlice, IndicatorResult, StrategySignal, BacktestResult, OptimizationCandidate, and AuditEvent contracts where applicable.
+- [ ] Full Research Edge Lab must remain read-only with respect to broker accounts, live trading, risk limit mutation, and execution activation.
+- [ ] Add tests proving research evidence cannot promote strategies, approve risk, or activate live trading without governed lifecycle approvals.
+
+### Unit Tests Required
+
+```text
+
+tests/unit/app/services/research/
+
 ```
 
-#### Example 2
-```python
-from app.services.research import validate_no_lookahead_features, enforce_time_split
+Test coverage:
 
-split = enforce_time_split(feature_frame, train_fraction=0.6, validation_fraction=0.2)
-leakage_report = validate_no_lookahead_features(feature_frame, target_column="future_return")
-if leakage_report.severity in {"high", "critical"}:
-    raise RuntimeError("Lookahead risk must be resolved before research continues.")
+- Cover every requirement in this phase with normal, edge, invalid-input, fail-closed, logging, schema, and regression tests as applicable.
+- Preserve the project gate of at least 80% coverage for each affected file and package.
+- Verify standard envelopes, deterministic error codes, import behavior, and ownership boundaries.
+
+### Usage Examples Required
+
+```text
+
+tests/usage/app/services/12_research.py
+
 ```
 
-#### Example 3
-```python
-from app.services.research import run_eds_mean_reversion, run_eds_null_baseline, compare_to_null
+Usage examples must show:
 
-observed = run_eds_mean_reversion(prepared_dataset, config=config.mean_reversion)
-baseline = run_eds_null_baseline(prepared_dataset, config=config.null_models)
-comparison = compare_to_null(observed, baseline)
-if comparison.warnings:
-    review_warnings(comparison.warnings)
+- `example_01_research_config_and_data_prep`: Demonstrate research config validation, data preparation, cleaning, and quality reports.
+- `example_02_feature_engineering`: Demonstrate returns, volatility, range, momentum, Bollinger-style stats, Hurst, pivots, and regimes.
+- `example_03_leakage_controls`: Demonstrate chronological splits, no-lookahead checks, forward-column masking, and leakage failures.
+- `example_04_edge_studies`: Demonstrate mean reversion, trend persistence, session behavior, and null baseline studies.
+- `example_05_statistical_validation`: Demonstrate bootstrap, permutation tests, null models, multiple-comparison correction, and thresholds.
+- `example_06_market_structure`: Demonstrate market-structure profiles, calibration candidates, overrides, and stability summaries.
+- `example_07_unsupervised_analysis`: Demonstrate PCA, clustering, labels, outperformance analysis, and risk-factor summaries.
+- `example_08_research_reports`: Demonstrate markdown/json reports, profile snapshots, dashboard summaries, and advisory-only boundaries.
+- The single usage file must be runnable as a script and organize separate examples as focused functions.
+- Examples must extensively cover the phase's official public capabilities, important edge cases, fail-closed paths, and standard envelope fields where applicable.
+
+### Documentation and Logging Requirements
+
+- Every created or changed Python module must have a file-level docstring describing purpose, exports, and side effects.
+- Every public function/class must have a Google-style docstring with args, returns, and raised or structured errors.
+- Log calls, validation failures, success, exception paths, and governed/fail-closed decisions with redacted metadata only.
+- Update module README or active docs when architecture, API, data models, security, testing, or observability meaning changes.
+
+### Acceptance Checklist
+
+- Done criterion: All 290 checkbox tasks are implemented or explicitly deferred with a documented reason.
+- Done criterion: Scope stayed within this phase and approved dependency surfaces.
+- Done criterion: Public exports match the phase registry rules and do not expose unapproved helpers.
+- Done criterion: Standard envelopes, metadata, request IDs, error codes, logging, and redaction rules are satisfied where applicable.
+- Done criterion: Unit tests, usage examples, static typing, linting, formatting, and coverage gates pass.
+- Done criterion: Active docs and changelog are updated for any implemented project meaning changes.
+- Done criterion: Rollback path and implementation report are recorded before handoff.
+
+### Commit Message
+
+```text
+
+feat(research-edge-lab): implement Research Edge Lab feature pipelines and null models
+
+
+
+- Build feature engineering pipelines and data leakage detectors
+
+- Implement Exploratory Data Analysis (EDA) helpers and structural data validators
+
+- Build statistical null-model testers and unsupervised learning studies
+
 ```
 
-#### Example 4
-```python
-from app.services.research import build_market_structure_profile, build_validation_summary
-
-structure = build_market_structure_profile(prepared_dataset, config=config.market_structure)
-validation = build_validation_summary(structure, realized_behavior)
-```
-
-#### Example 5
-```python
-from app.services.research import build_research_evidence_pack, score_research_hypothesis
-
-evidence_pack = build_research_evidence_pack(hypothesis=hypothesis, datasets=[prepared_dataset])
-score = score_research_hypothesis(evidence_pack)
-```
-
-#### Example 6
-```python
-from app.services.research import fetch_forexfactory_calendar
-
-calendar_response = fetch_forexfactory_calendar(symbol="EURUSD", request_id="req_example")
-if calendar_response.get("status") == "error" or calendar_response.get("errors"):
-    handle_provider_error(calendar_response.get("errors", []))
-```
-
-## 8. Acceptance
+- [ ] The module shall fail closed when a workflow attempts to mutate live trading state or bypass governance.
+- [ ] Until resource limits and reference hardware are approved, Research may not claim production-grade performance; oversized or long-running workflows must fail with a typed resource-limit error or standard-envelope resource-limit error instead of attempting unbounded work.

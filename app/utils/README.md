@@ -31,7 +31,7 @@ All modules within `app/utils` must adhere strictly to these principles:
 | [`notifications.py`](file:///c:/Users/rharu/Documents/MyApplications/Quant/app/utils/notifications.py) | Throttled, deduplicated alert routing to simulated notification channels. | `NotificationRouter`, `NotificationMessage`, `broadcast_notification` |
 | [`observability.py`](file:///c:/Users/rharu/Documents/MyApplications/Quant/app/utils/observability.py) | Circuit breakers, in-memory metrics counters, and Prometheus exporters. | `CircuitBreaker`, `MetricRegistry`, `record_metric`, `export_prometheus_metrics` |
 | [`paths.py`](file:///c:/Users/rharu/Documents/MyApplications/Quant/app/utils/paths.py) | Directory validation, path normalization, and path traversal protections. | `ensure_dir`, `ensure_parent_dir`, `normalize_path` |
-| [`schema_validation.py`](file:///c:/Users/rharu/Documents/MyApplications/Quant/app/utils/schema_validation.py) | Non-strict JSON Schema / Pydantic constraints checking and numeric ranges. | `validate_input_schema`, `validate_output_schema`, `validate_numeric_range` |
+| [`validations.py`](file:///c:/Users/rharu/Documents/MyApplications/Quant/app/utils/validations.py) | Non-strict JSON Schema / Pydantic constraints checking and numeric ranges. | `validate_input_schema`, `validate_output_schema`, `validate_numeric_range` |
 | [`standard.py`](file:///c:/Users/rharu/Documents/MyApplications/Quant/app/utils/standard.py) | Standard envelope formatting builders for tools, API calls, and errors. | `StandardEnvelope`, `success_response`, `error_response`, `response_from_exception` |
 
 ---

@@ -257,7 +257,7 @@ def example_07_data_quality() -> None:
     print("Validate OHLCV Quality response status:", resp["status"])
 
 
-def example_08_schema_validation() -> None:
+def example_08_validations() -> None:
     """Demonstrate input and output validation checks."""
     print("\n--- 8. Schema Validation Demo ---")
     schema = {
@@ -375,7 +375,7 @@ if __name__ == "__main__":
     example_05_security_and_redaction()
     example_06_dataframe_and_combinations()
     example_07_data_quality()
-    example_08_schema_validation()
+    example_08_validations()
     example_09_event_bus()
     example_10_circuit_breakers()
     example_11_notifications()

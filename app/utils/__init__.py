@@ -161,23 +161,6 @@ from app.utils.observability import (
 # paths.py exports
 from app.utils.paths import ensure_dir, ensure_parent_dir, normalize_path
 
-# schema_validation.py exports
-from app.utils.schema_validation import (
-    ValidationResult,
-    validate_approval_packet,
-    validate_data_freshness,
-    validate_evidence_pack,
-    validate_handoff_payload,
-    validate_input_schema,
-    validate_mapping_schema,
-    validate_numeric_range,
-    validate_output_schema,
-    validate_registry_entry,
-    validate_required_fields,
-    validate_schema_version,
-    validation_failed_paths,
-)
-
 # standard.py exports
 from app.utils.standard import (
     AlertDeduplicator,
@@ -199,6 +182,23 @@ from app.utils.standard import (
     validate_metric_labels,
     validate_ohlcv_records,
     validate_standard_response,
+)
+
+# validations.py exports
+from app.utils.validations import (
+    ValidationResult,
+    validate_approval_packet,
+    validate_data_freshness,
+    validate_evidence_pack,
+    validate_handoff_payload,
+    validate_input_schema,
+    validate_mapping_schema,
+    validate_numeric_range,
+    validate_output_schema,
+    validate_registry_entry,
+    validate_required_fields,
+    validate_schema_version,
+    validation_failed_paths,
 )
 
 __all__ = [
