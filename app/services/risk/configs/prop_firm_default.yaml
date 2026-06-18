@@ -1,0 +1,13 @@
+schema_version: "1.0.0"
+profile_name: "prop_firm_default"
+allow_live_execution: false
+max_daily_loss_pct: 0.04
+max_total_loss_pct: 0.08
+double_spend_prevention_owner: "risk_cache"
+max_margin_utilization_pct: 0.70
+max_effective_leverage: 10.0
+correlation_threshold: 0.40
+default_kelly_fraction: 0.20
+min_kelly_trades: 5
+max_risk_per_trade: 0.005
+max_total_loss_pct_advisory: 0.03

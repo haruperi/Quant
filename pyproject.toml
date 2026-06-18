@@ -105,6 +105,8 @@ ignore = [
     "FBT001",  # Flake8-boolean-trap - boolean-typed positional argument in function definition (standard format selectors)
     "FBT002",  # Flake8-boolean-trap - boolean default positional argument in function definition
     "PD901",   # Pandas-vet - generic df variable name is standard and widely accepted
+    "D107",    # Pydocstyle - Missing docstring in __init__
+    "TRY300",  # Tryceratops - Consider moving statement to an else block
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -188,6 +190,7 @@ module = [
     "binance.*",
     "requests",
     "pytest_mock",
-    "MetaTrader5"
+    "MetaTrader5",
+    "yaml"
 ]
 ignore_missing_imports = true

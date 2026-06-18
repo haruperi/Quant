@@ -1,0 +1,13 @@
+schema_version: "1.0.0"
+profile_name: "live_conservative"
+allow_live_execution: true
+max_daily_loss_pct: 0.02
+max_total_loss_pct: 0.05
+double_spend_prevention_owner: "risk_cache"
+max_margin_utilization_pct: 0.50
+max_effective_leverage: 5.0
+correlation_threshold: 0.30
+default_kelly_fraction: 0.10
+min_kelly_trades: 10
+max_risk_per_trade: 0.002
+max_total_loss_pct_advisory: 0.015

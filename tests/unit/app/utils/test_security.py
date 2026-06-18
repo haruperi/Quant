@@ -1,7 +1,8 @@
 """Unit tests for security helpers."""
 
 import pytest
-from app.core.security import (
+from app.utils.errors import SecurityError, ValidationError
+from app.utils.security import (
     MAX_REDACTION_DEPTH,
     SECRET_VERSION_NOT_FOUND,
     classify_secret_key,
@@ -19,7 +20,6 @@ from app.core.security import (
     select_active_secret_version,
     verify_password,
 )
-from app.utils.errors import SecurityError, ValidationError
 
 
 def test_redaction_removes_sensitive_values() -> None:
@@ -79,7 +79,7 @@ def test_redact_payload_maps_unexpected_failures_to_standard_error(
     def fail_redaction(_payload: object) -> dict[str, object]:
         raise RuntimeError("unexpected redaction failure")
 
-    monkeypatch.setattr("app.core.security.redact_mapping", fail_redaction)
+    monkeypatch.setattr("app.utils.security.redact_mapping", fail_redaction)
 
     response = redact_payload({"safe": "value"})
 

@@ -5,7 +5,6 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
-from app.core.config import settings
 from app.services.brokers.ctrader import (
     CTraderClient,
     get_account_info,
@@ -19,6 +18,7 @@ from app.services.brokers.ctrader import (
     trade,
 )
 from app.utils.errors import ConfigurationError, ExternalServiceError
+from app.utils.settings import settings
 from ctrader_open_api.messages.OpenApiCommonModelMessages_pb2 import (  # type: ignore[import-untyped, unused-ignore]
     ProtoPayloadType,
 )

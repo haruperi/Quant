@@ -49,9 +49,9 @@ from ctrader_open_api.protobuf import (  # type: ignore[import-untyped, unused-i
 )
 from twisted.internet import reactor
 
-from app.core.config import settings
 from app.utils.errors import ConfigurationError, ExternalServiceError
 from app.utils.logger import logger
+from app.utils.settings import settings
 
 
 class CTraderClient:

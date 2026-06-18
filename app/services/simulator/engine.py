@@ -8,7 +8,6 @@ offering a fully mockable in-memory trading broker environment.
 from datetime import UTC, datetime
 from typing import Any
 
-from app.core.config import settings
 from app.services.brokers.mt5 import get_mt5_client as get_real_mt5_client
 from app.services.simulator.models import (
     SimulatorAccountInfo,
@@ -21,6 +20,7 @@ from app.services.simulator.models import (
 )
 from app.utils.errors import ConfigurationError, ExternalServiceError
 from app.utils.logger import logger
+from app.utils.settings import settings
 
 
 class SimulatorClient:

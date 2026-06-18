@@ -1,194 +1,216 @@
-from datetime import UTC, datetime, timedelta
+"""Unit tests for the pre-trade limits engine."""
+
+from __future__ import annotations
+
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
+from app.services.risk import (
+    PortfolioState,
+    ProposedTrade,
+    RiskAssessmentRequest,
+    RiskConfig,
+    RiskDecisionStatus,
+    RiskMode,
+    RiskReasonCode,
+    RiskSeverity,
+    run_limit_checks,
+)
+from app.services.risk.config import load_risk_config
 from app.services.risk.limits import (
-    check_currency_exposure_limit,
     check_daily_loss_limit,
     check_kill_switch_state,
-    check_leverage_limit,
-    check_margin_limit,
     check_max_drawdown_limit,
-    check_news_blackout,
-    check_slippage_limit,
-    check_spread_limit,
-    check_strategy_loss_limit,
-    check_symbol_exposure_limit,
+    check_portfolio_exposure_limit,
+    check_stale_evidence_limit,
 )
-from app.services.risk.models import (
-    PortfolioState,
-    PositionState,
-    RiskConfig,
-)
+from app.utils.normalization import utc_now
 
 
 @pytest.fixture
-def base_config():
-    return RiskConfig(
-        max_daily_loss_pct=Decimal("0.05"),
-        max_total_loss_pct=Decimal("0.10"),
-        max_margin_utilization_pct=Decimal("0.80"),
-        max_effective_leverage=Decimal("30.0"),
-        correlation_threshold=Decimal("0.50"),
-    )
+def base_config() -> RiskConfig:
+    """Load default base risk config."""
+    return load_risk_config("default")
 
 
 @pytest.fixture
-def healthy_portfolio():
+def normal_portfolio() -> PortfolioState:
+    """Provide a normal portfolio state."""
     return PortfolioState(
-        account_id="acc_123",
-        balance=Decimal(10000),
-        equity=Decimal(10000),
-        margin_used=Decimal(1000),
-        free_margin=Decimal(9000),
-        floating_pnl=Decimal(0),
-        realized_pnl=Decimal(0),
+        account_id="acc-123",
+        balance=Decimal("100000.00"),
+        equity=Decimal("100000.00"),
+        margin_used=Decimal("1000.00"),
+        free_margin=Decimal("99000.00"),
+        floating_pnl=Decimal("0.00"),
+        realized_pnl=Decimal("0.00"),
         currency="USD",
+        as_of=utc_now(),
         positions=[],
-        orders=[],
-        strategy_allocations={},
-        historical_returns=[Decimal("0.01"), Decimal("-0.005"), Decimal("0.02")],
-        as_of=datetime.now(UTC),
     )
 
 
-def test_drawdown_limits(healthy_portfolio, base_config):
-    # Healthy portfolio passes
-    res = check_max_drawdown_limit(healthy_portfolio, base_config)
-    assert res.status == "pass"
-
-    # Drawdown of 15% breaches max total loss of 10%
-    breached_portfolio = healthy_portfolio.model_copy(update={"equity": Decimal(8400)})
-    res = check_max_drawdown_limit(breached_portfolio, base_config)
-    assert res.status == "fail"
-
-    # Drawdown of 6% breaches max daily loss of 5%
-    daily_breached = healthy_portfolio.model_copy(update={"equity": Decimal(9300)})
-    res = check_daily_loss_limit(daily_breached, base_config)
-    assert res.status == "fail"
-
-
-def test_leverage_and_margin_limits(healthy_portfolio, base_config):
-    # Add a large position
-    pos = PositionState(
-        position_id="pos_1",
+@pytest.fixture
+def base_request(normal_portfolio: PortfolioState) -> RiskAssessmentRequest:
+    """Provide a baseline RiskAssessmentRequest."""
+    trade = ProposedTrade(
+        strategy_id="strategy-1",
         symbol="EURUSD",
-        direction="long",
-        quantity=Decimal(350000),  # Notional = 350,000
-        entry_price=Decimal("1.0"),
-        current_price=Decimal("1.0"),
-        floating_pnl=Decimal(0),
-        margin_required=Decimal(3500),
-        strategy_id="strat_1",
-        open_time=datetime.now(UTC),
+        side="buy",
+        volume=Decimal("0.10"),
     )
-    portfolio = healthy_portfolio.model_copy(
-        update={
-            "positions": [pos],
-            "margin_used": Decimal(9000),  # 90% utilization
-        }
+    return RiskAssessmentRequest(
+        proposed_action=trade,
+        portfolio_state=normal_portfolio,
+        risk_config=load_risk_config("default"),
+        calendar_evidence=[],
+        market_context={
+            "kill_switch_active": False,
+            "freshness": utc_now(),
+            "daily_loss_pct": 0.0,
+            "mode": RiskMode.PAPER,
+        },
     )
 
-    # Leverage = 350,000 / 10,000 = 35 (breaches 30 limit)
-    res = check_leverage_limit(portfolio, base_config)
-    assert res.status == "fail"
 
-    # Margin = 90% (breaches 80% limit)
-    res = check_margin_limit(portfolio, base_config)
-    assert res.status == "fail"
+def test_check_kill_switch_state(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test kill switch detection."""
+    # Pass path
+    res = check_kill_switch_state(base_request, base_config)
+    assert not res.breached
+    assert res.status == RiskDecisionStatus.APPROVE
+
+    # Fail path
+    base_request.market_context["kill_switch_active"] = True
+    res_fail = check_kill_switch_state(base_request, base_config)
+    assert res_fail.breached
+    assert res_fail.status == RiskDecisionStatus.BLOCK
+    assert res_fail.reason_code == RiskReasonCode.KILL_SWITCH_ACTIVE
 
 
-def test_concentration_and_currency_exposure(healthy_portfolio, base_config):
-    # Add positions in multiple pairs
-    pos1 = PositionState(
-        position_id="pos_1",
-        symbol="EURUSD",
-        direction="long",
-        quantity=Decimal(30000),  # 30,000 USD
-        entry_price=Decimal("1.0"),
-        current_price=Decimal("1.0"),
-        floating_pnl=Decimal(0),
-        margin_required=Decimal(300),
-        strategy_id="strat_1",
-        open_time=datetime.now(UTC),
+def test_check_stale_evidence_limit(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test snapshot evidence freshness and fail-closed checks."""
+    # Pass path
+    res = check_stale_evidence_limit(base_request, base_config)
+    assert not res.breached
+
+    # Fail path (stale age)
+    base_request.market_context["freshness"] = utc_now() - timedelta(seconds=120)
+    res_stale = check_stale_evidence_limit(base_request, base_config)
+    assert res_stale.breached
+    assert res_stale.status == RiskDecisionStatus.REJECT
+
+    # Missing evidence in Live mode -> BLOCK (fail-closed)
+    base_request.market_context["mode"] = RiskMode.FULL_LIVE
+    del base_request.market_context["freshness"]
+    res_missing_live = check_stale_evidence_limit(base_request, base_config)
+    assert res_missing_live.status == RiskDecisionStatus.BLOCK
+    assert res_missing_live.reason_code == RiskReasonCode.STALE_EVIDENCE
+
+
+def test_check_max_drawdown_limit(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test max drawdown limit gates (soft vs hard breach)."""
+    # config has max_total_loss_pct = 0.10, advisory = 0.08
+    # Pass path
+    res = check_max_drawdown_limit(base_request, base_config)
+    assert not res.breached
+
+    # Warning path (soft breach)
+    base_request.market_context["drawdown"] = 0.09
+    res_warn = check_max_drawdown_limit(base_request, base_config)
+    assert res_warn.breached
+    assert res_warn.status == RiskDecisionStatus.APPROVE
+    assert res_warn.severity == RiskSeverity.WARNING
+
+    # Fail path (hard block)
+    base_request.market_context["drawdown"] = 0.12
+    res_fail = check_max_drawdown_limit(base_request, base_config)
+    assert res_fail.breached
+    assert res_fail.status == RiskDecisionStatus.BLOCK
+    assert res_fail.reason_code == RiskReasonCode.DRAWDOWN_BREACH
+
+
+def test_check_daily_loss_limit(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test daily loss percentage checks."""
+    # config has max_daily_loss_pct = 0.05
+    # Pass path
+    res = check_daily_loss_limit(base_request, base_config)
+    assert not res.breached
+
+    # Fail path
+    base_request.market_context["daily_loss_pct"] = 0.06
+    res_fail = check_daily_loss_limit(base_request, base_config)
+    assert res_fail.breached
+    assert res_fail.status == RiskDecisionStatus.REJECT
+
+
+def test_check_portfolio_exposure_limit(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test total portfolio exposure calculations."""
+    base_request.portfolio_state.equity = Decimal("100000.00")
+    base_request.market_context["portfolio_gross_exposure"] = 490000.0
+    base_request.market_context["max_portfolio_exposure"] = 5.0
+
+    # 490,000 + 0.1 lot (10,000) = 500,000 (exactly 5.0x equity) -> Pass
+    res = check_portfolio_exposure_limit(base_request, base_config)
+    assert not res.breached
+
+    # Adding more exposure -> Fail
+    base_request.market_context["portfolio_gross_exposure"] = 495000.0
+    res_fail = check_portfolio_exposure_limit(base_request, base_config)
+    assert res_fail.breached
+    assert res_fail.status == RiskDecisionStatus.REJECT
+
+
+def test_run_limit_checks_aggregation(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test sequential aggregation precedence and primary failure selection."""
+    # 1. No breaches -> approve
+    status, _code, _msg, flags, primary, _results = run_limit_checks(
+        base_request, base_config
     )
-    portfolio = healthy_portfolio.model_copy(update={"positions": [pos1]})
+    assert status == RiskDecisionStatus.APPROVE
+    assert not flags
+    assert primary == ""
 
-    # Check concentration (limit is 20% of equity = 2000 USD)
-    res = check_symbol_exposure_limit(portfolio, base_config)
-    assert res.status == "fail"
-
-    # Check currency exposures (limit is 40% of equity = 4000 USD)
-    res = check_currency_exposure_limit(portfolio, base_config)
-    assert res.status == "fail"
-
-
-def test_news_blackout(healthy_portfolio, base_config):
-    now = datetime.now(UTC)
-    # High impact news 5 minutes away
-    news = [
-        {
-            "title": "NFP Report",
-            "time": (now + timedelta(minutes=5)).isoformat(),
-            "impact": "high",
-        }
-    ]
-    res = check_news_blackout(healthy_portfolio, base_config, calendar_evidence=news)
-    assert res.status == "blocked"
-
-    # Low impact news does not trigger block
-    low_news = [
-        {
-            "title": "Low Impact Event",
-            "time": (now + timedelta(minutes=5)).isoformat(),
-            "impact": "low",
-        }
-    ]
-    res = check_news_blackout(
-        healthy_portfolio, base_config, calendar_evidence=low_news
+    # 2. Add an exposure breach (REJECT)
+    base_request.market_context["portfolio_gross_exposure"] = 600000.0
+    status, code, _msg, flags, primary, _results = run_limit_checks(
+        base_request, base_config
     )
-    assert res.status == "pass"
+    assert status == RiskDecisionStatus.REJECT
+    assert code == RiskReasonCode.CONCENTRATION_BREACH
+    assert "portfolio_exposure_limit" in flags
+    assert primary == "portfolio_exposure_limit"
 
-
-def test_spread_and_slippage_limits(healthy_portfolio, base_config):
-    # Spread spike
-    context = {"spread": 12.0, "max_spread": 10.0}
-    res = check_spread_limit(healthy_portfolio, base_config, market_context=context)
-    assert res.status == "fail"
-
-    # Slippage spike
-    context = {"slippage": 6.0, "max_slippage": 5.0}
-    res = check_slippage_limit(healthy_portfolio, base_config, market_context=context)
-    assert res.status == "fail"
-
-
-def test_kill_switch_state():
-    res = check_kill_switch_state(True)
-    assert res.status == "blocked"
-    res = check_kill_switch_state(False)
-    assert res.status == "pass"
-
-
-def test_limit_edge_cases(healthy_portfolio, base_config):
-    # 1. Zero balance / negative balance
-    zero_balance_portfolio = healthy_portfolio.model_copy(
-        update={"balance": Decimal(0)}
+    # 3. Daily loss breach (REJECT, runs before portfolio exposure)
+    base_request.market_context["daily_loss_pct"] = 0.06
+    status, code, _msg, flags, primary, _results = run_limit_checks(
+        base_request, base_config
     )
-    res = check_max_drawdown_limit(zero_balance_portfolio, base_config)
-    assert res.status == "fail"
-    res = check_daily_loss_limit(zero_balance_portfolio, base_config)
-    assert res.status == "fail"
+    assert status == RiskDecisionStatus.REJECT
+    assert code == RiskReasonCode.DAILY_LOSS_BREACH  # Selected over concentration
+    assert "daily_loss_limit" in flags
+    assert "portfolio_exposure_limit" in flags
+    assert primary == "daily_loss_limit"
 
-    # 2. Zero equity in leverage/margin checks
-    zero_equity_portfolio = healthy_portfolio.model_copy(update={"equity": Decimal(0)})
-    res = check_leverage_limit(zero_equity_portfolio, base_config)
-    assert res.status == "fail"
-    res = check_margin_limit(zero_equity_portfolio, base_config)
-    assert res.status == "fail"
-
-    # 3. Strategy allocations exceeding equity
-    over_allocated_portfolio = healthy_portfolio.model_copy(
-        update={"strategy_allocations": {"strat_1": Decimal(15000)}}
+    # 4. Add a kill switch active breach (BLOCK, which overrides REJECT entirely)
+    base_request.market_context["kill_switch_active"] = True
+    status, code, _msg, flags, primary, _results = run_limit_checks(
+        base_request, base_config
     )
-    res = check_strategy_loss_limit(over_allocated_portfolio, base_config)
-    assert res.status == "fail"
+    assert status == RiskDecisionStatus.BLOCK
+    assert code == RiskReasonCode.KILL_SWITCH_ACTIVE
+    assert "kill_switch_state" in flags
+    assert primary == "kill_switch_state"

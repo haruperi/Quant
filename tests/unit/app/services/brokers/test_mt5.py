@@ -4,7 +4,6 @@ from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
-from app.core.config import settings
 from app.services.brokers.mt5 import (
     MT5Client,
     get_account_info,
@@ -18,6 +17,7 @@ from app.services.brokers.mt5 import (
     trade,
 )
 from app.utils.errors import ConfigurationError, ExternalServiceError
+from app.utils.settings import settings
 from pytest_mock import MockerFixture
 
 

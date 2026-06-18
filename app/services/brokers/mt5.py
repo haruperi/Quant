@@ -11,9 +11,9 @@ from typing import Any
 import MetaTrader5 as mt5  # type: ignore[import-untyped, unused-ignore]  # noqa: N813
 import pandas as pd
 
-from app.core.config import settings
 from app.utils.errors import ConfigurationError, ExternalServiceError
 from app.utils.logger import logger
+from app.utils.settings import settings
 
 
 class MT5Client:

@@ -9,10 +9,10 @@ from dataclasses import dataclass, field
 from threading import RLock
 from typing import Literal, TypedDict
 
-from app.core.security import redact_mapping
 from app.utils.errors import ValidationError
 from app.utils.identity import generate_event_id
 from app.utils.normalization import format_utc_timestamp, utc_now
+from app.utils.security import redact_mapping
 
 EventSeverity = Literal["info", "warning", "error", "critical"]
 DeliveryStatus = Literal["delivered", "failed", "dropped", "duplicate", "conflict"]

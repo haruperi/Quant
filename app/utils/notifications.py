@@ -13,9 +13,9 @@ from dataclasses import dataclass, field
 from threading import RLock
 from typing import Literal, Protocol, TypedDict
 
-from app.core.security import redact_mapping, redact_text
 from app.utils.errors import ConfigurationError, ExternalServiceError, ValidationError
 from app.utils.logger import logger
+from app.utils.security import redact_mapping, redact_text
 
 NotificationChannel = Literal["email", "telegram", "desktop", "webhook"]
 NotificationStatus = Literal[
