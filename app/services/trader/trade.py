@@ -11,15 +11,19 @@ import threading
 import time
 from typing import Any
 
-from app.core.config import settings
-from app.routes.brokers import get_broker_module
+from app.services.brokers.router import get_active_broker_name, get_broker_module
 from app.services.trader.account_info import AccountInfo
 from app.services.trader.concurrency import ConcurrencyQueue
 from app.services.trader.idempotency import IdempotencyService
 from app.services.trader.position_info import PositionInfo
+from app.services.trader.rate_limiter import get_rate_limiter
 from app.services.trader.readiness import ReadinessService
 from app.services.trader.reconciliation import ReconciliationService
-from app.services.trader.result import BrokerResponseNormalizer, ResultBuilder
+from app.services.trader.result import (
+    BrokerResponseNormalizer,
+    NormalizedTradeResult,
+    ResultBuilder,
+)
 from app.services.trader.store import TradeStore, get_default_store
 from app.services.trader.symbol_info import SymbolInfo
 from app.services.trader.terminal_info import TerminalInfo
@@ -154,6 +158,25 @@ class Trade:
         """
         return str(getattr(self._result, "comment", ""))
 
+    @staticmethod
+    def _attach_trace_context(
+        result: NormalizedTradeResult,
+        request_id: str,
+        correlation_id: str,
+        trace_id: str,
+    ) -> None:
+        """Attach structural trace identifiers to a normalized result.
+
+        Args:
+            result: Normalized trade result object.
+            request_id: Deterministic request identifier.
+            correlation_id: Correlation identifier propagated through execution.
+            trace_id: Trace identifier propagated through execution.
+        """
+        result.request_id = request_id
+        result.correlation_id = correlation_id
+        result.trace_id = trace_id
+
     def _send_request(self, request: dict[str, Any]) -> bool:
         """Send a trade request dictionary to the active broker with safety checks.
 
@@ -206,22 +229,35 @@ class Trade:
             volume = request.get("volume", 0.0)
             price = request.get("price", 0.0)
             slippage = request.get("deviation", self._deviation)
+            active_broker = get_active_broker_name()
 
             # 2. Idempotency Check
             idem_key = self._idempotency.generate_key(
                 account_id, symbol, action_type, volume, price, slippage
             )
+            request_id = str(request.get("request_id") or idem_key)
+            correlation_id = str(request.get("correlation_id") or request_id)
+            trace_id = str(request.get("trace_id") or correlation_id)
+            request["request_id"] = request_id
+            request["correlation_id"] = correlation_id
+            request["trace_id"] = trace_id
             existing = self._idempotency.check_duplicate(idem_key)
             if existing:
                 if existing["status"] == "in_progress":
                     self._result = ResultBuilder.failure(
                         "already in progress", retcode=10004
                     )
+                    self._attach_trace_context(
+                        self._result, request_id, correlation_id, trace_id
+                    )
                     return False
                 if existing["status"] == "completed":
                     res_dict = existing["result"]
                     self._result = BrokerResponseNormalizer.normalize_response(
-                        settings.active_broker, res_dict
+                        active_broker, res_dict
+                    )
+                    self._attach_trace_context(
+                        self._result, request_id, correlation_id, trace_id
                     )
                     return self._result.retcode in (10009, 10008, 0)
 
@@ -275,12 +311,15 @@ class Trade:
                 # 5. Readiness verification
                 term = TerminalInfo()
                 readiness_res = self._readiness.run_execution_readiness_check(
-                    settings.active_broker, symbol, term, acc
+                    active_broker, symbol, term, acc
                 )
                 if not readiness_res["passed"]:
                     self._result = ResultBuilder.failure(
                         "Readiness check failed: " + ", ".join(readiness_res["errors"]),
                         retcode=10001,
+                    )
+                    self._attach_trace_context(
+                        self._result, request_id, correlation_id, trace_id
                     )
                     self._idempotency.register_completed(
                         idem_key, self._result.to_dict()
@@ -303,19 +342,37 @@ class Trade:
                         str(e),
                         retcode=10001,
                     )
+                    self._attach_trace_context(
+                        self._result, request_id, correlation_id, trace_id
+                    )
                     self._idempotency.register_completed(
                         idem_key, self._result.to_dict()
                     )
                     return False
 
                 # 7. Execution of Broker Request with explicit Timeout (5 seconds)
+                limiter = get_rate_limiter(active_broker)
+                if not limiter.acquire():
+                    self._result = ResultBuilder.failure(
+                        f"Rate limit exceeded for provider '{active_broker}'.",
+                        retcode=10004,
+                    )
+                    self._attach_trace_context(
+                        self._result, request_id, correlation_id, trace_id
+                    )
+                    self._idempotency.register_completed(
+                        idem_key, self._result.to_dict()
+                    )
+                    return False
+
                 broker = get_broker_module()
                 executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
                 future = executor.submit(broker.trade, sanitized_req)
                 try:
                     raw_result = future.result(timeout=5.0)
-                    self._result = ResultBuilder.success(
-                        settings.active_broker, raw_result
+                    self._result = ResultBuilder.success(active_broker, raw_result)
+                    self._attach_trace_context(
+                        self._result, request_id, correlation_id, trace_id
                     )
                 except concurrent.futures.TimeoutError:
                     # Timeout represents an Unknown Outcome -> forced reconciliation
@@ -323,6 +380,9 @@ class Trade:
                         "Synchronous broker call timed out after 5 seconds. "
                         "Flagged as Unknown Outcome.",
                         retcode=10005,
+                    )
+                    self._attach_trace_context(
+                        self._result, request_id, correlation_id, trace_id
                     )
                     # Trigger forced reconciliation pass
                     try:
@@ -354,6 +414,9 @@ class Trade:
                 except Exception as e:
                     # Broker adapter execution error -> set exact string e
                     self._result = ResultBuilder.failure(str(e), retcode=10001)
+                    self._attach_trace_context(
+                        self._result, request_id, correlation_id, trace_id
+                    )
                 finally:
                     executor.shutdown(wait=False)
 
@@ -925,7 +988,7 @@ class Trade:
             try:
                 # Cancel all active pending orders immediately
                 try:
-                    from app.routes.brokers import get_broker_module
+                    from app.services.brokers.router import get_broker_module
 
                     broker = get_broker_module()
                     if broker:
@@ -943,7 +1006,7 @@ class Trade:
                 # Flatten all open positions if flatten_positions is True
                 if flatten_positions:
                     try:
-                        from app.routes.brokers import get_broker_module
+                        from app.services.brokers.router import get_broker_module
 
                         broker = get_broker_module()
                         if broker:
@@ -979,7 +1042,7 @@ class Trade:
 
         # Flush states using default store and broker module
         try:
-            from app.routes.brokers import get_broker_module
+            from app.services.brokers.router import get_broker_module
             from app.services.trader.reconciliation import ReconciliationService
             from app.services.trader.store import get_default_store
 

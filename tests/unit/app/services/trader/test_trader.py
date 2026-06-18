@@ -4,7 +4,6 @@
 from unittest.mock import MagicMock
 
 import pytest
-from app.core.config import settings
 from app.routes.brokers import get_broker_module
 from app.services.trader import (
     AccountInfo,
@@ -16,6 +15,7 @@ from app.services.trader import (
     TerminalInfo,
     Trade,
 )
+from app.utils.errors import classify_broker_error, trading_retry_delay
 from pytest_mock import MockerFixture
 
 
@@ -229,13 +229,14 @@ def mock_broker(mocker: MockerFixture) -> MagicMock:
         "app.services.trader.deal_info.get_broker_module", return_value=mock_mod
     )
     mocker.patch("app.services.trader.trade.get_broker_module", return_value=mock_mod)
+    mocker.patch("app.services.trader.trade.get_active_broker_name", return_value="mt5")
+    mocker.patch("app.services.brokers.router.get_broker_module", return_value=mock_mod)
 
     return mock_mod
 
 
 def test_resolver_mt5(mocker: MockerFixture) -> None:
     """Test broker resolver for MT5."""
-    mocker.patch.object(settings, "active_broker", "mt5")
     # Resolve resolver import locally
     import app.services.brokers.mt5 as mock_mt5
 
@@ -248,21 +249,28 @@ def test_resolver_mt5(mocker: MockerFixture) -> None:
 def test_resolver_actual_resolution(mocker: MockerFixture) -> None:
     """Test get_broker_module resolution without mocking the function itself."""
     # Test MT5 resolution
-    mocker.patch.object(settings, "active_broker", "mt5")
+    mocker.patch(
+        "app.services.brokers.router.get_active_broker_name", return_value="mt5"
+    )
     res_mt5 = get_broker_module()
     from app.services.brokers import mt5
 
     assert res_mt5 == mt5
 
     # Test cTrader resolution
-    mocker.patch.object(settings, "active_broker", "ctrader")
+    pytest.importorskip("ctrader_open_api")
+    mocker.patch(
+        "app.services.brokers.router.get_active_broker_name", return_value="ctrader"
+    )
     res_ctrader = get_broker_module()
     from app.services.brokers import ctrader
 
     assert res_ctrader == ctrader
 
     # Test Simulator resolution
-    mocker.patch.object(settings, "active_broker", "simulator")
+    mocker.patch(
+        "app.services.brokers.router.get_active_broker_name", return_value="simulator"
+    )
     res_sim = get_broker_module()
     from app.services import simulator
 
@@ -497,6 +505,9 @@ def test_trade_actions(mock_broker: MagicMock) -> None:
     assert trade.result_bid() == 1.08490
     assert trade.result_ask() == 1.08510
     assert trade.result_comment() == "Request executed"
+    assert trade._result.request_id.startswith("idem_")
+    assert trade._result.correlation_id == trade._result.request_id
+    assert trade._result.trace_id == trade._result.correlation_id
 
     # Sell
     assert trade.sell(0.05) is True
@@ -593,3 +604,44 @@ def test_kill_switch_actions(mock_broker: MagicMock) -> None:
         assert mock_broker.trade.call_count >= 2
     finally:
         Trade.set_kill_switch(False)
+
+
+def test_service_router_matches_legacy_route(mocker: MockerFixture) -> None:
+    """Service-level broker router remains compatible with legacy route wrapper."""
+    from app.routes.brokers import get_broker_module as get_route_broker
+    from app.services.brokers.router import get_broker_module as get_service_broker
+
+    mocker.patch(
+        "app.services.brokers.router.get_active_broker_name", return_value="simulator"
+    )
+
+    assert get_route_broker() is get_service_broker()
+
+
+def test_trade_consumes_rate_limit_token(
+    mock_broker: MagicMock, mocker: MockerFixture
+) -> None:
+    """Outbound trade execution consumes provider rate-limit capacity."""
+    limiter = MagicMock()
+    limiter.check_rate_limit.return_value = True
+    limiter.acquire.return_value = False
+    mocker.patch("app.services.trader.readiness.get_rate_limiter", return_value=limiter)
+    mocker.patch("app.services.trader.trade.get_rate_limiter", return_value=limiter)
+
+    trade = Trade()
+    trade.set_symbol("EURUSD")
+
+    assert trade.buy(0.05) is False
+    limiter.acquire.assert_called_once_with()
+    assert "Rate limit exceeded" in trade.result_comment()
+    mock_broker.trade.assert_not_called()
+
+
+def test_trading_error_classification_and_retry_delay() -> None:
+    """Broker retcodes map to deterministic classifications and retry delays."""
+    error = classify_broker_error({"retcode": 10004, "comment": "requote"})
+
+    assert error["code"] == "TIMEOUT"
+    assert error["classification"] == "transient"
+    assert error["retcode"] == 10004
+    assert 0.25 <= trading_retry_delay(0) <= 0.30

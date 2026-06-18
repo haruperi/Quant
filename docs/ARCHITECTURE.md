@@ -69,6 +69,13 @@
 - **Runtime limits**: Input, payload, dashboard truncation, statistical-iteration, runtime, and memory limits are approved in `docs/adr/ADR-ANALYTICS-LIMITS.md`.
 - **Portfolio currency safety**: Multi-currency portfolio analytics fail closed unless validated FX conversion data is supplied.
 
+### 8.2 Trading Service Contracts
+- **Broker routing ownership**: Broker module selection is owned by `app.services.brokers.router`; `app.routes.brokers` is a compatibility wrapper and must not own adapter policy.
+- **Execution boundary**: `app.services.trader.trade.Trade` is the current executor/orchestrator. Phase plans that mention a separate `executor.py` map to this existing service unless a future refactor is explicitly approved.
+- **Traceability**: Normalized trade results carry `request_id`, `correlation_id`, and `trace_id` alongside fill details so downstream risk, analytics, and reconciliation flows can cite the same execution context.
+- **Rate limiting and readiness**: Trading checks provider rate-limit health during readiness and consumes provider rate-limit capacity before outbound broker execution.
+- **Known pending hardening**: Partial close volume support, cached netting/hedging compatibility enforcement, scheduled reconciliation, broker circuit breakers, high-fidelity simulator E2E tests, and canonical provider metadata separation remain open Phase 7 follow-up items.
+
 ## 9. Data Models & Schema Rules
 - **IDs**: Durable cross-module IDs must be `TEXT` (UUID4/ULID).
 - **Timestamps**: UTC `created_at` and `updated_at`.

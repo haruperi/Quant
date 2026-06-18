@@ -1,31 +1,19 @@
 # ruff: noqa: ANN401
-"""Active broker router/resolver.
+"""Compatibility wrapper for the service-level broker router.
 
-This module resolves, routes and returns the active broker module based on settings.
+Routes should not own broker adapter selection policy. New code should import
+``get_broker_module`` from ``app.services.brokers.router`` directly.
 """
 
 from typing import Any
 
-from app.core.config import settings
+from app.services.brokers.router import get_broker_module as _get_broker_module
 
 
 def get_broker_module() -> Any:
-    """Resolve and return the active broker module based on settings.
+    """Resolve and return the active broker module.
 
     Returns:
-        Any: The active broker module (mt5, ctrader, or simulator).
+        Any: The active broker module selected by the service router.
     """
-    active = getattr(settings, "active_broker", "mt5").lower()
-    if active == "ctrader":
-        from app.services.brokers import ctrader
-
-        return ctrader
-
-    if active == "simulator":
-        from app.services import simulator
-
-        return simulator
-
-    from app.services.brokers import mt5
-
-    return mt5
+    return _get_broker_module()

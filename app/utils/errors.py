@@ -44,7 +44,9 @@ Public exports:
     StrategyVolumeParticipationExceededError, StrategyDataQualityGateFailedError,
     StrategyPerformanceDegradedError, StrategyDriftDetectedError,
     StrategyRegulatoryLimitBreachedError, StrategyMarketAccessRevokedError,
-    StrategyHardKilledError, map_exception_to_strategy_error.
+    StrategyHardKilledError, TradingError, TradingTimeoutError,
+    UnknownOutcomeError, classify_broker_error, trading_retry_delay,
+    map_exception_to_strategy_error.
 
 Side effects:
     None. Importing this module does not configure logging, read files, import
@@ -56,10 +58,11 @@ from __future__ import annotations
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from random import random
 from typing import TYPE_CHECKING, Literal, TypedDict
 
-from app.core.security import redact_mapping, redact_text
 from app.utils.logger import logger
+from app.utils.security import redact_mapping, redact_text
 
 if TYPE_CHECKING:
     from app.utils.event_bus import InMemoryEventBus
@@ -583,9 +586,115 @@ class ExternalServiceError(Error):
     code = "SERVICE_UNAVAILABLE"
 
 
+class TradingError(ExternalServiceError):
+    """Base error for deterministic trading execution failures."""
+
+    code = "BROKER_UNAVAILABLE"
+
+
+class TradingTimeoutError(TradingError):
+    """Raised when broker execution exceeds the configured timeout."""
+
+    code = "TIMEOUT"
+
+
+class UnknownOutcomeError(TradingError):
+    """Raised when broker execution outcome cannot be determined safely."""
+
+    code = "CIRCUIT_OPEN"
+
+
+TRADING_RETCODE_ERROR_MAP: dict[int, str] = {
+    10004: "TIMEOUT",  # TRADE_RETCODE_REQUOTE
+    10006: "BROKER_UNAVAILABLE",  # TRADE_RETCODE_REJECT
+    10014: "VALIDATION_FAILED",  # TRADE_RETCODE_INVALID_VOLUME
+    10015: "VALIDATION_FAILED",  # TRADE_RETCODE_INVALID_PRICE
+    10016: "VALIDATION_FAILED",  # TRADE_RETCODE_INVALID_STOPS
+    10017: "CIRCUIT_OPEN",  # TRADE_RETCODE_TRADE_DISABLED / freeze-like block
+    10019: "VALIDATION_FAILED",  # TRADE_RETCODE_NO_MONEY
+    10031: "DATA_NOT_FOUND",  # order not found in simulator compatibility layer
+    10032: "DATA_NOT_FOUND",  # position not found in simulator compatibility layer
+}
+
+TRANSIENT_TRADING_RETCODES = frozenset({10004, 10005, 10006, 10012, 10020, 10021})
+
+
+def classify_broker_error(raw_error: Exception | object) -> dict[str, object]:
+    """Classify broker errors into deterministic internal error metadata.
+
+    Args:
+        raw_error: Exception or broker response object with an optional
+            ``retcode`` attribute.
+
+    Returns:
+        A mapping containing ``code``, ``classification``, ``retcode``, and
+        redacted ``details``.
+    """
+    retcode = getattr(raw_error, "retcode", None)
+    if isinstance(raw_error, Mapping):
+        retcode = raw_error.get("retcode", retcode)
+    try:
+        normalized_retcode = int(retcode) if retcode is not None else None
+    except (TypeError, ValueError):
+        normalized_retcode = None
+
+    code = "UNKNOWN_ERROR"
+    if normalized_retcode is not None:
+        if normalized_retcode in TRADING_RETCODE_ERROR_MAP:
+            code = TRADING_RETCODE_ERROR_MAP[normalized_retcode]
+    elif isinstance(raw_error, BaseException):
+        code = code_for_exception(raw_error)
+
+    classification = (
+        "transient"
+        if normalized_retcode in TRANSIENT_TRADING_RETCODES
+        or code in {"TIMEOUT", "NETWORK_ERROR", "BROKER_UNAVAILABLE"}
+        else "permanent"
+    )
+    return {
+        "code": normalize_error_code(code),
+        "classification": classification,
+        "retcode": normalized_retcode,
+        "details": redact_text(str(raw_error)),
+    }
+
+
+def trading_retry_delay(
+    attempt: int,
+    *,
+    base_seconds: float = 0.25,
+    max_seconds: float = 5.0,
+    jitter_ratio: float = 0.2,
+) -> float:
+    """Compute exponential backoff with randomized jitter for idempotent retries.
+
+    Args:
+        attempt: Zero-based retry attempt number.
+        base_seconds: Initial delay before exponential growth.
+        max_seconds: Maximum returned delay.
+        jitter_ratio: Fractional jitter applied to the capped delay.
+
+    Returns:
+        Delay in seconds.
+
+    Raises:
+        ValidationError: If retry parameters are invalid.
+    """
+    if attempt < 0:
+        raise ValidationError("attempt must be non-negative.")
+    if base_seconds <= 0.0 or max_seconds <= 0.0:
+        raise ValidationError("retry delays must be positive.")
+    if jitter_ratio < 0.0:
+        raise ValidationError("jitter_ratio must be non-negative.")
+
+    delay_val = base_seconds * (2**attempt)
+    delay = float(max_seconds) if delay_val > max_seconds else float(delay_val)
+    jitter = float(delay * jitter_ratio * random())
+    total_delay = delay + jitter
+    return float(max_seconds) if total_delay > max_seconds else float(total_delay)
+
+
 # --- Indicators Domain Errors ---
-
-
 class IndicatorError(ValidationError):
     """Base error type for all indicator calculations and registry operations.
 

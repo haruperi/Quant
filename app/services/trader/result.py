@@ -26,6 +26,9 @@ class NormalizedTradeResult:
         filled_volume: float = 0.0,
         average_price: float = 0.0,
         remaining_volume: float = 0.0,
+        request_id: str = "",
+        correlation_id: str = "",
+        trace_id: str = "",
     ) -> None:
         """Initialize NormalizedTradeResult."""
         self.retcode = retcode
@@ -39,6 +42,9 @@ class NormalizedTradeResult:
         self.filled_volume = filled_volume
         self.average_price = average_price
         self.remaining_volume = remaining_volume
+        self.request_id = request_id
+        self.correlation_id = correlation_id
+        self.trace_id = trace_id
 
     def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary.
@@ -58,6 +64,9 @@ class NormalizedTradeResult:
             "filled_volume": self.filled_volume,
             "average_price": self.average_price,
             "remaining_volume": self.remaining_volume,
+            "request_id": self.request_id,
+            "correlation_id": self.correlation_id,
+            "trace_id": self.trace_id,
         }
 
 
@@ -97,6 +106,9 @@ class BrokerResponseNormalizer:
             bid = float(raw_result.get("bid", 0.0))
             ask = float(raw_result.get("ask", 0.0))
             comment = str(raw_result.get("comment", ""))
+            request_id = str(raw_result.get("request_id", ""))
+            correlation_id = str(raw_result.get("correlation_id", ""))
+            trace_id = str(raw_result.get("trace_id", ""))
         else:
             retcode = int(getattr(raw_result, "retcode", 0))
             deal = int(getattr(raw_result, "deal", 0))
@@ -106,6 +118,9 @@ class BrokerResponseNormalizer:
             bid = float(getattr(raw_result, "bid", 0.0))
             ask = float(getattr(raw_result, "ask", 0.0))
             comment = str(getattr(raw_result, "comment", ""))
+            request_id = str(getattr(raw_result, "request_id", ""))
+            correlation_id = str(getattr(raw_result, "correlation_id", ""))
+            trace_id = str(getattr(raw_result, "trace_id", ""))
 
         # 2. Derive partial fill details
         # For simple successful deals: filled volume defaults to total volume, remaining is 0
@@ -147,6 +162,9 @@ class BrokerResponseNormalizer:
             filled_volume=filled_vol,
             average_price=avg_price,
             remaining_volume=rem_vol,
+            request_id=request_id,
+            correlation_id=correlation_id,
+            trace_id=trace_id,
         )
 
 
