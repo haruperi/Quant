@@ -166,6 +166,188 @@ def benchmark_returns(price_values: list[float]) -> list[float]:
     return returns_series(price_values)
 
 
+def buy_and_hold_return(price_values: list[float]) -> float:
+    """Calculate total buy-and-hold return from price data.
+
+    Args:
+        price_values: Chronological price or equity values.
+
+    Returns:
+        Percentage return from first to last value, or ``0.0`` when undefined.
+    """
+    if len(price_values) < 2 or price_values[0] <= 0:
+        return 0.0
+    return ((price_values[-1] - price_values[0]) / price_values[0]) * 100.0
+
+
+def geometric_mean_return(returns: list[float]) -> float:
+    """Calculate geometric mean return.
+
+    Args:
+        returns: Period returns on a decimal scale.
+
+    Returns:
+        Decimal geometric mean return, or ``0.0`` when undefined.
+    """
+    if not returns:
+        return 0.0
+    product = 1.0
+    for value in returns:
+        product *= 1.0 + value
+    if product <= 0:
+        return 0.0
+    return math.pow(product, 1.0 / len(returns)) - 1.0
+
+
+def annualized_return(returns: list[float], periods_per_year: int = 252) -> float:
+    """Calculate geometric annualized return.
+
+    Args:
+        returns: Period returns on a decimal scale.
+        periods_per_year: Number of periods in one year.
+
+    Returns:
+        Annualized return as a percentage, or ``0.0`` when undefined.
+    """
+    if not returns or periods_per_year <= 0:
+        return 0.0
+    geo = geometric_mean_return(returns)
+    return (math.pow(1.0 + geo, periods_per_year) - 1.0) * 100.0
+
+
+def cagr(
+    initial_value: float,
+    final_value: float,
+    years: float,
+) -> float:
+    """Calculate compound annual growth rate.
+
+    Args:
+        initial_value: Starting equity or price.
+        final_value: Ending equity or price.
+        years: Elapsed years.
+
+    Returns:
+        CAGR as a percentage, or ``0.0`` when undefined.
+    """
+    if initial_value <= 0 or final_value <= 0 or years <= 0:
+        return 0.0
+    return (math.pow(final_value / initial_value, 1.0 / years) - 1.0) * 100.0
+
+
+def compound_monthly_growth_rate(
+    initial_value: float,
+    final_value: float,
+    months: float,
+) -> float:
+    """Calculate compound monthly growth rate.
+
+    Args:
+        initial_value: Starting equity or price.
+        final_value: Ending equity or price.
+        months: Elapsed months.
+
+    Returns:
+        Compound monthly growth rate as a percentage, or ``0.0`` when undefined.
+    """
+    if initial_value <= 0 or final_value <= 0 or months <= 0:
+        return 0.0
+    return (math.pow(final_value / initial_value, 1.0 / months) - 1.0) * 100.0
+
+
+def buy_and_hold_cagr(price_values: list[float], years: float) -> float:
+    """Calculate buy-and-hold CAGR from price data.
+
+    Args:
+        price_values: Chronological price values.
+        years: Elapsed years.
+
+    Returns:
+        CAGR as a percentage, or ``0.0`` when undefined.
+    """
+    if len(price_values) < 2:
+        return 0.0
+    return cagr(price_values[0], price_values[-1], years)
+
+
+def avg_monthly_return(equity_curve: Any) -> float:
+    """Calculate arithmetic average monthly return.
+
+    Args:
+        equity_curve: Equity curve accepted by ``monthly_returns``.
+
+    Returns:
+        Average monthly return as a percentage.
+    """
+    monthly = monthly_returns(equity_curve)
+    if not monthly:
+        return 0.0
+    return (sum(monthly) / len(monthly)) * 100.0
+
+
+def monthly_return_stddev(equity_curve: Any) -> float:
+    """Calculate monthly return volatility.
+
+    Args:
+        equity_curve: Equity curve accepted by ``monthly_returns``.
+
+    Returns:
+        Sample standard deviation of monthly returns as a percentage.
+    """
+    monthly = monthly_returns(equity_curve)
+    return return_volatility(monthly) * 100.0
+
+
+def best_return(returns: list[float]) -> float:
+    """Calculate best single-period return."""
+    return max(returns, default=0.0)
+
+
+def worst_return(returns: list[float]) -> float:
+    """Calculate worst single-period return."""
+    return min(returns, default=0.0)
+
+
+def return_volatility(returns: list[float]) -> float:
+    """Calculate sample standard deviation of return values."""
+    if len(returns) < 2:
+        return 0.0
+    avg = sum(returns) / len(returns)
+    variance = sum((value - avg) ** 2 for value in returns) / (len(returns) - 1)
+    return math.sqrt(variance)
+
+
+def downside_return_volatility(
+    returns: list[float],
+    target: float = 0.0,
+) -> float:
+    """Calculate volatility of returns below a target."""
+    downside = [value for value in returns if value < target]
+    return return_volatility(downside)
+
+
+def return_skewness(returns: list[float]) -> float:
+    """Calculate return-distribution skewness."""
+    if len(returns) < 3:
+        return 0.0
+    avg = sum(returns) / len(returns)
+    std = return_volatility(returns)
+    if std == 0:
+        return 0.0
+    return sum(((value - avg) / std) ** 3 for value in returns) / len(returns)
+
+
+def return_kurtosis(returns: list[float]) -> float:
+    """Calculate return-distribution excess kurtosis."""
+    if len(returns) < 4:
+        return 0.0
+    avg = sum(returns) / len(returns)
+    std = return_volatility(returns)
+    if std == 0:
+        return 0.0
+    return sum(((value - avg) / std) ** 4 for value in returns) / len(returns) - 3.0
+
+
 def relative_drawdown_series(
     strategy_equity: list[float], benchmark_equity: list[float]
 ) -> list[float]:

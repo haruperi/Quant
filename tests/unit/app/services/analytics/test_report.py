@@ -97,6 +97,22 @@ def test_portfolio_report():
     assert resp_err["status"] == "error"
 
 
+def test_portfolio_report_fails_closed_without_fx_conversion():
+    port_result = {
+        "portfolio_run_id": "port_run_fx",
+        "account_base_currency": "USD",
+        "component_results": [
+            {"strategy_id": "s1", "profit_currency": "USD"},
+            {"strategy_id": "s2", "profit_currency": "EUR"},
+        ],
+    }
+
+    resp = build_portfolio_analytics_report(port_result, request_id="req_test")
+
+    assert resp["status"] == "error"
+    assert resp["error"]["code"] == "VALIDATION_FAILED"
+
+
 def test_compare_reports():
     ref = {"report_id": "ref_report"}
     cand = {"report_id": "cand_report"}

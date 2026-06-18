@@ -10,6 +10,19 @@ from typing import Any
 
 from app.utils.errors import ValidationError
 
+TradingResult = dict[str, Any]
+BacktestResult = dict[str, Any]
+PaperTradingResult = dict[str, Any]
+LiveTradingResult = dict[str, Any]
+
+__all__ = [
+    "BacktestResult",
+    "LiveTradingResult",
+    "PaperTradingResult",
+    "TradingResult",
+    "TradingResultAdapter",
+]
+
 
 class TradingResultAdapter:
     """Adapter to convert various trading result schemas.

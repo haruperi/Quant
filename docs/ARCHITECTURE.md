@@ -61,6 +61,14 @@
 | **Simulation** | Historical data, strategy, order intents | Simulated trades, equity curve, metrics |
 | **Live** | Order intents, broker readiness, reconciliation | Execution attempts, receipts, live audit events |
 
+### 8.1 Analytics Service Contracts
+- **Read-only boundary**: Analytics is downstream evidence generation only. It must not write files, mutate databases, call brokers/networks, place trades, or approve risk/trading actions.
+- **Public surface**: Official agent/API-safe Analytics tools are cataloged in `app.services.analytics.models.OFFICIAL_ANALYTICS_TOOL_CATALOG` and approved by `docs/adr/ADR-ANALYTICS-PUBLIC-SURFACE.md`.
+- **Metric definitions**: Approved formulas, units, aliases, undefined-result behavior, and confidence labels are cataloged in `METRIC_DEFINITION_CATALOG`.
+- **Schema compatibility**: Analytics report/result compatibility is governed by `SCHEMA_COMPATIBILITY_MATRIX`; current accepted schema is `1.3.1`.
+- **Runtime limits**: Input, payload, dashboard truncation, statistical-iteration, runtime, and memory limits are approved in `docs/adr/ADR-ANALYTICS-LIMITS.md`.
+- **Portfolio currency safety**: Multi-currency portfolio analytics fail closed unless validated FX conversion data is supplied.
+
 ## 9. Data Models & Schema Rules
 - **IDs**: Durable cross-module IDs must be `TEXT` (UUID4/ULID).
 - **Timestamps**: UTC `created_at` and `updated_at`.

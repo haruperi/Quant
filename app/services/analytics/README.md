@@ -236,7 +236,73 @@ if report_res["status"] == "success":
 
 ---
 
-## 6. Run Verification Tests & Examples
+## 6. Catalogs, Schemas, and Limits
+
+The Analytics service exposes durable catalog objects from `app.services.analytics`
+so agents and APIs can inspect approved public behavior without deep imports.
+
+### 6.1 Official Analytics Tool Catalog
+
+`OFFICIAL_ANALYTICS_TOOL_CATALOG` maps every approved high-level tool to:
+
+- input schema summary
+- output schema summary
+- stable error codes
+- side-effect profile
+- stability label (`stable`, `approved_experimental`, `deprecated`, or `internal_support_only`)
+- agent/API safety
+- test evidence paths
+
+Approved high-level tools include `build_analytics_report`,
+`build_portfolio_analytics_report`, `evaluate_strategy_quality`,
+`calculate_trade_metrics`, `calculate_equity_metrics`,
+`calculate_drawdown_metrics`, `calculate_risk_metrics`,
+`calculate_benchmark_metrics`, `calculate_statistical_validation`,
+`calculate_prop_firm_compliance`, and `build_overview_payload`.
+
+Low-level metric kernels remain developer/internal helpers unless they are listed
+in the catalog as agent/API-safe tools.
+
+### 6.2 Metric Definition Catalog
+
+`METRIC_DEFINITION_CATALOG` records formulas, units, required inputs, optional
+inputs, aliases, return scale, annualization basis, sample convention, minimum
+sample size, undefined-result behavior, golden-fixture expectations, role, and
+confidence for approved metrics. R-multiple proxy behavior is explicitly listed
+as degraded confidence under `r_multiple_proxy_profit_loss`.
+
+Use `validate_metric_catalog()` to fail closed if a catalog entry is malformed.
+
+### 6.3 Schema Compatibility Matrix
+
+`SCHEMA_COMPATIBILITY_MATRIX` classifies report/result schemas as `accepted`,
+`deprecated`, `legacy_adapted`, `rejected`, or `unsupported_future`. The current
+accepted analytics schema version is `1.3.1`; older compatible 1.x schemas are
+treated as legacy-adapted or deprecated, and future major versions are rejected
+until explicitly approved.
+
+### 6.4 Warning and Quality Flags
+
+Warnings and quality flags are separated from calculated facts. Supported
+severity meanings are `informational`, `warning`, `major`, `critical`, and
+`blocker`. Strategy-quality and prop-firm outputs are non-binding analytics
+evidence only; they do not approve live trading or mutate risk/trading state.
+
+### 6.5 Dashboard Payload Classes and Truncation
+
+Required dashboard payload classes are summary cards, equity curve charts,
+drawdown section status, warnings, quality flags, and metadata. Optional classes
+include monthly return heatmaps, rolling ratios, rolling drawdown, trade
+distribution, cost breakdown, and symbol contribution. Future classes must be
+added to the catalog before becoming public.
+
+Dashboard truncation is deterministic. Truncated series include whether
+truncation occurred, original count, returned count, max points, and the
+downsample method.
+
+---
+
+## 7. Run Verification Tests & Examples
 
 To run the full suite of unit tests verifying all calculators and standard envelopes:
 ```bash

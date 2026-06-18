@@ -11,4 +11,16 @@ Because it:
 Inside app/, everything has a purpose.
 """
 
-__all__: list[str] = []
+from __future__ import annotations
+
+from app.services.analytics import (
+    MetricDefinitionCatalog,
+    return_on_initial_capital,
+    total_return,
+)
+
+__all__ = [
+    "MetricDefinitionCatalog",
+    "return_on_initial_capital",
+    "total_return",
+]

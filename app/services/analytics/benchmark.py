@@ -158,6 +158,47 @@ def batting_average(
     return wins / n
 
 
+def up_down_capture(
+    strategy_returns: list[float],
+    benchmark_returns: list[float],
+) -> dict[str, float]:
+    """Calculate up-capture and down-capture ratios.
+
+    Args:
+        strategy_returns: Strategy return series.
+        benchmark_returns: Benchmark return series.
+
+    Returns:
+        Mapping with ``up_capture`` and ``down_capture`` ratios. Undefined
+        denominators return ``0.0``.
+    """
+    s_aligned, b_aligned = _align_series(strategy_returns, benchmark_returns)
+    up_pairs = [
+        (s_ret, b_ret)
+        for s_ret, b_ret in zip(s_aligned, b_aligned, strict=False)
+        if b_ret > 0
+    ]
+    down_pairs = [
+        (s_ret, b_ret)
+        for s_ret, b_ret in zip(s_aligned, b_aligned, strict=False)
+        if b_ret < 0
+    ]
+    up_benchmark = sum(b_ret for _, b_ret in up_pairs)
+    down_benchmark = sum(b_ret for _, b_ret in down_pairs)
+    return {
+        "up_capture": (
+            sum(s_ret for s_ret, _ in up_pairs) / up_benchmark
+            if up_benchmark != 0
+            else 0.0
+        ),
+        "down_capture": (
+            sum(s_ret for s_ret, _ in down_pairs) / down_benchmark
+            if down_benchmark != 0
+            else 0.0
+        ),
+    }
+
+
 # --- Official AI Tools ---
 
 
@@ -189,6 +230,7 @@ def calculate_benchmark_metrics(
             "tracking_error_percent": tracking_error(s_aligned, b_aligned),
             "information_ratio": information_ratio(s_aligned, b_aligned),
             "batting_average": batting_average(s_aligned, b_aligned),
+            "capture": up_down_capture(s_aligned, b_aligned),
         }
         return success_response(
             message="Successfully calculated benchmark metrics.",

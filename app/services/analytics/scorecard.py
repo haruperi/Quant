@@ -5,8 +5,10 @@ Evaluates an analytics report to produce a non-binding scorecard with warnings, 
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Any
 
+from app.services.analytics.models import MetricDefinition, validate_metric_catalog
 from app.utils import (
     StandardResponse,
     build_metadata,
@@ -14,6 +16,62 @@ from app.utils import (
     success_response,
 )
 from app.utils.errors import ValidationError
+
+__all__ = [
+    "MetricDefinition",
+    "ScorecardResult",
+    "ScorecardRule",
+    "evaluate_strategy_quality",
+    "validate_metric_catalog",
+]
+
+
+@dataclass(frozen=True, slots=True)
+class ScorecardRule:
+    """Non-binding analytics scorecard rule.
+
+    Args:
+        metric_name: Metric Definition Catalog key the rule evaluates.
+        threshold: Numeric threshold for the rule.
+        direction: Passing direction: ``gte`` or ``lte``.
+        warning_code: Stable warning or quality-flag code.
+        severity: Warning severity.
+        recommendation: Non-binding recommendation text.
+
+    Side effects:
+        None.
+    """
+
+    metric_name: str
+    threshold: float
+    direction: str
+    warning_code: str
+    severity: str = "warning"
+    recommendation: str = "Review before promotion."
+
+
+@dataclass(frozen=True, slots=True)
+class ScorecardResult:
+    """Non-binding strategy-quality scorecard result.
+
+    Args:
+        score: Normalized 0-to-100 quality score.
+        strengths: Positive evidence strings.
+        warnings: Warning evidence strings.
+        recommended_action: Non-binding recommended action.
+        is_binding_decision: Always ``False`` for Analytics outputs.
+        quality_flags: Structured quality flags.
+
+    Side effects:
+        None.
+    """
+
+    score: float
+    strengths: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    recommended_action: str = "Review before promotion."
+    is_binding_decision: bool = False
+    quality_flags: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _validate_request_id(request_id: str | None) -> None:

@@ -5,6 +5,7 @@ Coordinates execution of metric groups to build Backtest, Live, or Portfolio Ana
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, cast
 
@@ -33,6 +34,52 @@ from app.utils import (
     success_response,
 )
 from app.utils.errors import ValidationError
+
+
+@dataclass(frozen=True, slots=True)
+class AnalyticsReport:
+    """Versioned analytics report schema wrapper.
+
+    Args:
+        report_id: Stable report identifier.
+        report_status: Report status such as ``completed`` or ``partial``.
+        sections: Grouped analytics sections.
+        warnings: Warning metadata emitted while building the report.
+        quality_flags: Quality flags emitted while building the report.
+        metadata: Trace and reproducibility metadata.
+
+    Side effects:
+        None.
+    """
+
+    report_id: str
+    report_status: str
+    sections: dict[str, Any]
+    warnings: list[dict[str, Any]] = field(default_factory=list)
+    quality_flags: list[dict[str, Any]] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class PortfolioAnalyticsReport:
+    """Versioned portfolio analytics report schema wrapper.
+
+    Args:
+        portfolio_run_id: Stable portfolio run identifier.
+        account_base_currency: Validated account base currency.
+        component_count: Number of component analytics results.
+        aggregate_metrics: Aggregated portfolio metrics.
+        warnings: Warning metadata emitted while building the report.
+
+    Side effects:
+        None.
+    """
+
+    portfolio_run_id: str
+    account_base_currency: str
+    component_count: int
+    aggregate_metrics: dict[str, Any]
+    warnings: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _validate_request_id(request_id: str | None) -> None:
@@ -88,12 +135,12 @@ def build_analytics_report(
 
         # Extract values for dependencies
         eq_data = (
-            cast(dict[str, Any], eq_resp["data"])
+            cast("dict[str, Any]", eq_resp["data"])
             if isinstance(eq_resp["data"], dict)
             else {}
         )
         tr_data = (
-            cast(dict[str, Any], trade_resp["data"])
+            cast("dict[str, Any]", trade_resp["data"])
             if isinstance(trade_resp["data"], dict)
             else {}
         )
@@ -141,7 +188,7 @@ def build_analytics_report(
             bench_resp = calculate_benchmark_metrics(ret_series, b_returns)
             if bench_resp["status"] == "success":
                 if isinstance(bench_resp["data"], dict):
-                    benchmark_metrics = cast(dict[str, Any], bench_resp["data"])
+                    benchmark_metrics = cast("dict[str, Any]", bench_resp["data"])
             else:
                 bench_status = "failed"
                 skipped_reason = bench_resp["message"]
@@ -241,6 +288,21 @@ def build_portfolio_analytics_report(
 
         # Aggregated stats mock/implementation
         component_results = portfolio_result.get("component_results", [])
+        currencies = {
+            component.get(
+                "profit_currency",
+                component.get(
+                    "account_base_currency",
+                    portfolio_result.get("account_base_currency", "USD"),
+                ),
+            )
+            for component in component_results
+            if isinstance(component, dict)
+        }
+        if len(currencies) > 1 and not portfolio_result.get("fx_conversions"):
+            raise ValidationError(
+                "multi-currency portfolio analytics require validated fx_conversions."
+            )
         data = {
             "portfolio_run_id": portfolio_result.get(
                 "portfolio_run_id", "p_run_default"
@@ -307,7 +369,7 @@ def format_summary_as_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
 def build_backtest_report(trading_result: dict[str, Any]) -> dict[str, Any]:
     resp = build_analytics_report(trading_result)
     return (
-        cast(dict[str, Any], resp["data"])
+        cast("dict[str, Any]", resp["data"])
         if resp["status"] == "success" and isinstance(resp["data"], dict)
         else {}
     )

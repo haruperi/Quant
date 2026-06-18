@@ -6,7 +6,13 @@ and compatibility aliases for the HaruQuantAI analytics service.
 
 from __future__ import annotations
 
-from app.services.analytics.adapters import TradingResultAdapter
+from app.services.analytics.adapters import (
+    BacktestResult,
+    LiveTradingResult,
+    PaperTradingResult,
+    TradingResult,
+    TradingResultAdapter,
+)
 from app.services.analytics.benchmark import (
     alpha,
     batting_average,
@@ -15,6 +21,7 @@ from app.services.analytics.benchmark import (
     information_ratio,
     r_squared,
     tracking_error,
+    up_down_capture,
 )
 from app.services.analytics.dashboard import build_overview_payload
 from app.services.analytics.distributions import (
@@ -90,23 +97,54 @@ from app.services.analytics.efficiency import (
 )
 from app.services.analytics.equity import (
     annual_returns,
+    annualized_return,
+    avg_monthly_return,
     avg_underwater_drawdown_percent,
     benchmark_returns,
+    best_return,
+    buy_and_hold_cagr,
+    buy_and_hold_return,
+    cagr,
     calculate_return_metrics,
+    compound_monthly_growth_rate,
     compute_equity_metrics,
     daily_returns,
+    downside_return_volatility,
     drawdown_duration_series,
     drawdown_series,
+    geometric_mean_return,
     log_returns_series,
     max_drawdown_duration_from_equity,
     max_strategy_drawdown_date,
+    monthly_return_stddev,
     monthly_returns,
     relative_drawdown_series,
+    return_kurtosis,
     return_on_initial_capital,
+    return_skewness,
+    return_volatility,
     returns_series,
     total_return,
     total_return_usd,
     weekly_returns,
+    worst_return,
+)
+from app.services.analytics.models import (
+    METRIC_DEFINITION_CATALOG,
+    OFFICIAL_ANALYTICS_TOOL_CATALOG,
+    SCHEMA_COMPATIBILITY_MATRIX,
+    AnalyticsConfig,
+    AnalyticsMetadata,
+    AnalyticsRequest,
+    AnalyticsResult,
+    Config,
+    Metadata,
+    MetricDefinition,
+    MetricDefinitionCatalog,
+    Request,
+    Result,
+    ToolDefinition,
+    validate_metric_catalog,
 )
 from app.services.analytics.ratios import (
     adjusted_net_profit_as_percent_of_largest_loss,
@@ -128,6 +166,8 @@ from app.services.analytics.ratios import (
     sortino_ratio,
 )
 from app.services.analytics.report import (
+    AnalyticsReport,
+    PortfolioAnalyticsReport,
     build_analytics_report,
     build_backtest_report,
     build_portfolio_analytics_report,
@@ -157,7 +197,11 @@ from app.services.analytics.risk import (
     value_at_risk,
     volatility,
 )
-from app.services.analytics.scorecard import evaluate_strategy_quality
+from app.services.analytics.scorecard import (
+    ScorecardResult,
+    ScorecardRule,
+    evaluate_strategy_quality,
+)
 from app.services.analytics.trade import (
     adjusted_gross_loss,
     adjusted_gross_profit,
@@ -296,10 +340,34 @@ ratios_expectancy_r = expectancy_r
 ratios_information_ratio = information_ratio
 benchmark_information_ratio = information_ratio
 distributions_r_multiple_distribution = r_multiple_distribution
+metrics_r_multiple_distribution = r_multiple_distribution
+r_expectancy = expectancy_r
 
 __all__ = [
     # Adapters
+    "AnalyticsConfig",
+    "AnalyticsMetadata",
+    "AnalyticsRequest",
+    "AnalyticsResult",
+    "BacktestResult",
+    "Config",
+    "LiveTradingResult",
+    "METRIC_DEFINITION_CATALOG",
+    "Metadata",
+    "MetricDefinition",
+    "MetricDefinitionCatalog",
+    "OFFICIAL_ANALYTICS_TOOL_CATALOG",
+    "PaperTradingResult",
+    "PortfolioAnalyticsReport",
+    "Request",
+    "Result",
+    "SCHEMA_COMPATIBILITY_MATRIX",
+    "ScorecardResult",
+    "ScorecardRule",
+    "ToolDefinition",
+    "TradingResult",
     "TradingResultAdapter",
+    "AnalyticsReport",
     "account_size_required",
     "adjusted_gross_loss",
     "adjusted_gross_profit",
@@ -312,12 +380,14 @@ __all__ = [
     "aggregate_mfe_capture_ratio",
     "alpha",
     "annual_returns",
+    "annualized_return",
     "annualized_sharpe_ratio",
     "annualized_volatility",
     "avg_consecutive_losses",
     "avg_consecutive_wins",
     "avg_drawdown",
     "avg_drawdown_duration",
+    "avg_monthly_return",
     "avg_loss",
     "avg_r_multiple",
     "avg_return_per_risk_unit",
@@ -336,6 +406,7 @@ __all__ = [
     "benchmark_information_ratio",
     "benchmark_returns",
     "benjamini_hochberg_correction",
+    "best_return",
     # Benchmark
     "beta",
     "bonferroni_correction",
@@ -349,6 +420,8 @@ __all__ = [
     # Dashboard Payloads
     "build_overview_payload",
     "build_portfolio_analytics_report",
+    "buy_and_hold_cagr",
+    "buy_and_hold_return",
     "calculate_analytics_for_subset",
     "calculate_benchmark_metrics",
     "calculate_commission_impact",
@@ -368,6 +441,7 @@ __all__ = [
     "calculate_statistical_validation",
     "calculate_trade_metrics",
     "calmar_ratio",
+    "cagr",
     # Efficiency
     "capital_efficiency",
     "classify_trades",
@@ -376,6 +450,7 @@ __all__ = [
     "common_avg_loss",
     "common_get_r_multiples",
     "compare_analytics_reports",
+    "compound_monthly_growth_rate",
     "compounding_risk_of_ruin",
     "compute_equity_metrics",
     "compute_r_trade_metrics",
@@ -389,6 +464,7 @@ __all__ = [
     "distribution_fit_quality",
     "distributions_r_multiple_distribution",
     "downside_volatility",
+    "downside_return_volatility",
     "drawdown_distribution",
     "drawdown_duration_series",
     "drawdown_probability",
@@ -413,6 +489,7 @@ __all__ = [
     "get_mae_mfe_r",
     "get_ordered_closed_trades",
     "get_r_multiples",
+    "geometric_mean_return",
     "gross_loss",
     "gross_profit",
     "higher_moments",
@@ -471,12 +548,14 @@ __all__ = [
     "metrics_expectancy",
     "metrics_expectancy_r",
     "metrics_get_r_multiples",
+    "metrics_r_multiple_distribution",
     "metrics_win_rate_fraction",
     "mfe_efficiency",
     "mfe_to_mae_ratio",
     "min_r_multiple",
     "min_time_in_trade",
     "monthly_returns",
+    "monthly_return_stddev",
     "net_profit",
     "net_profit_as_percent_of_largest_loss",
     "net_profit_as_percent_of_max_strategy_drawdown",
@@ -502,6 +581,7 @@ __all__ = [
     "profit_to_mae_ratio",
     "qq_plot_data",
     "r_multiple_distribution",
+    "r_expectancy",
     "r_signal_to_noise",
     "r_squared",
     "ratios_expectancy",
@@ -512,6 +592,7 @@ __all__ = [
     "relative_drawdown_series",
     # Distributions
     "return_distribution",
+    "return_kurtosis",
     "return_on_account",
     "return_on_initial_capital",
     "return_on_max_close_to_close_drawdown",
@@ -521,6 +602,8 @@ __all__ = [
     "return_per_market_hour",
     "return_per_trade_hour",
     "return_per_unit_mae",
+    "return_skewness",
+    "return_volatility",
     "returns_series",
     "rina_index",
     # Risk
@@ -568,7 +651,9 @@ __all__ = [
     "ulcer_index",
     "upside_downside_summary",
     "upside_potential_ratio",
+    "up_down_capture",
     "value_at_risk",
+    "validate_metric_catalog",
     "volatility",
     "walk_forward_degradation_score",
     "weekly_returns",
@@ -579,4 +664,5 @@ __all__ = [
     "win_rate",
     "win_rate_fraction",
     "winning_trades",
+    "worst_return",
 ]
