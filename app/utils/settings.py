@@ -1,3 +1,4 @@
+# ruff: noqa: E501, ANN401
 """Runtime configuration and settings loading using Pydantic.
 
 This module exports the Pydantic-based ``Settings`` class and its global singleton
@@ -15,10 +16,11 @@ Side effects:
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import Field, model_validator
+from pydantic import BaseModel, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.utils.errors import ConfigurationError
@@ -401,3 +403,156 @@ def validate_config(cfg: Settings) -> list[str]:
             )
 
     return errors
+
+
+# ── Research Edge Lab Configurations ──────────────────────────────────────────
+
+
+class CleaningConfig(BaseModel):
+    """Describes data-cleaning behavior for research timezone normalization and strategies."""
+
+    timezone: str = "UTC"
+    missing_bar_strategy: str = "forward_fill"  # drop, forward_fill, interpolate, none
+    non_trading_period_strategy: str = "drop"  # drop, weekend, holiday, etc.
+    spread_anomaly_threshold: float = 50.0
+
+
+class DataConfig(BaseModel):
+    """Describes source, symbol, timeframe, and date-range inputs."""
+
+    source: str = "csv"
+    symbol: str = "EURUSD"
+    timeframe: str = "H1"
+    start_date: str | None = None
+    end_date: str | None = None
+
+
+class SessionConfig(BaseModel):
+    """Describes trading-session windows and related session settings."""
+
+    session_name: str = "London"
+    start_hour: int = 8
+    end_hour: int = 16
+
+
+class BootstrapConfig(BaseModel):
+    """Describes bootstrap resampling settings."""
+
+    n_iterations: int = 1000
+    block_size: int = 10
+    confidence_level: float = 0.95
+    seed: int | None = 42
+
+
+class PermutationConfig(BaseModel):
+    """Describes permutation-test settings."""
+
+    n_permutations: int = 1000
+    seed: int | None = 42
+
+
+class NullModelsConfig(BaseModel):
+    """Describes null-model settings and acceptance criteria."""
+
+    method: str = "random_entry"
+    acceptance_alpha: float = 0.05
+    min_samples: int = 30
+
+
+class MeanReversionConfig(BaseModel):
+    """Describes mean-reversion edge-discovery settings."""
+
+    compression_window: int = 20
+    zscore_threshold: float = 2.0
+    fade_horizon: int = 5
+
+
+class TrendPersistenceConfig(BaseModel):
+    """Describes trend-persistence edge-discovery settings."""
+
+    atr_window: int = 14
+    breakout_multiplier: float = 2.0
+    follow_through_horizon: int = 10
+
+
+class MarketStructureConfig(BaseModel):
+    """Describes market-structure research settings."""
+
+    swing_window: int = 5
+    classification_timeframe: str = "D1"
+
+
+class SessionEdgeConfig(BaseModel):
+    """Describes session-edge research settings."""
+
+    active_sessions: list[str] = Field(default_factory=lambda: ["London", "NewYork"])
+
+
+class EdgeLabConfig(BaseModel):
+    """Aggregates all research configurations into one workflow-level config."""
+
+    data_config: DataConfig = Field(default_factory=DataConfig)
+    cleaning_config: CleaningConfig = Field(default_factory=CleaningConfig)
+    session_config: SessionConfig = Field(default_factory=SessionConfig)
+    bootstrap_config: BootstrapConfig = Field(default_factory=BootstrapConfig)
+    permutation_config: PermutationConfig = Field(default_factory=PermutationConfig)
+    null_models_config: NullModelsConfig = Field(default_factory=NullModelsConfig)
+    mean_reversion_config: MeanReversionConfig = Field(
+        default_factory=MeanReversionConfig
+    )
+    trend_persistence_config: TrendPersistenceConfig = Field(
+        default_factory=TrendPersistenceConfig
+    )
+    market_structure_config: MarketStructureConfig = Field(
+        default_factory=MarketStructureConfig
+    )
+    session_edge_config: SessionEdgeConfig = Field(default_factory=SessionEdgeConfig)
+    seed: int = 42
+
+
+def create_config() -> EdgeLabConfig:
+    """Create an Edge Lab configuration object with common defaults for research workflows."""
+    return EdgeLabConfig()
+
+
+class TradeSample(BaseModel):
+    """Represents a normalized trade sample for edge-result reporting."""
+
+    entry_time: datetime
+    exit_time: datetime
+    direction: int  # 1 for long, -1 for short
+    entry_price: float
+    exit_price: float
+    r_multiple: float
+    mae: float = 0.0
+    mfe: float = 0.0
+
+
+class EdgeStats(BaseModel):
+    """Represents summary statistics for an edge result."""
+
+    sample_size: int
+    win_rate: float
+    profit_factor: float
+    expectancy: float
+    sharpe_ratio: float
+    p_value: float | None = None
+    t_statistic: float | None = None
+
+
+class EdgeResult(BaseModel):
+    """Represents a complete edge-study result suitable for summaries and reports."""
+
+    study_name: str
+    config: EdgeLabConfig
+    stats: EdgeStats
+    trades: list[TradeSample] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    audit_metadata: dict[str, object] = Field(default_factory=dict)
+
+
+def research_modeling_module() -> Any:
+    """Return the research modeling service module through the shared lazy-resolution utility."""
+    from importlib import import_module
+
+    return import_module("app.services.research")

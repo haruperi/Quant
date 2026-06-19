@@ -110,6 +110,15 @@
 - **Reconciliation Authority**: Compares internal runtime state against authoritative broker snapshots. Detects missing, extra, and mismatched position/order items. Live mutation is blocked (returning `retry_after_reconciliation`) if any mismatch is found.
 - **Monitoring, Health, and Cost Limits**: Tracks live tool latency, failures, and cost budgets. Ingestion failures, tool failure rates (5x failures fails a tool, 3x degrades it), or exceeding the cost budget automatically blocks live readiness.
 
+### 8.7 Research Edge Lab Contracts
+- **Read-Only / Advisory Gating**: The Research Edge Lab is strictly read-only with respect to live broker accounts and live trading states. All recommendation outcomes are marked as `"advisory_only"` to prevent interference with live risk profile engines.
+- **Data Cleaning and Quality Reports**: Provides timezone normalization, missing-bar strategies (forward fill, linear interpolation, drop), and spread anomaly capping. Validation findings and transformations are recorded in a structured `DataQualityReportModel`.
+- **Lookahead Bias & Leakage Gating**: Enforces chronological splits with safety buffer gaps and scans feature columns to reject lookahead bias with a `"critical"` leakage severity indicator.
+- **Statistical Sign-Off**: Expectancy measurements are validated using non-parametric block bootstrapping, permutation tests, and multiple comparison corrections (Benjamini-Hochberg and Holm-Bonferroni) to control the False Discovery Rate.
+- **Resource Constraints**: Validates dataset sizes against configured resource boundaries, raising a `ValidationError` when row counts exceed limits.
+- **Graceful Optional Shims**: Optional dependencies (such as `scikit-learn` for unsupervised PCA and clustering) are shimmed to raise a `ValidationError` (code `SERVICE_UNAVAILABLE`) when missing, allowing the rest of the research workflows to execute cleanly.
+- **Atomic Serialization**: Persists results to JSON and Markdown via safe temporary-file write-and-replace swaps to prevent corruption.
+
 ## 9. Data Models & Schema Rules
 - **IDs**: Durable cross-module IDs must be `TEXT` (UUID4/ULID).
 - **Timestamps**: UTC `created_at` and `updated_at`.
