@@ -294,6 +294,22 @@ APPROVED_ERROR_CODES = frozenset(
         "SIM_VOLUME_BELOW_MIN",
         "SIM_VOLUME_STEP_MISMATCH",
         "SIM_WORKER_LOST_REQUEUED",
+        # Custom Live Runtime Codes
+        "LIVE_DISABLED",
+        "LIVE_GATE_FAILED",
+        "LIVE_POLICY_UNDEFINED",
+        "LIVE_APPROVAL_REQUIRED",
+        "LIVE_KILL_SWITCH_ACTIVE",
+        "LIVE_STALE_CONTEXT",
+        "LIVE_RECONCILIATION_REQUIRED",
+        "LIVE_UNKNOWN_OUTCOME",
+        "LIVE_IDEMPOTENCY_CONFLICT",
+        "LIVE_SESSION_INACTIVE",
+        "LIVE_BROKER_READINESS_FAILED",
+        "LIVE_AUDIT_WRITE_FAILED",
+        "LIVE_COST_BUDGET_EXCEEDED",
+        "WORKFLOW_TIMEOUT",
+        "RETRY_AFTER_RECONCILIATION",
     }
 )
 
@@ -523,6 +539,22 @@ ERROR_MESSAGES: dict[str, str] = {
     "SIM_VOLUME_BELOW_MIN": "Volume below min.",
     "SIM_VOLUME_STEP_MISMATCH": "Volume step mismatch.",
     "SIM_WORKER_LOST_REQUEUED": "Worker lost requeued.",
+    # Custom Live Runtime Messages
+    "LIVE_DISABLED": "Live trading is disabled. Enable live mode in configuration.",
+    "LIVE_GATE_FAILED": "A mandatory live gate failed; the action is blocked.",
+    "LIVE_POLICY_UNDEFINED": "No live action policy entry exists for the requested action.",
+    "LIVE_APPROVAL_REQUIRED": "Explicit approval context is required for this live action.",
+    "LIVE_KILL_SWITCH_ACTIVE": "Active kill switch blocks all live trading requests.",
+    "LIVE_STALE_CONTEXT": "Live context is stale and cannot be used for broker mutation.",
+    "LIVE_RECONCILIATION_REQUIRED": "Broker reconciliation must complete before live mutation.",
+    "LIVE_UNKNOWN_OUTCOME": "The broker outcome is unknown; reconciliation required.",
+    "LIVE_IDEMPOTENCY_CONFLICT": "A duplicate idempotency key was detected for a different request.",
+    "LIVE_SESSION_INACTIVE": "No active live session; start a session before trading.",
+    "LIVE_BROKER_READINESS_FAILED": "Broker readiness check failed; live mutation is blocked.",
+    "LIVE_AUDIT_WRITE_FAILED": "Audit pre-event write failed; broker mutation is blocked.",
+    "LIVE_COST_BUDGET_EXCEEDED": "Live cost budget exceeded; broker mutation is blocked.",
+    "WORKFLOW_TIMEOUT": "Live workflow exceeded configured timeout limit.",
+    "RETRY_AFTER_RECONCILIATION": "Retry is not safe until broker reconciliation resolves the outcome.",
 }
 
 

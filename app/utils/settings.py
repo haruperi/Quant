@@ -6,7 +6,7 @@ optional ``.env`` file.
 
 Public exports:
     HARUQUANT_HOME, CONFIGURATION_ERROR, HaruQuantConfigurationError,
-    Settings, settings.
+    Settings, settings, LiveMode, Config, load_config, validate_config.
 
 Side effects:
     None on import. Environment variables and dotenv files are read only when
@@ -29,6 +29,14 @@ CONFIGURATION_ERROR = "CONFIGURATION_ERROR"
 HaruQuantConfigurationError = ConfigurationError
 
 EnvironmentMode = Literal["local", "test", "development", "staging", "production"]
+
+LiveMode = Literal[
+    "package_only",
+    "paper",
+    "shadow",
+    "micro_live",
+    "full_live",
+]
 
 
 class Settings(BaseSettings):
@@ -175,12 +183,80 @@ class Settings(BaseSettings):
     ohlcv: dict[str, object] = Field(default_factory=dict)
     validation: dict[str, object] = Field(default_factory=dict)
 
+    # ── Live Runtime Configuration ────────────────────────────────────────────
+    # live_enabled: Master flag. Defaults to False (fail-closed). Live trading
+    # requires explicit opt-in via environment/config. Live runtime will reject
+    # all broker mutations unless this flag is True.
+    live_enabled: bool = Field(default=False, validation_alias="LIVE_ENABLED")
+
+    # live_mode: Current live promotion ladder rung.
+    # package_only  - no broker calls; request packages only (default/safe).
+    # paper         - canonical execution contracts, no real broker account.
+    # shadow        - records intended orders, compares vs. market, no mutation.
+    # micro_live    - reduced size, strict daily limits, enhanced monitoring.
+    # full_live     - full live broker mutation (requires explicit approval).
+    live_mode: str = Field(default="package_only", validation_alias="LIVE_MODE")
+
+    # live_workflow_timeout_seconds: Max seconds before WORKFLOW_TIMEOUT incident.
+    live_workflow_timeout_seconds: int = Field(
+        default=30, validation_alias="LIVE_WORKFLOW_TIMEOUT_SECONDS"
+    )
+
+    # live_max_staleness_seconds: Max allowed age of broker/account/position
+    # snapshots before live mutation is blocked.
+    live_max_staleness_seconds: int = Field(
+        default=10, validation_alias="LIVE_MAX_STALENESS_SECONDS"
+    )
+
+    # live_broker_adapter_timeout_seconds: Per-call timeout for broker adapter
+    # requests. Timeout → unknown_outcome (never confirmed/rejected).
+    live_broker_adapter_timeout_seconds: int = Field(
+        default=5, validation_alias="LIVE_BROKER_ADAPTER_TIMEOUT_SECONDS"
+    )
+
+    # live_cost_budget_usd: Optional session cost ceiling in USD. If set, the
+    # runtime blocks mutations that would exceed the budget.
+    live_cost_budget_usd: float | None = Field(
+        default=None, validation_alias="LIVE_COST_BUDGET_USD"
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
         populate_by_name=True,
     )
+
+    def _validate_live_settings(self) -> None:
+        """Validate live runtime settings to reduce complexity in main validator."""
+        # Validate live_mode
+        valid_live_modes = {
+            "package_only",
+            "paper",
+            "shadow",
+            "micro_live",
+            "full_live",
+        }
+        if self.live_mode not in valid_live_modes:
+            msg = (
+                f"live_mode is invalid: {self.live_mode!r}. "
+                f"Must be one of {sorted(valid_live_modes)}."
+            )
+            raise ConfigurationError(msg, code=CONFIGURATION_ERROR)
+
+        # Validate live timeout/staleness fields
+        if self.live_workflow_timeout_seconds <= 0:
+            msg = "live_workflow_timeout_seconds must be greater than zero."
+            raise ConfigurationError(msg, code=CONFIGURATION_ERROR)
+        if self.live_max_staleness_seconds <= 0:
+            msg = "live_max_staleness_seconds must be greater than zero."
+            raise ConfigurationError(msg, code=CONFIGURATION_ERROR)
+        if self.live_broker_adapter_timeout_seconds <= 0:
+            msg = "live_broker_adapter_timeout_seconds must be greater than zero."
+            raise ConfigurationError(msg, code=CONFIGURATION_ERROR)
+        if self.live_cost_budget_usd is not None and self.live_cost_budget_usd <= 0:
+            msg = "live_cost_budget_usd must be positive when set."
+            raise ConfigurationError(msg, code=CONFIGURATION_ERROR)
 
     @model_validator(mode="after")
     def _validate_and_resolve_paths(self) -> Settings:
@@ -211,6 +287,9 @@ class Settings(BaseSettings):
         ):
             msg = "production deployments must configure HARUQUANT_HOME explicitly."
             raise ConfigurationError(msg, code=CONFIGURATION_ERROR)
+
+        # Validate live settings via helper
+        self._validate_live_settings()
 
         # Upper case log level
         self.log_level = self.log_level.upper()
@@ -244,3 +323,81 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# ── Live Runtime Config Shims ─────────────────────────────────────────────────
+# ``Config`` is a forward-compatible alias used by the live module so it can
+# consume the shared Settings instance without coupling to the class name.
+Config = Settings
+
+
+def load_config() -> Settings:
+    """Return the application-wide settings singleton.
+
+    This shim allows the live module to call ``load_config()`` without
+    importing ``settings`` directly, making it easier to inject test
+    configurations via dependency injection in unit tests.
+
+    Returns:
+        Settings: The global settings instance.
+
+    Side effects:
+        None. Returns the already-constructed singleton; does not re-read
+        environment variables or dotenv files.
+    """
+    return settings
+
+
+def validate_config(cfg: Settings) -> list[str]:
+    """Validate a Settings instance for live runtime readiness.
+
+    Checks live-specific constraints beyond Pydantic field validation:
+    - live_enabled/live_mode consistency
+    - required live secret references are non-empty when live is enabled
+    - staleness/timeout are within safe bounds
+
+    Args:
+        cfg: Settings instance to validate.
+
+    Returns:
+        List of human-readable validation error strings. Empty list means valid.
+
+    Side effects:
+        None. Does not expose secret values in error messages.
+    """
+    errors: list[str] = []
+
+    # Validate live mode consistency
+    live_only_modes = {"micro_live", "full_live"}
+    if cfg.live_mode in live_only_modes and not cfg.live_enabled:
+        errors.append(f"live_mode={cfg.live_mode!r} requires live_enabled=True.")
+
+    # Validate that an active broker is configured when live is enabled
+    if cfg.live_enabled and not cfg.active_broker.strip():
+        errors.append("active_broker must be set when live_enabled=True.")
+
+    # Validate MT5 secret references when MT5 is enabled and live is enabled
+    if cfg.live_enabled and cfg.mt5_enabled:
+        if not cfg.mt5_login.strip():
+            errors.append("mt5_login is required when live_enabled and mt5_enabled.")
+        if not cfg.mt5_server.strip():
+            errors.append("mt5_server is required when live_enabled and mt5_enabled.")
+        # Note: password presence is checked but NOT logged (secret value)
+        if not cfg.mt5_password:
+            errors.append(
+                "mt5_password secret reference is missing "
+                "when live_enabled and mt5_enabled. [secret value not logged]"
+            )
+
+    # Validate cTrader secret references when cTrader is enabled and live is enabled
+    if cfg.live_enabled and cfg.ctrader_enabled:
+        if not cfg.ctrader_client_id.strip():
+            errors.append(
+                "ctrader_client_id is required when live_enabled and ctrader_enabled."
+            )
+        if not cfg.ctrader_access_token:
+            errors.append(
+                "ctrader_access_token secret reference is missing. "
+                "[secret value not logged]"
+            )
+
+    return errors

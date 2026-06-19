@@ -103,6 +103,13 @@
 - **Safe Persistence & Checkpointing**: Persists state incrementally at configured candidate intervals. Saves use atomic writes (writing to a tempfile then swapping via `os.replace` to prevent corruption) and safe path checks to guard against directory traversal.
 - **JSON Serialization Formatting**: Ensures all public returned payloads are JSON-safe (UTC ISO-8601 strings for `datetime`, string-based coercion for `Decimal`, and converting float `NaN` or `Infinity` to `null` with metadata warnings).
 
+### 8.6 Live Service Contracts
+- **Live Gating and Mutation Boundary**: The live runtime service acts as a safety gateway middleware. It governs live-route requests and enforces that live mutations (broker-routed order execution) are disabled by default (`live_enabled=False` and `live_mode="package_only"`) unless explicitly authorized.
+- **Deterministic Gate Chain**: All requests must sequentially pass 11 deterministic gates: live enablement, request schema validation, approval validation, risk check, broker readiness, stale-context check, idempotency validation, reconciliation authority, kill switch validation, audit pre-recording, and broker permission. Fails closed immediately on the first blocking gate.
+- **Session Lifecycle and Single-Session Guard**: Manages start, pause, stop, and recovery lifecycles. Restricts runtime execution to a single active session singleton. Recovery diagnostics place the session into a `paused` state pending operator review if any unknown outcomes or pending reconciliations are detected.
+- **Reconciliation Authority**: Compares internal runtime state against authoritative broker snapshots. Detects missing, extra, and mismatched position/order items. Live mutation is blocked (returning `retry_after_reconciliation`) if any mismatch is found.
+- **Monitoring, Health, and Cost Limits**: Tracks live tool latency, failures, and cost budgets. Ingestion failures, tool failure rates (5x failures fails a tool, 3x degrades it), or exceeding the cost budget automatically blocks live readiness.
+
 ## 9. Data Models & Schema Rules
 - **IDs**: Durable cross-module IDs must be `TEXT` (UUID4/ULID).
 - **Timestamps**: UTC `created_at` and `updated_at`.
