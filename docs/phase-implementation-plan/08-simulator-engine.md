@@ -1,8 +1,8 @@
-﻿## Phase 8 Simulation Engine
+﻿## Phase 8 Simulator Engine
 
 ### Goal
 
-Implement the Simulation Engine requirements under `app/services/simulation/` while preserving the phase module boundaries and governance rules.
+Implement the Simulator Engine requirements under `app/services/simulator/` while preserving the phase module boundaries and governance rules.
 
 Task inventory: 1,662 checkbox tasks (0 checked, all unchecked).
 
@@ -34,7 +34,7 @@ Required functionality:
 
 - Data gateway can retrieve historical tick/bar data slices.
 - Indicators and strategy registries compile execution parameters.
-- Trader interfaces and order validation controls exist in simulation mode.
+- Trader interfaces and order validation controls exist in simulator mode.
 
 ### Files to Create
 
@@ -42,41 +42,41 @@ Required functionality:
 
 app/__init__.py
 
-app/services/simulation/__init__.py
+app/services/simulator/__init__.py
 
-app/services/simulation/orchestrator.py
+app/services/simulator/orchestrator.py
 
-app/services/simulation/engine.py
+app/services/simulator/engine.py
 
-app/services/simulation/trader.py
+app/services/simulator/trader.py
 
-app/services/simulation/models/__init__.py
+app/services/simulator/models/__init__.py
 
-app/services/simulation/models/tick.py
+app/services/simulator/models/tick.py
 
-app/services/simulation/models/spread.py
+app/services/simulator/models/spread.py
 
-app/services/simulation/models/slippage.py
+app/services/simulator/models/slippage.py
 
-app/services/simulation/models/liquidity.py
+app/services/simulator/models/liquidity.py
 
-app/services/simulation/models/fee.py
+app/services/simulator/models/fee.py
 
-app/services/simulation/models/swap.py
+app/services/simulator/models/swap.py
 
-app/services/simulation/models/margin.py
+app/services/simulator/models/margin.py
 
-app/services/simulation/validation/__init__.py
+app/services/simulator/validation/__init__.py
 
-app/services/simulation/validation/quality.py
+app/services/simulator/validation/quality.py
 
-app/services/simulation/validation/schema.py
+app/services/simulator/validation/schema.py
 
-app/services/simulation/journal.py
+app/services/simulator/journal.py
 
-app/services/simulation/report.py
+app/services/simulator/report.py
 
-app/services/simulation/
+app/services/simulator/
 
 docs/source-requirements/03-indicator.md
 
@@ -98,7 +98,7 @@ docs/source-requirements/
 
 Tasks are grouped one source target at a time. Each requirement keeps its source line number from the phase requirements file for traceability.
 
-#### `app/services/simulation/README.md`
+#### `app/services/simulator/README.md`
 
 Functions/classes:
 
@@ -128,7 +128,7 @@ Functions/classes:
 
 Requirements:
 
-- [ ] The module may simulate configured simulation risk-rule effects for replay and evidence, but external policy definition, live approval authority, and human governance decisions live outside Simulation.
+- [ ] The module may simulate configured simulator risk-rule effects for replay and evidence, but external policy definition, live approval authority, and human governance decisions live outside Simulator.
 - [ ] Initial MT5 parity tests shall use a versioned broker profile named `mt5_demo_reference_fx_v1`.
 - [ ] Poison-pill detection shall quarantine the work unit, stop infinite requeue loops, emit an alert, and preserve failure artifacts for diagnosis.
 - [ ] Anything exported from a domain `__init__.py` and listed in `__all__` shall be treated as an official AI Tool.
@@ -137,7 +137,7 @@ Requirements:
 - [ ] No file-specific non-functional requirements defined.
 - [ ] Import-time tests shall verify public module import performs no filesystem writes, network access, worker startup, secret reads, market-data access, broker access, or long-running initialization.
 
-#### `app/services/simulation/__init__.py`
+#### `app/services/simulator/__init__.py`
 
 Functions/classes:
 
@@ -149,7 +149,7 @@ Requirements:
 - [ ] No file-specific non-functional requirements defined.
 - [ ] No file-specific testing requirements defined.
 
-#### `app/services/simulation/orchestrator.py`
+#### `app/services/simulator/orchestrator.py`
 
 Functions/classes:
 
@@ -159,8 +159,8 @@ Functions/classes:
 
 Requirements:
 
-- [ ] Simulation orchestration through `BacktestOrchestrator`.
-- [ ] The system shall provide a `BacktestOrchestrator` that validates configuration and data dependencies before executing a simulation.
+- [ ] Simulator orchestration through `BacktestOrchestrator`.
+- [ ] The system shall provide a `BacktestOrchestrator` that validates configuration and data dependencies before executing a simulator.
 - [ ] Phase 1 shall implement `run_backtest`, `BacktestOrchestrator`, `EventDrivenExecutionEngine`, FX symbol metadata, tick generation, spread/slippage/commission/swap models, broker-profile fixtures, data-quality gates, deterministic journal storage, JSON and Markdown reports, schema validation, and replay tests.
 - [ ] The `BacktestOrchestrator` shall coordinate validation, data quality, signal construction, tick construction, execution, metrics, and reporting.
 - [ ] No file-specific non-functional requirements defined.
@@ -186,7 +186,7 @@ Requirements:
 - [ ] `status` values shall include `success`, `failed`, `queued`, `cancelled`, and `diagnostic_failed` before implementation.
 - [ ] The system shall fill available volume and cancel the remainder for `IOC` orders.
 - [ ] When an `IOC` order is partially filled, the unfilled remainder shall be cancelled.
-- [ ] `SIM_IOC_REMAINDER_CANCELLED` shall not be treated as a fatal simulation error when the partial fill itself is valid.
+- [ ] `SIM_IOC_REMAINDER_CANCELLED` shall not be treated as a fatal simulator error when the partial fill itself is valid.
 - [ ] The `run_backtest` AI Tool shall enforce the strategy registry and sandbox rules defined in `docs/source-requirements/04-strategy.md`.
 - [ ] Long-running optimization, walk-forward, and Monte Carlo jobs shall periodically checkpoint progress to disk in a restartable format.
 - [ ] A `ResumePolicy` shall define maximum checkpoint age, checkpoint compatibility rules, automatic resume eligibility, and restart-from-scratch behavior.
@@ -223,12 +223,12 @@ Requirements:
 - [ ] Documentation shall include resource quota, scheduler queue, worker heartbeat, checkpoint/resume, preemptible-worker, and backpressure operating procedures.
 - [ ] Documentation shall include market-halt, limit-up/limit-down, portfolio kill-switch, trailing-stop, pegged-order, and cancel-replace semantics.
 
-#### `app/services/simulation/engine.py`
+#### `app/services/simulator/engine.py`
 
 Functions/classes:
 
 - `EventDrivenExecutionEngine`
-- `SimulationResult`
+- `SimulatorResult`
 - `run_id`
 - `broker_profile_id`
 
@@ -270,7 +270,7 @@ Requirements:
 - [ ] The regulatory engine may support optional wash-sale detection and tax-awareness diagnostics for taxable account scenarios.
 - [ ] FX production-realistic promotion shall not require the regulatory engine, but reports shall disclose that regulatory checks were disabled or not applicable.
 - [ ] Internal engine services shall not be exported as agent-callable tools unless a deliberate wrapper is created.
-- [ ] `SimulationResult` shall include `schema_version`, `run_id`, `classification`, `started_at`, `completed_at`, `engine_version`, `config_hash`, `data_manifest_hash`, `broker_profile_id`, `artifact_manifest`, `summary_metrics`, `risk_metrics`, `cost_summary`, `realism_disclosure`, and `data_quality_summary`.
+- [ ] `SimulatorResult` shall include `schema_version`, `run_id`, `classification`, `started_at`, `completed_at`, `engine_version`, `config_hash`, `data_manifest_hash`, `broker_profile_id`, `artifact_manifest`, `summary_metrics`, `risk_metrics`, `cost_summary`, `realism_disclosure`, and `data_quality_summary`.
 - [ ] Resumed runs shall verify config hash, data manifest hash, engine version, journal sequence continuity, random-seed state, and checkpoint compatibility before continuing.
 - [ ] The numeric performance values in this section are provisional engineering targets until a Phase 1 benchmark profile and pass/fail gates are approved.
 - [ ] Internal engine services shall remain separate from official AI Tool wrappers.
@@ -291,14 +291,14 @@ Requirements:
 - [ ] Optimization uses the same canonical tick execution engine as normal backtests.
 - [ ] The attached Hardened Draft v1.6 specification is the active source of truth.
 - [ ] The simulator is intended for Python implementation.
-- [ ] The simulation module is intended to live under `app/services/simulation/`.
+- [ ] The simulator module is intended to live under `app/services/simulator/`.
 - [ ] Indicator implementation requirements live in `docs/source-requirements/03-indicator.md`.
-- [ ] The simulator targets deterministic backtesting and simulation, not live order execution against a broker.
+- [ ] The simulator targets deterministic backtesting and simulator, not live order execution against a broker.
 - [ ] Vectorized processing is acceptable only for indicators and signal generation.
 - [ ] Future improvements shall contain only deferred optional enhancements and shall not contain mandatory business rules, required inputs, required outputs, or production gates.
 - [ ] Each future improvement shall include rationale, non-goal status for the current phase, promotion trigger, affected requirement sections, and required owner decision before promotion.
-- [ ] The Deferred Scope Register in the Phase 1 Builder Slice section shall be the single source of truth for Simulation deferred-scope status during Phase 1 handoff preparation.
-- [ ] Validate simulation configuration, strategy references, data dependencies, broker profiles, market-data authority manifests, realism requirements, and run permissions before execution.
+- [ ] The Deferred Scope Register in the Phase 1 Builder Slice section shall be the single source of truth for Simulator deferred-scope status during Phase 1 handoff preparation.
+- [ ] Validate simulator configuration, strategy references, data dependencies, broker profiles, market-data authority manifests, realism requirements, and run permissions before execution.
 - [ ] The same configuration, data, and seed shall produce the same trade intents.
 - [ ] The same configuration, data, and seed shall produce the same event-priority order.
 - [ ] The same configuration, data, and seed shall produce the same orders, deals, and positions.
@@ -316,7 +316,7 @@ Requirements:
 - [ ] Phase 1 memory limits shall remain pending owner approval until the benchmark profile defines maximum resident memory, measurement command, reference hardware, dataset shape, and failure behavior.
 - [ ] Once approved, memory-limit breaches shall fail deterministically with `SIM_RESOURCE_QUOTA_EXCEEDED` before the run can claim production-realistic classification.
 - [ ] The system shall follow a domain-driven architecture.
-- [ ] Simulation, indicators, and strategies shall remain in their target domains.
+- [ ] Simulator, indicators, and strategies shall remain in their target domains.
 - [ ] This domain document may be split into smaller requirement files after Phase 1 boundaries are implemented, provided traceability to this baseline is preserved.
 - [ ] Any split requirements file shall preserve requirement ids, release phase, acceptance criteria, and verification mapping.
 - [ ] The simulator shall reproduce important MT5 Strategy Tester execution semantics.
@@ -331,7 +331,7 @@ Requirements:
 - [ ] Before a production run starts, the system shall compute and record an environment diagnostic hash covering dependency versions, selected system libraries, relevant environment variables, container image digest where applicable, and benchmark profile id.
 - [ ] The system shall raise `SIM_ENVIRONMENT_DRIFT_WARNING` when the environment diagnostic hash differs from the certified benchmark profile environment.
 - [ ] Alerting shall include trend or predictive rules for persistence failures, data-provider failures, queue saturation, and SLO burn rate where the monitoring platform supports them.
-- [ ] Production service mode shall support synthetic transaction monitoring through a scheduled canonical simulation probe.
+- [ ] Production service mode shall support synthetic transaction monitoring through a scheduled canonical simulator probe.
 - [ ] Optional service failures such as warm-cache outage or SQLite sidecar index outage may degrade to slower fallback behavior for non-production runs when configured.
 - [ ] SQLite sidecar fallback shall use a full canonical JSONL scan and shall disclose the slower degraded mode in diagnostics.
 - [ ] Official AI Tool exports shall require metadata.
@@ -341,10 +341,10 @@ Requirements:
 - [ ] Official AI Tool exports shall provide safe errors.
 - [ ] Parent-child order lineage shall be preserved where enabled for auditability.
 - [ ] Local trusted CLI or notebook usage may run without interactive authentication only when the process uses local filesystem permissions and does not expose a network listener.
-- [ ] External tool access shall enforce role-based authorization with at least `simulation.viewer`, `simulation.runner`, and `simulation.admin` roles.
-- [ ] `simulation.admin` may manage approved broker profiles, data-authority manifests, retention policies, and benchmark baselines.
+- [ ] External tool access shall enforce role-based authorization with at least `simulator.viewer`, `simulator.runner`, and `simulator.admin` roles.
+- [ ] `simulator.admin` may manage approved broker profiles, data-authority manifests, retention policies, and benchmark baselines.
 - [ ] The tool wrapper shall prevent arbitrary code execution through strategy input.
-- [ ] Code-based strategy execution approval shall require `simulation.admin` approval, strategy owner approval, sandbox profile id, vetting artifact hash, and recorded approval expiry.
+- [ ] Code-based strategy execution approval shall require `simulator.admin` approval, strategy owner approval, sandbox profile id, vetting artifact hash, and recorded approval expiry.
 - [ ] Rejected code-injection attempts shall be logged with safe redaction.
 - [ ] Security-relevant rejections shall include deterministic error codes.
 - [ ] Research runs shall default to a 180-day retention tier.
@@ -488,10 +488,10 @@ Requirements:
 - [ ] Compliance records shall include pre-trade checks.
 - [ ] Compliance records shall include optional compliance tag.
 - [ ] Advanced stateful strategies and agent-generated strategies shall provide decision rationale.
-- [ ] The simulation module shall provide approved read-only execution state to advanced strategies when required.
-- [ ] The simulation module shall consume indicator outputs through the indicator module contract defined in `docs/source-requirements/03-indicator.md`.
-- [ ] The simulation module shall reject, mask, or downgrade runs when indicator-derived data violates the configured no-lookahead policy.
-- [ ] The simulation module shall convert indicator-derived signals into timestamped trade intents before official execution.
+- [ ] The simulator module shall provide approved read-only execution state to advanced strategies when required.
+- [ ] The simulator module shall consume indicator outputs through the indicator module contract defined in `docs/source-requirements/03-indicator.md`.
+- [ ] The simulator module shall reject, mask, or downgrade runs when indicator-derived data violates the configured no-lookahead policy.
+- [ ] The simulator module shall convert indicator-derived signals into timestamped trade intents before official execution.
 - [ ] The system shall support grid-search optimization.
 - [ ] The system shall support random-search optimization.
 - [ ] The system shall support Bayesian optimization.
@@ -524,7 +524,7 @@ Requirements:
 - [ ] The system shall support future.
 - [ ] The system shall support spot crypto.
 - [ ] The system shall support index instruments.
-- [ ] The system shall derive required realism modules from symbol metadata and simulation config.
+- [ ] The system shall derive required realism modules from symbol metadata and simulator config.
 - [ ] FX shall be the first asset class eligible for `production_realistic` promotion.
 - [ ] The system shall support dividends.
 - [ ] The system shall support stock splits.
@@ -597,7 +597,7 @@ Requirements:
 - [ ] Vendor records shall include provider, dataset, license scope, redistribution rights, retention rights, adjustment policy, timezone policy, revision policy, and support contact.
 - [ ] Production-realistic runs shall require point-in-time data snapshots or an explicit data-revision policy.
 - [ ] Data manifests shall record whether data is raw, adjusted, back-adjusted, survivorship-bias-free, point-in-time, revised, or vendor-restated.
-- [ ] Every production promotion shall produce a `simulation_promotion_manifest.json`.
+- [ ] Every production promotion shall produce a `simulator_promotion_manifest.json`.
 - [ ] Promotion shall require explicit classification: `research_only`, `mt5_parity_candidate`, `production_fx_candidate`, or asset-class-specific production candidate.
 - [ ] Empty data.
 - [ ] Duplicate timestamps.
@@ -645,11 +645,11 @@ Requirements:
 - [ ] Data authority tests proving `MarketDataAuthorityManifest` presence, checksum, point-in-time status, and authorization are validated before execution.
 - [ ] Timezone/DST tests proving broker-profile timezone rules map local sessions to UTC and reject unresolved spring-forward gaps or fall-back duplicate ambiguity before execution.
 - [ ] Concurrent manifest-read tests proving immutable `MarketDataAuthorityManifest` reads are thread-safe for multiple workers and conflicting manifest versions are rejected deterministically.
-- [ ] No-live-side-effect tests proving Simulation cannot call live broker mutation paths.
-- [ ] Import-time safety tests proving public Simulation imports perform no network, broker, filesystem write, worker, scheduler, or secret-read side effects.
+- [ ] No-live-side-effect tests proving Simulator cannot call live broker mutation paths.
+- [ ] Import-time safety tests proving public Simulator imports perform no network, broker, filesystem write, worker, scheduler, or secret-read side effects.
 - [ ] Traceability tests shall verify every accepted implementation requirement has `requirement_id`, `phase`, `priority`, `acceptance_criteria`, `verification_method`, and at least one mapped verification gate.
 - [ ] Traceability tests shall verify no `future`, `enterprise`, or asset-class-expansion requirement is marked blocking for Phase 1 without owner approval.
-- [ ] Boundary tests shall verify Simulation does not call live broker execution paths and does not mutate strategy-owned state except through approved callbacks or returned diagnostics.
+- [ ] Boundary tests shall verify Simulator does not call live broker execution paths and does not mutate strategy-owned state except through approved callbacks or returned diagnostics.
 - [ ] Market-calendar and gap tests shall cover market-closed rejection, session open, weekend gap, gap-through SL, gap-through TP, and SL/TP ambiguity.
 - [ ] Broker-rule tests shall cover supported fill policies, max pending orders, max positions, hedging/netting rules, and stopout thresholds.
 - [ ] Latency tests shall cover fixed latency, distribution latency, component latency, delayed eligibility, and latency interaction with missed fills.
@@ -700,7 +700,7 @@ Requirements:
 - [ ] Bar-open trading must use previous closed-bar data by default.
 - [ ] Production realism shortcuts must be explicitly configured.
 - [ ] A shortcut shall never be silently assumed.
-- [ ] A simulation must declare asset-class realism requirements for selected instruments.
+- [ ] A simulator must declare asset-class realism requirements for selected instruments.
 - [ ] Equities and ETFs require corporate-action treatment for production-realistic classification.
 - [ ] Production merge requires CI gates to pass with coverage at least 80%.
 - [ ] A batched range shall never skip a possible execution, risk, accounting, session, rollover, or compliance event.
@@ -739,10 +739,10 @@ Requirements:
 - [ ] Rejected FX cross-rate synthesis diagnostics.
 - [ ] Usage examples shall run end-to-end.
 - [ ] Optional enterprise feature contracts shall be defined early to avoid breaking redesign.
-- [ ] Release notes shall reference the applicable `simulation_promotion_manifest.json`.
+- [ ] Release notes shall reference the applicable `simulator_promotion_manifest.json`.
 - [ ] Documentation shall describe approved strategy input modes, strategy registry behavior, and sandbox/vetting requirements if code-based strategy execution is ever enabled.
 
-#### `app/services/simulation/trader.py`
+#### `app/services/simulator/trader.py`
 
 Functions/classes:
 
@@ -753,8 +753,8 @@ Functions/classes:
 Requirements:
 
 - [ ] Conversion of timestamped `TradeIntent` objects into sized `TradeRequest` objects.
-- [ ] Simulation-only trader interface and MT5-style simulated order/query semantics.
-- [ ] Provide simulation-compatible MT5-style accessors and trader methods for controlled strategy integration, including historical tick/bar accessors, symbol/account accessors, order submission/modification/deletion, position queries, order queries, deal/order history, margin/profit calculation, and terminal-style simulation status.
+- [ ] Simulator-only trader interface and MT5-style simulated order/query semantics.
+- [ ] Provide simulator-compatible MT5-style accessors and trader methods for controlled strategy integration, including historical tick/bar accessors, symbol/account accessors, order submission/modification/deletion, position queries, order queries, deal/order history, margin/profit calculation, and terminal-style simulator status.
 - [ ] Every MT5-style `SimTrader` method exposed to strategies shall define request fields, return fields, mutable-state effects, deterministic rejection codes, and read-only snapshot guarantees before implementation.
 - [ ] The system shall transform `TradeIntent` into a sized `TradeRequest`.
 - [ ] The system shall support MT5-style `order_send`.
@@ -781,23 +781,23 @@ Requirements:
 - [ ] The system shall expose MT5-style `account_info`.
 - [ ] The system shall expose MT5-style `order_calc_margin` for pre-trade margin estimation.
 - [ ] The system shall expose MT5-style `order_calc_profit` for mark-to-market or hypothetical trade profit estimation.
-- [ ] The same Trader protocol shall support both simulation and live adapters where live trading is enabled outside the simulator.
+- [ ] The same Trader protocol shall support both simulator and live adapters where live trading is enabled outside the simulator.
 - [ ] The simulated Trader protocol shall preserve the same request, response, and query semantics as the live adapter for shared strategy code.
-- [ ] Shared Trader protocol definitions may be shared across Simulation and Live/Trading, but Simulation shall implement only simulated behavior and shall not import, instantiate, or call live adapter implementation code.
+- [ ] Shared Trader protocol definitions may be shared across Simulator and Live/Trading, but Simulator shall implement only simulated behavior and shall not import, instantiate, or call live adapter implementation code.
 - [ ] The system shall support `on_tick` callbacks for event-driven strategy execution.
 - [ ] The system shall support `on_bar` callbacks for bar-boundary strategy execution.
-- [ ] The system shall provide a terminal-style interface for simulation status, account state, open positions, pending orders, and trade events.
+- [ ] The system shall provide a terminal-style interface for simulator status, account state, open positions, pending orders, and trade events.
 - [ ] Terminal-style output shall be controlled by an explicit `verbose` configuration flag.
-- [ ] Visual simulation mode shall be supported only as a diagnostic or research view and shall not alter canonical execution results.
-- [ ] Progress reporting shall be available for long-running official simulations, optimizations, walk-forward runs, and Monte Carlo runs.
+- [ ] Visual simulator mode shall be supported only as a diagnostic or research view and shall not alter canonical execution results.
+- [ ] Progress reporting shall be available for long-running official simulators, optimizations, walk-forward runs, and Monte Carlo runs.
 - [ ] The system shall support deterministic step-through replay for debugging.
 - [ ] Step-through replay shall allow pausing at a configured timestamp, journal sequence, order event, deal event, bar boundary, strategy callback, or error condition.
 - [ ] Debugger hooks shall expose read-only snapshots of tick state, order book where available, orders, deals, positions, account state, strategy-visible inputs, and selected strategy diagnostics.
 - [ ] Resuming from a debugger pause shall preserve deterministic replay and shall not alter official results unless a diagnostic mutation mode is explicitly enabled.
-- [ ] The simulation module shall accept timestamped `TradeIntent` objects from approved strategies and shall convert them into sized `TradeRequest` objects before execution.
+- [ ] The simulator module shall accept timestamped `TradeIntent` objects from approved strategies and shall convert them into sized `TradeRequest` objects before execution.
 - [ ] Regulatory checks may include pattern day trader checks.
 - [ ] Initial US regulatory checks shall include pattern day trader disclosure, short-sale locate configuration, short-sale restriction support where data exists, and position-limit checks where configured.
-- [ ] The simulator shall support live/simulation parity through an MT5-style `SimTrader` protocol.
+- [ ] The simulator shall support live/simulator parity through an MT5-style `SimTrader` protocol.
 - [ ] The `SimTrader` shall expose MT5-style trading methods to strategies through controlled interfaces.
 - [ ] No file-specific non-functional requirements defined.
 - [ ] No file-specific testing requirements defined.
@@ -808,7 +808,7 @@ Requirements:
 - [ ] Unhandled exceptions at controlled tool boundaries MUST be mapped to `SIM_INTERNAL_ERROR`, logged at `ERROR` level with redacted context, and must not expose secrets, raw strategy code, credentials, or private payloads.
 - [ ] MT5-parity tests shall compare supported behavior against controlled MT5 Strategy Tester scenarios.
 - [ ] Pre-trade checks and risk-check evidence shall be recorded.
-- [ ] `simulation.runner` may launch runs only for authorized strategy ids, data scopes, and artifact roots.
+- [ ] `simulator.runner` may launch runs only for authorized strategy ids, data scopes, and artifact roots.
 - [ ] Strategy files, market data paths, broker profiles, and artifact destinations shall be resolved through approved registries or allowlisted roots, not arbitrary user-supplied filesystem paths.
 - [ ] The tool wrapper shall prevent unregistered or unapproved strategy modules from being invoked.
 - [ ] Sandbox policy shall define allowed imports, denied imports, filesystem access, network access, subprocess access, environment-variable access, timeouts, memory limits, and prohibited operations before any code-based strategy path is enabled.
@@ -824,7 +824,7 @@ Requirements:
 - [ ] The system shall validate portfolio risk availability.
 - [ ] Compliance records shall include risk-check result.
 - [ ] Compliance records shall include optional strategy name and version.
-- [ ] The simulation module shall consume strategy outputs through the strategy module contract defined in `docs/source-requirements/04-strategy.md`.
+- [ ] The simulator module shall consume strategy outputs through the strategy module contract defined in `docs/source-requirements/04-strategy.md`.
 - [ ] Monte Carlo outputs shall include risk of ruin.
 - [ ] The system shall align benchmark data to the same clock and currency as the strategy.
 - [ ] Internal-only fields, secrets, raw credentials, and proprietary strategy source shall not appear in official AI Tool responses.
@@ -846,7 +846,7 @@ Requirements:
 - [ ] Vectorized signal strategy shall compute indicators, generate signals, and convert signals to trade intents.
 - [ ] Documentation shall include strategy-capacity diagnostics and production capacity approval procedures.
 
-#### `app/services/simulation/models/__init__.py`
+#### `app/services/simulator/models/__init__.py`
 
 Functions/classes:
 
@@ -859,7 +859,7 @@ Requirements:
 - [ ] No file-specific testing requirements defined.
 - [ ] Asset-class production realism depends on enabled models and available data.
 - [ ] When Python minor version, dependency lock hash, platform, or decimal/numeric backend differs from the certified profile, official results shall record an environment drift diagnostic and shall not be used for production promotion without compatibility evidence.
-- [ ] The system shall stop the simulation on accounting invariant violations unless diagnostic mode is configured.
+- [ ] The system shall stop the simulator on accounting invariant violations unless diagnostic mode is configured.
 - [ ] Diagnostic mode shall mark results `diagnostic_failed`, prevent optimization ranking, prevent benchmark promotion, and exclude the run from canonical performance comparisons.
 - [ ] Production promotion shall require recorded benchmark results.
 - [ ] FX conversions shall store source rate precision, conversion timestamp, and converted cashflow rounded to the account currency precision at the accounting boundary.
@@ -872,7 +872,7 @@ Requirements:
 - [ ] Every official run shall record actor id, auth context, role, request id, and authorization decision in audit metadata.
 - [ ] External data-provider or broker credentials shall be read only from approved secrets providers or environment bindings and shall never be accepted as plain request payload fields.
 - [ ] Externally accessible simulator tools shall not be enabled until threat model, data-governance review, RBAC configuration, redaction policy, retention policy, and protected-artifact policy are approved.
-- [ ] Accounting invariant violation shall stop the simulation unless diagnostic mode is explicitly enabled.
+- [ ] Accounting invariant violation shall stop the simulator unless diagnostic mode is explicitly enabled.
 - [ ] Missing required model data shall fail fast or be explicitly recorded as an approximation.
 - [ ] The system shall return `SIM_RUN_ID_CONFLICT` when a run id or request id conflicts with an existing incompatible run.
 - [ ] The system shall return `SIM_MODEL_GOVERNANCE_EXPIRED` when a required model inventory record or approval is expired.
@@ -882,7 +882,7 @@ Requirements:
 - [ ] `SIM_MODEL_GOVERNANCE_EXPIRED`
 - [ ] `SIM_ACCOUNT_INVARIANT_BROKEN`
 - [ ] The module does not own indicator formula implementation or indicator result contracts; those belong to `app/services/indicators/`.
-- [ ] The system shall produce a structured `SimulationResult`.
+- [ ] The system shall produce a structured `SimulatorResult`.
 - [ ] Latency models shall support fixed, distribution-based, venue-profile-based, and disabled modes.
 - [ ] The system shall enforce maximum total positions when configured.
 - [ ] The system shall enforce maximum positions per symbol when configured.
@@ -947,7 +947,7 @@ Requirements:
 - [ ] Failed request that validates `SIM_INVALID_DATE_RANGE` before data access.
 - [ ] A run shall not be labelled production-realistic unless required asset-class models are enabled or proven unnecessary.
 - [ ] Monte Carlo analysis must not replace the official backtest result.
-- [ ] Structured `SimulationResult`.
+- [ ] Structured `SimulatorResult`.
 - [ ] Account snapshots.
 - [ ] Equity curve.
 - [ ] Balance curve.
@@ -961,7 +961,7 @@ Requirements:
 - [ ] Documentation shall include model-governance and model-inventory operating procedures.
 - [ ] Documentation shall include dynamic model materiality assessment rules and evidence requirements.
 
-#### `app/services/simulation/models/tick.py`
+#### `app/services/simulator/models/tick.py`
 
 Functions/classes:
 
@@ -973,13 +973,13 @@ Functions/classes:
 - `REAL_TICKS`
 - `SYNTHETIC_TICKS`
 - `run_backtest`
-- `SimulationConfig`
+- `SimulatorConfig`
 
 Requirements:
 
-- [ ] Tick generation, tick stream construction, spread modelling, slippage modelling, liquidity modelling, matching, partial-fill handling, same-tick event priority, gap handling, commission/fee/swap/funding/borrow-fee accounting, and portfolio-level simulation state.
+- [ ] Tick generation, tick stream construction, spread modelling, slippage modelling, liquidity modelling, matching, partial-fill handling, same-tick event priority, gap handling, commission/fee/swap/funding/borrow-fee accounting, and portfolio-level simulator state.
 - [ ] Run official tick-based backtests and return standard official tool envelopes.
-- [ ] `SimulationBacktestRequestV1` fields: `schema_version`, `request_id`, `actor_context`, `strategy_ref`, `strategy_config`, `symbols`, `timeframe`, `start`, `end`, `initial_balance`, `account_currency`, `tick_model`, `spread_model`, `slippage_model`, `commission_model`, `swap_model`, `broker_profile_ref`, `market_data_authority_ref`, `journal_persistence`, `artifact_root_ref`, `realism_profile`, and `metadata`.
+- [ ] `SimulatorBacktestRequestV1` fields: `schema_version`, `request_id`, `actor_context`, `strategy_ref`, `strategy_config`, `symbols`, `timeframe`, `start`, `end`, `initial_balance`, `account_currency`, `tick_model`, `spread_model`, `slippage_model`, `commission_model`, `swap_model`, `broker_profile_ref`, `market_data_authority_ref`, `journal_persistence`, `artifact_root_ref`, `realism_profile`, and `metadata`.
 - [ ] The system shall run data-quality checks before indicator calculation, signal generation, or tick generation.
 - [ ] The system shall build a canonical bid/ask tick stream before official execution.
 - [ ] The system shall use tick execution as the only official production execution mode.
@@ -1016,9 +1016,9 @@ Requirements:
 - [ ] Synthetic tick generation shall remain reproducible when a run resumes from a checkpoint.
 - [ ] Synthetic tick generation shall journal or expose per-bar seed derivation metadata sufficient to replay a generated bar's tick path.
 - [ ] The simulator shall support data modelling modes equivalent to real ticks, simulated ticks, M1 OHLC, trading-timeframe OHLC, and calculation-only research data where explicitly labelled.
-- [ ] The simulator shall expose MT5-style historical tick accessors `copy_ticks_from` and `copy_ticks_range` for simulation-compatible data providers.
-- [ ] The simulator shall expose MT5-style historical bar accessors `copy_rates_from`, `copy_rates_from_pos`, and `copy_rates_range` for simulation-compatible data providers.
-- [ ] The simulator shall expose MT5-style `symbol_info_tick` and `symbol_info` accessors for simulation-compatible symbol metadata and latest tick state.
+- [ ] The simulator shall expose MT5-style historical tick accessors `copy_ticks_from` and `copy_ticks_range` for simulator-compatible data providers.
+- [ ] The simulator shall expose MT5-style historical bar accessors `copy_rates_from`, `copy_rates_from_pos`, and `copy_rates_range` for simulator-compatible data providers.
+- [ ] The simulator shall expose MT5-style `symbol_info_tick` and `symbol_info` accessors for simulator-compatible symbol metadata and latest tick state.
 - [ ] The system shall calculate ask for generated ticks as bid plus spread points multiplied by symbol point.
 - [ ] The system shall record spread source and spread points per tick or journal checkpoint.
 - [ ] Trade intents shall become eligible for matching only after the configured latency delay has elapsed on the canonical tick clock.
@@ -1044,8 +1044,8 @@ Requirements:
 - [ ] Pegged-order repricing shall follow explicit tick-size, latency, queue-priority, and market-data availability rules.
 - [ ] The system shall mark open positions to market on ticks.
 - [ ] The journal shall record tick model.
-- [ ] The simulation module shall execute strategy-generated trade intents only when the canonical tick loop reaches an eligible tick.
-- [ ] The simulation module shall run data-quality checks before indicator calculation, signal generation, or tick generation.
+- [ ] The simulator module shall execute strategy-generated trade intents only when the canonical tick loop reaches an eligible tick.
+- [ ] The simulator module shall run data-quality checks before indicator calculation, signal generation, or tick generation.
 - [ ] The system shall report ticks processed.
 - [ ] Visual replay exports shall include candles or tick references, strategy signals, order events, fills, position state, equity or balance overlays, drawdown overlays, and annotations for rejections or halts.
 - [ ] The system shall benchmark tick generation speed.
@@ -1091,7 +1091,7 @@ Requirements:
 - [ ] All official backtests must execute through a tick loop.
 - [ ] A global random seed alone shall not be sufficient for synthetic tick generation in production mode.
 - [ ] Synthetic tick randomness shall be locally reproducible per symbol and per bar.
-- [ ] `SimulationConfig` with strategy settings, symbols, timeframe, start date, end date, execution mode, tick model, data modelling mode, spread model, signal timing, sizing mode, initial deposit, leverage, margin mode, slippage configuration, optimization configuration, visual mode, progress reporting, terminal verbosity, and random seed.
+- [ ] `SimulatorConfig` with strategy settings, symbols, timeframe, start date, end date, execution mode, tick model, data modelling mode, spread model, signal timing, sizing mode, initial deposit, leverage, margin mode, slippage configuration, optimization configuration, visual mode, progress reporting, terminal verbosity, and random seed.
 - [ ] M1 OHLCV data when M1 or synthetic tick generation is used.
 - [ ] Real bid/ask tick data when real-tick mode is used.
 - [ ] Symbol specifications including point, tick size, tick value, contract size, volume min/max/step, asset class, currencies, sessions, and broker constraints.
@@ -1159,7 +1159,7 @@ Requirements:
 - [ ] Tick-batching boundary proof tests shall pass when tick batching is enabled.
 - [ ] Official fills are produced only by the canonical tick loop.
 
-#### `app/services/simulation/models/spread.py`
+#### `app/services/simulator/models/spread.py`
 
 Functions/classes:
 
@@ -1202,7 +1202,7 @@ Requirements:
 - [ ] Futures-rollover tests shall cover contract expiry, roll date selection, continuous adjustment, calendar-spread roll, roll PnL attribution, and missing contract-chain failure.
 - [ ] Severe missing bars, duplicate timestamps, negative spreads, invalid OHLC bars, or lookahead-sensitive feature data block production runs.
 
-#### `app/services/simulation/models/slippage.py`
+#### `app/services/simulator/models/slippage.py`
 
 Functions/classes:
 
@@ -1253,7 +1253,7 @@ Requirements:
 - [ ] Liquidity and slippage tests shall verify that liquidity constraints are evaluated before slippage and that slippage applies only to actually filled volume.
 - [ ] Execution-quality tests shall verify that liquidity shortfall is distinguished from slippage cost.
 
-#### `app/services/simulation/models/liquidity.py`
+#### `app/services/simulator/models/liquidity.py`
 
 Functions/classes:
 
@@ -1288,7 +1288,7 @@ Requirements:
 - [ ] Short-recall tests shall cover deterministic recall events, seeded probabilistic recall, forced buy-ins, market-halt interaction, liquidity, fees, and journal attribution.
 - [ ] Liquidity and partial-fill tests shall pass.
 
-#### `app/services/simulation/models/fee.py`
+#### `app/services/simulator/models/fee.py`
 
 Functions/classes:
 
@@ -1327,7 +1327,7 @@ Requirements:
 - [ ] Reports shall disclose total borrow fees paid and the borrow-fee model status.
 - [ ] Production-realistic equity or ETF short backtests shall require borrow-fee treatment or shall disclose a realism downgrade or approximation.
 - [ ] The system shall support instruments whose profit currency, margin currency, commission currency, dividend currency, borrow-fee currency, funding currency, and account base currency differ.
-- [ ] Internal simulation math shall use `Decimal` or equivalent fixed-precision decimal arithmetic for prices, points, fees, FX conversions, margins, cashflows, and account balances.
+- [ ] Internal simulator math shall use `Decimal` or equivalent fixed-precision decimal arithmetic for prices, points, fees, FX conversions, margins, cashflows, and account balances.
 - [ ] Commission, fees, swap, dividends, funding, realized PnL, and cash ledger entries shall round at each cashflow boundary to the relevant currency precision using the broker profile rule or `ROUND_HALF_UP` when no broker-specific rule exists.
 - [ ] Perpetual swaps require funding-rate treatment, funding timestamps, funding currency, and exchange-fee model for production-realistic classification.
 - [ ] Balance may change only from closed realized PnL, commission, fee, swap, borrow-fee, dividend, funding, and configured cashflow events.
@@ -1352,7 +1352,7 @@ Requirements:
 - [ ] Multi-currency-accounting tests shall cover realized PnL conversion, floating PnL conversion, margin conversion, fee/swap/dividend/funding conversion, and stale FX-rate rejection.
 - [ ] Borrow-fee tests shall pass before equity or ETF short-selling runs are production-promoted.
 
-#### `app/services/simulation/models/swap.py`
+#### `app/services/simulator/models/swap.py`
 
 Functions/classes:
 
@@ -1396,7 +1396,7 @@ Requirements:
 - [ ] Distributed-worker tests shall cover poison-pill work-unit quarantine, idempotent journal writes, distributed-lock or compare-and-swap commits, and duplicate checkpoint prevention.
 - [ ] Swap and gap tests shall pass.
 
-#### `app/services/simulation/models/margin.py`
+#### `app/services/simulator/models/margin.py`
 
 Functions/classes:
 
@@ -1407,7 +1407,7 @@ Functions/classes:
 
 Requirements:
 
-- [ ] Official simulated orders, deals, positions, pending orders, account state, balance, equity, margin, free margin, margin level, realized PnL, floating PnL, execution timestamps, and immutable simulation journal.
+- [ ] Official simulated orders, deals, positions, pending orders, account state, balance, equity, margin, free margin, margin level, realized PnL, floating PnL, execution timestamps, and immutable simulator journal.
 - [ ] The system shall update margin, exposure, commission, and risk immediately after partial fills.
 - [ ] The system shall enforce margin-call percentage.
 - [ ] The system shall maintain portfolio-level state for multi-symbol backtests.
@@ -1433,7 +1433,7 @@ Requirements:
 - [ ] The system shall enforce `FreeMargin = Equity - Margin`.
 - [ ] The system shall enforce `MarginLevel = Equity / Margin * 100` when margin is greater than zero.
 - [ ] The journal shall record every margin event.
-- [ ] The simulation module shall enforce that strategies cannot mutate official account, order, deal, position, margin, equity, journal, or execution timestamp state.
+- [ ] The simulator module shall enforce that strategies cannot mutate official account, order, deal, position, margin, equity, journal, or execution timestamp state.
 - [ ] The system shall produce equity, balance, margin, and exposure curves.
 - [ ] Options and option-like contracts shall remain out of scope beyond reserved enum or metadata mentions until an options-specific requirements document defines contract specs, Greeks, exercise/assignment, expiry, corporate actions, margin, pricing, and settlement.
 - [ ] Strategies shall not directly mutate official account, order, deal, position, margin, equity, or journal state.
@@ -1448,7 +1448,7 @@ Requirements:
 - [ ] Kill-switch tests shall cover drawdown, loss, exposure, margin, volatility, and error-triggered trading halt behavior.
 - [ ] Validation tests shall cover volume, stops, freeze, price, margin, portfolio, max positions/orders, and unsupported fill policy.
 
-#### `app/services/simulation/validation/__init__.py`
+#### `app/services/simulator/validation/__init__.py`
 
 Functions/classes:
 
@@ -1460,7 +1460,7 @@ Requirements:
 - [ ] No file-specific non-functional requirements defined.
 - [ ] No file-specific testing requirements defined.
 
-#### `app/services/simulation/validation/quality.py`
+#### `app/services/simulator/validation/quality.py`
 
 Functions/classes:
 
@@ -1473,7 +1473,7 @@ Functions/classes:
 
 Requirements:
 
-- [ ] Simulation-specific data-quality gating, realism classification, asset-class realism disclosures, benchmark manifests, model-governance evidence, research-integrity evidence, and execution-calibration evidence.
+- [ ] Simulator-specific data-quality gating, realism classification, asset-class realism disclosures, benchmark manifests, model-governance evidence, research-integrity evidence, and execution-calibration evidence.
 - [ ] Reports shall include IOC remainder cancellations in execution-quality diagnostics.
 - [ ] The system shall detect missing required columns.
 - [ ] The system shall detect missing bars.
@@ -1485,7 +1485,7 @@ Requirements:
 - [ ] The system shall produce a `DataQualityReport`.
 - [ ] The system shall block production runs when severe data-quality thresholds fail unless diagnostic mode is explicitly enabled.
 - [ ] The system shall include the data-quality report in the final report.
-- [ ] Production simulations shall consume normalized data through the data module contract and an approved `MarketDataAuthorityManifest`.
+- [ ] Production simulators shall consume normalized data through the data module contract and an approved `MarketDataAuthorityManifest`.
 - [ ] Missing or staging-only authoritative data shall block a production-realistic label unless the affected model is proven unnecessary for the selected instruments.
 - [ ] The system shall define a `PartialDataPolicy` for incomplete provider files or partial symbol-day data.
 - [ ] `PartialDataPolicy` shall support quarantining the affected symbol and date with `SIM_DATA_PARTIAL`, using stale prior data with `SIM_DATA_STALE` and a configurable staleness limit, or failing the entire run.
@@ -1510,7 +1510,7 @@ Requirements:
 - [ ] Equity and ETF runs shall include a corporate-action quality report.
 - [ ] Severe data-quality failures shall block production runs unless diagnostic mode is configured.
 - [ ] Diagnostic mode shall never produce a `production_realistic` or `mt5_parity_oriented` classification after severe data-quality failure or accounting invariant violation.
-- [ ] Public simulation modules shall expose only approved AI Tool wrappers and stable protocol types; internal execution, accounting, journal, data-quality, and reporting services shall remain non-agent-callable and shall be protected by import-boundary tests.
+- [ ] Public simulator modules shall expose only approved AI Tool wrappers and stable protocol types; internal execution, accounting, journal, data-quality, and reporting services shall remain non-agent-callable and shall be protected by import-boundary tests.
 - [ ] Required data-quality gates shall run before calculations and execution.
 - [ ] History-quality metadata shall be exposed.
 - [ ] The simulator shall emit business-level time-series metrics suitable for dashboards, including run status counts, lookahead violation counts, execution latency, data-quality failure counts, persistence failure counts, queue depth, and quota rejection counts.
@@ -1522,34 +1522,34 @@ Requirements:
 - [ ] No file-specific non-functional requirements defined.
 - [ ] Report tests for canonical JSON report, required Markdown report, realism disclosure, data-quality summary, cost summary, and artifact manifest.
 - [ ] Usage examples shall include canonical FX backtest, severe data-quality blocked run, optimization with streaming journal persistence, and raw Python strategy-code rejection.
-- [ ] IOC remainder tests shall verify partial-fill remainder cancellation journals `SIM_IOC_REMAINDER_CANCELLED`, does not fail a valid partial-fill simulation, and appears in execution-quality diagnostics.
+- [ ] IOC remainder tests shall verify partial-fill remainder cancellation journals `SIM_IOC_REMAINDER_CANCELLED`, does not fail a valid partial-fill simulator, and appears in execution-quality diagnostics.
 - [ ] Data-quality tests shall pass.
 - [ ] Severe data-quality blocked run that returns `diagnostic_failed` and does not claim `production_realistic` or `mt5_parity_oriented`.
 - [ ] The tool validates config, data quality, strategy registry, broker profile, and market-data authority requirements.
 - [ ] The response returns a deterministic `SIM_*` error code, bounded diagnostics, and any safe partial artifacts.
 - [ ] The run is not labelled `production_realistic` or `mt5_parity_oriented` after severe data-quality failure.
 
-#### `app/services/simulation/validation/schema.py`
+#### `app/services/simulator/validation/schema.py`
 
 Functions/classes:
 
-- `SimulationResult`
+- `SimulatorResult`
 - `run_backtest`
 
 Requirements:
 
 - [ ] Before Builder handoff, each public simulator capability shall define name, purpose, caller type, stability level, official/internal status, request schema, response schema, deterministic error codes, side effects, required permissions, artifact behavior, network behavior, persistence behavior, compatibility guarantees, and at least one success and one deterministic-error example.
-- [ ] `SimulationResult`, official tool envelopes, artifact manifests, journal events, report JSON, broker profiles, and market-data authority manifests shall have schema references before Builder handoff.
-- [ ] `SimulationToolEnvelopeV1` fields: `schema_version`, `request_id`, `status`, `result`, `error`, `warnings`, `metadata`, and `artifacts`.
+- [ ] `SimulatorResult`, official tool envelopes, artifact manifests, journal events, report JSON, broker profiles, and market-data authority manifests shall have schema references before Builder handoff.
+- [ ] `SimulatorToolEnvelopeV1` fields: `schema_version`, `request_id`, `status`, `result`, `error`, `warnings`, `metadata`, and `artifacts`.
 - [ ] Every journal event shall include schema version, run id, monotonic sequence number, event timestamp, event type, payload, previous event hash, and event hash.
-- [ ] The simulation module shall consume indicator result manifests containing input checksum, parameter hash, implementation version, output schema version, and timing metadata.
+- [ ] The simulator module shall consume indicator result manifests containing input checksum, parameter hash, implementation version, output schema version, and timing metadata.
 - [ ] Visual replay exports shall use a documented JSON schema suitable for charting libraries without becoming the canonical report artifact.
 - [ ] Report schema validation shall run before a report is marked complete.
 - [ ] Official AI Tools shall use a standard return schema.
 - [ ] Official AI Tool responses shall use an envelope containing `schema_version`, `request_id`, `status`, `result`, `error`, `warnings`, `metadata`, and `artifacts`.
 - [ ] Official response schemas shall be versioned and backward-compatible within a major schema version.
 - [ ] The `run_backtest` AI Tool shall accept only registered strategy identifiers, validated strategy configuration schemas, or code explicitly vetted and sandboxed by the orchestration layer.
-- [ ] Determinism guarantees shall be evaluated under the same pinned `requirements.txt` or lockfile, same approved dependency versions, same simulation schema version, and same Python minor version unless a cross-version reproducibility profile is explicitly certified.
+- [ ] Determinism guarantees shall be evaluated under the same pinned `requirements.txt` or lockfile, same approved dependency versions, same simulator schema version, and same Python minor version unless a cross-version reproducibility profile is explicitly certified.
 - [ ] Public response schemas shall remain backward-compatible within a major schema version, and breaking changes shall require a new major schema version.
 - [ ] Alerting shall cover journal persistence failures, schema validation failures, repeated accounting invariant failures, abnormal rejection spikes, data-provider failures, and performance regressions.
 - [ ] Official AI Tool exports shall use a standard return schema.
@@ -1558,15 +1558,15 @@ Requirements:
 - [ ] Any Phase 1 code or schema introduced to accommodate future scope shall be inert by default, guarded by an explicit feature flag or scope tag, and fully tested for deterministic unsupported-scope rejection.
 - [ ] Strategy execution shall occur only through registered strategies, validated schemas, or explicitly sandboxed and vetted orchestration paths.
 - [ ] Artifact manifest containing paths, media types, schema versions, hashes, sizes, retention tier, and created timestamps.
-- [ ] Documentation shall include a schema reference for `SimulationResult`, official AI Tool envelopes, journal events, report JSON, artifact manifests, broker profiles, and market-data authority manifests.
+- [ ] Documentation shall include a schema reference for `SimulatorResult`, official AI Tool envelopes, journal events, report JSON, artifact manifests, broker profiles, and market-data authority manifests.
 - [ ] Documentation shall include execution-model calibration requirements and calibration artifact schemas.
 - [ ] Documentation shall include end-to-end data-lineage graph schema and audit query examples.
 - [ ] Documentation shall include deterministic step-through replay and visual trade replay export schema.
-- [ ] Documentation shall include the schema and approval workflow for `simulation_promotion_manifest.json`.
+- [ ] Documentation shall include the schema and approval workflow for `simulator_promotion_manifest.json`.
 - [ ] No file-specific non-functional requirements defined.
 - [ ] Contract tests shall verify `run_backtest` success envelopes include `schema_version`, `request_id`, `status`, `result`, `error`, `warnings`, `metadata`, and `artifacts`.
 - [ ] Contract tests shall verify public schema backward compatibility within a major schema version.
-- [ ] Schema tests shall cover `SimulationResult`, official AI Tool response envelopes, report JSON, report Markdown metadata, artifact manifests, and backward-compatible schema versioning.
+- [ ] Schema tests shall cover `SimulatorResult`, official AI Tool response envelopes, report JSON, report Markdown metadata, artifact manifests, and backward-compatible schema versioning.
 - [ ] Visual-replay-export tests shall cover schema validation, signals, fills, order events, equity overlays, drawdown overlays, halt annotations, and derivation from canonical journal artifacts.
 - [ ] AI Tool strategy security tests shall verify registered strategy identifiers succeed when schemas are valid, unregistered strategy identifiers are rejected, unapproved modules are rejected, and invalid strategy configuration schemas are rejected.
 - [ ] No official tool shall be exported without metadata/schema tests.
@@ -1642,7 +1642,7 @@ Requirements:
 - [ ] `max_fx_rate_age_seconds` or equivalent context-specific FX stale-rate tolerance configuration.
 - [ ] FX stale-rate override disclosures.
 
-#### `app/services/simulation/journal.py`
+#### `app/services/simulator/journal.py`
 
 Functions/classes:
 
@@ -1657,12 +1657,12 @@ Functions/classes:
 - `SIM_KILL_SWITCH_TRIGGERED`
 - `SIM_POISON_WORK_UNIT_QUARANTINED`
 - `SIM_OPTIONAL_SERVICE_DEGRADED`
-- `SimulationResult`
+- `SimulatorResult`
 
 Requirements:
 
-- [ ] Simulation reports, metrics, artifact manifests, replay metadata, journal persistence, run lifecycle, run idempotency, optimization/walk-forward/Monte Carlo execution evidence, and production-promotion evidence.
-- [ ] Produce `SimulationResult`, immutable journal artifacts, canonical JSON reports, required Markdown reports, derived CSV/HTML/visual replay artifacts where configured, and structured error responses.
+- [ ] Simulator reports, metrics, artifact manifests, replay metadata, journal persistence, run lifecycle, run idempotency, optimization/walk-forward/Monte Carlo execution evidence, and production-promotion evidence.
+- [ ] Produce `SimulatorResult`, immutable journal artifacts, canonical JSON reports, required Markdown reports, derived CSV/HTML/visual replay artifacts where configured, and structured error responses.
 - [ ] The system shall produce a report from the immutable journal and computed metrics.
 - [ ] When an `IOC` order remainder is cancelled, the system shall journal `SIM_IOC_REMAINDER_CANCELLED` as a non-fatal diagnostic event.
 - [ ] The system shall maintain an immutable trade journal.
@@ -1693,8 +1693,8 @@ Requirements:
 - [ ] Production journal persistence shall fsync before marking a run complete or before emitting final reports.
 - [ ] If a journal write, flush, fsync, sidecar transaction, or commit fails, the run shall stop in production mode and return `SIM_PERSISTENCE_FAILED`.
 - [ ] After persistence failure, diagnostics shall include journal backend, run id, failed operation, and last committed sequence number.
-- [ ] The simulation module shall journal strategy id, strategy version, configuration hash, rationale where provided, and strategy-input rejection diagnostics.
-- [ ] The simulation module shall prevent vectorized indicator or signal generation from producing official fills, account state, trade journals, or reports.
+- [ ] The simulator module shall journal strategy id, strategy version, configuration hash, rationale where provided, and strategy-input rejection diagnostics.
+- [ ] The simulator module shall prevent vectorized indicator or signal generation from producing official fills, account state, trade journals, or reports.
 - [ ] Visual trade replay export shall be supported as a derived artifact from the canonical journal and report JSON.
 - [ ] If JSON and human-readable report artifacts disagree, the run shall fail report validation until the derived artifact is regenerated from canonical JSON and journal data.
 - [ ] Requeued work units shall preserve deterministic provenance hashes and shall not duplicate completed journal or report artifacts.
@@ -1720,7 +1720,7 @@ Requirements:
 - [ ] Production service mode shall define SLOs for run startup latency, successful completion rate, journal durability, artifact availability, and report-generation latency.
 - [ ] Operational runbooks shall cover failed runs, corrupted sidecar index, journal replay recovery, data-source outage, artifact restore, stuck worker, and rollback after bad release.
 - [ ] The immutable journal shall preserve audit evidence.
-- [ ] `simulation.viewer` may read authorized reports and metadata but shall not launch runs or read protected journals.
+- [ ] `simulator.viewer` may read authorized reports and metadata but shall not launch runs or read protected journals.
 - [ ] Logs, reports, and journals may include run id, request id, actor id or pseudonymous actor id, strategy id, strategy version, symbol, timeframe, non-secret configuration, checksums, aggregate metrics, diagnostics, and artifact references.
 - [ ] Logs, reports, and journals shall not include API keys, tokens, passwords, private keys, full broker credentials, raw personal identifiers, payment data, unrestricted account identifiers, proprietary strategy source code, or raw proprietary market data payloads unless an explicit protected-artifact policy allows it.
 - [ ] Production-candidate and validation journals, reports, and benchmark metadata shall default to a seven-year retention tier.
@@ -1806,11 +1806,11 @@ Requirements:
 - [ ] Chaos and fault-injection tests shall simulate disk-full, permission-denied, journal flush failure, sidecar transaction failure, artifact-store outage, and worker heartbeat loss with deterministic error envelopes and no silent artifact promotion.
 - [ ] Debug-replay tests shall cover pause by timestamp, journal sequence, event, bar boundary, strategy callback, and error condition with deterministic resume.
 - [ ] Streaming journal persistence and failure tests shall pass.
-- [ ] The result includes a `SimulationResult`, journal artifact, JSON report, Markdown report, artifact manifest, metrics, and realism disclosure.
+- [ ] The result includes a `SimulatorResult`, journal artifact, JSON report, Markdown report, artifact manifest, metrics, and realism disclosure.
 - [ ] Work units are deterministic and resumable.
 - [ ] Journals are streamed to disk instead of held fully in memory.
 - [ ] Ranking is deterministic when objective scores tie.
-- [ ] Controlled tool boundaries MUST return a deterministic `SIM_*` error code and safe redacted error envelope for all handled failures. Custom simulation exceptions and error codes must inherit and reuse exceptions from `app.utils.errors` to prevent duplicate declaration.
+- [ ] Controlled tool boundaries MUST return a deterministic `SIM_*` error code and safe redacted error envelope for all handled failures. Custom simulator exceptions and error codes must inherit and reuse exceptions from `app.utils.errors` to prevent duplicate declaration.
 - [ ] Diagnostic mode shall require an explicit configuration flag, actor id, rationale, and audit record.
 - [ ] `SIM_EVENT_PRIORITY_CONFLICT`
 - [ ] The system shall prevent or defer trading during market halts and limit-up/limit-down states according to exchange and broker policy.
@@ -1824,19 +1824,19 @@ Requirements:
 - [ ] Futures roll events and roll PnL attribution for futures runs.
 - [ ] Data-lineage graph or lineage artifact references for audited data points.
 
-#### `app/services/simulation/report.py`
+#### `app/services/simulator/report.py`
 
 Functions/classes:
 
-- `SimulationReport`
-- `SimulationSummary`
-- `generate_simulation_report`
-- `serialize_simulation_report`
+- `SimulatorReport`
+- `SimulatorSummary`
+- `generate_simulator_report`
+- `serialize_simulator_report`
 
 Requirements:
 
 - [ ] The module does not treat research approximation, visual mode, notebook objects, or derived exports as canonical execution or reporting artifacts.
-- [ ] The module does not own OS-level resource management such as process pools, thread-pool orchestration, global memory management, or platform scheduler policy beyond enforcing configured Simulation resource quotas and reporting quota diagnostics.
+- [ ] The module does not own OS-level resource management such as process pools, thread-pool orchestration, global memory management, or platform scheduler policy beyond enforcing configured Simulator resource quotas and reporting quota diagnostics.
 - [ ] Support optimization, walk-forward, Monte Carlo, bootstrap, deterministic replay, step-through replay, visual replay export, benchmark reporting, production-promotion manifests, and service-mode run lifecycle operations where enabled.
 - [ ] The system shall disclose every enabled, disabled, or simplified realism model in the final report.
 - [ ] The system shall record gap-handling rules in the report.
@@ -1959,13 +1959,13 @@ Requirements:
 - [ ] Implement the simulator as an `ExecutionProvider` compatible adapter instead of calling live broker execution code directly.
 - [ ] Adopt Phase 1.5 contracts for BacktestConfig, BacktestResult, TradeResult, ExecutionReport, Fill, Position, AccountSnapshot, PortfolioSnapshot, and AuditEvent.
 - [ ] Ensure simulated execution and live execution share canonical request/result contracts but have separate provider implementations.
-- [ ] Add tests proving Simulation can run without MT5, cTrader, Binance, network clients, broker credentials, or live account configuration installed.
+- [ ] Add tests proving Simulator can run without MT5, cTrader, Binance, network clients, broker credentials, or live account configuration installed.
 
 #### Performance, audit overhead, and acceleration boundaries
 
 Requirements:
 
-- [ ] Simulation shall use `asyncio` or an approved asynchronous writer boundary for journal, report, artifact, and sidecar I/O while keeping the canonical state transition order deterministic.
+- [ ] Simulator shall use `asyncio` or an approved asynchronous writer boundary for journal, report, artifact, and sidecar I/O while keeping the canonical state transition order deterministic.
 - [ ] CPU-bound tick matching, fill calculation, and accounting loops shall be isolated behind approved execution backends that may include local sequential execution, multiprocessing, or optional accelerated implementations such as Cython or Numba.
 - [ ] Optional accelerated backends shall be feature-flagged, parity-tested against the canonical Python backend, and disabled by default when dependencies are missing or unsupported.
 - [ ] Decimal arithmetic shall remain mandatory for externally visible financial cashflows and ledger state, while any optimized internal representation must prove exact reconciliation back to Decimal ledger outputs before acceptance.
@@ -1974,7 +1974,7 @@ Requirements:
 
 ```text
 
-tests/unit/app/services/simulation/
+tests/unit/app/services/simulator/
 
 ```
 
@@ -1988,7 +1988,7 @@ Test coverage:
 
 ```text
 
-tests/usage/app/services/08_simulation.py
+tests/usage/app/services/08_simulator.py
 
 ```
 
@@ -2000,7 +2000,7 @@ Usage examples must show:
 - `example_04_positions_and_accounting`: Demonstrate hedging/netting positions, margin, PnL, equity, and balance accounting.
 - `example_05_journal_and_event_log`: Demonstrate deterministic journals, event logs, receipts, and audit metadata.
 - `example_06_strategy_adapter`: Demonstrate strategy signal ingestion, risk/trading boundaries, and blocked broker mutation.
-- `example_07_metrics_and_reports`: Demonstrate simulation summary, equity curve, drawdown, trade stats, and artifact references.
+- `example_07_metrics_and_reports`: Demonstrate simulator summary, equity curve, drawdown, trade stats, and artifact references.
 - `example_08_resume_cancel_and_resource_limits`: Demonstrate progress, cancellation, resume safety, quotas, and fail-closed invalid input paths.
 - The single usage file must be runnable as a script and organize separate examples as focused functions.
 - Examples must extensively cover the phase's official public capabilities, important edge cases, fail-closed paths, and standard envelope fields where applicable.
@@ -2026,25 +2026,25 @@ Usage examples must show:
 
 ```text
 
-feat(simulation-engine): implement simulation execution engine and account models
+feat(simulator-engine): implement simulator execution engine and account models
 
 
 
-- Build orchestrator and simulation loop for tick-by-tick and bar execution
+- Build orchestrator and simulator loop for tick-by-tick and bar execution
 
 - Implement simulated fee, commission, swap, slippage, and margin models
 
 - Build liquidity walk order book matching engine for simulated deal fills
 
-- Integrate journal logs, metrics scorecard, and simulation performance report
+- Integrate journal logs, metrics scorecard, and simulator performance report
 
 ```
 
 - [ ] The same configuration, data, and seed shall produce the same metrics.
 - [ ] Diagnostic mode may continue only far enough to emit bounded diagnostics, partial artifacts, failed invariant details, and safe remediation hints.
-- [ ] Importing public simulation modules shall not start workers, open network connections, read secrets, write artifacts, register global mutable state, access market data, contact brokers, or launch background schedulers.
+- [ ] Importing public simulator modules shall not start workers, open network connections, read secrets, write artifacts, register global mutable state, access market data, contact brokers, or launch background schedulers.
 - [ ] Production run-configuration artifacts shall be signed or checksum-verified and shall be the single source of truth for replay.
-- [ ] Synthetic transaction probes shall alert when the canonical simulation fails, produces non-deterministic output, violates expected metrics tolerance, or cannot produce required artifacts.
+- [ ] Synthetic transaction probes shall alert when the canonical simulator fails, produces non-deterministic output, violates expected metrics tolerance, or cannot produce required artifacts.
 - [ ] Retention tier, deletion eligibility, and legal-hold status shall be stored in the artifact manifest.
 - [ ] Protected artifacts shall be readable only by authorized roles and approved service identities.
 - [ ] Phase 1 local-only research artifacts may remain unencrypted only when explicitly classified as local research, stored outside protected artifact roots, and excluded from production-candidate evidence.
