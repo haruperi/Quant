@@ -1,10 +1,10 @@
-﻿## Phase 8 Simulator Engine
+## Phase 8 Simulator Engine
 
 ### Goal
 
 Implement the Simulator Engine requirements under `app/services/simulator/` while preserving the phase module boundaries and governance rules.
 
-Task inventory: 1,662 checkbox tasks (0 checked, all unchecked).
+Task inventory: 1,678 checkbox tasks (81 checked, 1,597 unchecked).
 
 ### Dependency Files and Functionality
 
@@ -106,13 +106,13 @@ Functions/classes:
 
 Requirements:
 
-- [ ] Usage examples shall run as executable documentation tests and assert exact success or failure envelope shape.
-- [ ] Documentation shall include a formal user guide for interpreting realism labels.
-- [ ] Documentation shall include a configuration reference for every config class and enum.
-- [ ] Documentation shall include a migration guide if earlier simulator versions exist.
-- [ ] Documentation shall describe memory-safety constraints for optimization, walk-forward, and Monte Carlo runs.
-- [ ] Documentation shall describe FX cross-rate synthesis rejection behavior and `max_cross_rate_skew_bps`.
-- [ ] Documentation shall describe added error and diagnostic codes.
+- [X] Usage examples shall run as executable documentation tests and assert exact success or failure envelope shape. *tests/usage/app/services/08_simulator.py:40*
+- [X] Documentation shall include a formal user guide for interpreting realism labels. *app/services/simulator/README.md:56*
+- [X] Documentation shall include a configuration reference for every config class and enum. *app/services/simulator/README.md:20*
+- [X] Documentation shall include a migration guide if earlier simulator versions exist. *app/services/simulator/README.md:116*
+- [X] Documentation shall describe memory-safety constraints for optimization, walk-forward, and Monte Carlo runs. *app/services/simulator/README.md:108*
+- [X] Documentation shall describe FX cross-rate synthesis rejection behavior and `max_cross_rate_skew_bps`. *app/services/simulator/README.md:100*
+- [X] Documentation shall describe added error and diagnostic codes. *app/services/simulator/README.md:123*
 - [ ] Documentation shall include research-integrity, optimization, and overfitting-control operating procedures.
 - [ ] Documentation shall include immutable run-configuration, environment drift detection, and benchmark-profile certification procedures.
 - [ ] Documentation shall include warm data cache behavior, TTL rules, `DataManifestHash` keys, and checksum validation requirements.
@@ -159,67 +159,67 @@ Functions/classes:
 
 Requirements:
 
-- [ ] Simulator orchestration through `BacktestOrchestrator`.
-- [ ] The system shall provide a `BacktestOrchestrator` that validates configuration and data dependencies before executing a simulator.
+- [X] Simulator orchestration through `BacktestOrchestrator`. *app/services/simulator/orchestrator.py:62*
+- [X] The system shall provide a `BacktestOrchestrator` that validates configuration and data dependencies before executing a simulator. *app/services/simulator/orchestrator.py:76*
 - [ ] Phase 1 shall implement `run_backtest`, `BacktestOrchestrator`, `EventDrivenExecutionEngine`, FX symbol metadata, tick generation, spread/slippage/commission/swap models, broker-profile fixtures, data-quality gates, deterministic journal storage, JSON and Markdown reports, schema validation, and replay tests.
-- [ ] The `BacktestOrchestrator` shall coordinate validation, data quality, signal construction, tick construction, execution, metrics, and reporting.
+- [X] The `BacktestOrchestrator` shall coordinate validation, data quality, signal construction, tick construction, execution, metrics, and reporting. *app/services/simulator/orchestrator.py:316*
 - [ ] No file-specific non-functional requirements defined.
 - [ ] No file-specific testing requirements defined.
-- [ ] Expose the official AI tool boundary for `run_backtest`.
+- [X] Expose the official AI tool boundary for `run_backtest`. *app/services/simulator/orchestrator.py:355*
 - [ ] MT5 parity comparisons shall require exact match for order count, deal count, position lifecycle count, side, symbol, order type, fill policy, and deterministic event order.
-- [ ] Production service mode shall queue `run_backtest` requests when workers are saturated and return a run id with `queued` status.
+- [X] Production service mode shall queue `run_backtest` requests when workers are saturated and return a run id with `queued` status. *tests/unit/app/services/simulator/test_08a_foundation.py:116*
 - [ ] Queueing shall enforce maximum queue length, maximum queue age, cancellation support, and deterministic rejection when limits are exceeded.
 - [ ] The scheduler shall persist queued, running, completed, failed, and cancelled states outside worker memory.
-- [ ] Any network, multi-user, agent-orchestrated, or externally accessible `run_backtest` surface shall require authenticated actor identity.
-- [ ] The `run_backtest` AI Tool shall reject raw arbitrary Python strategy code strings before execution.
-- [ ] The orchestration layer shall explicitly vet and sandbox any code-based strategy path before it can be executed.
-- [ ] The system shall return `SIM_ARBITRARY_CODE_REJECTED` when raw arbitrary strategy code is passed to `run_backtest`.
-- [ ] `SIM_IOC_REMAINDER_CANCELLED` shall be classified as a non-fatal diagnostic code.
-- [ ] The system shall return `SIM_CHECKPOINT_INCOMPATIBLE` when a resumed run fails checkpoint compatibility validation.
-- [ ] `SIM_IOC_REMAINDER_CANCELLED`
-- [ ] The module does not own strategy logic, strategy lifecycle approval, or strategy-generated signal logic; those belong to `app/services/strategies/`.
-- [ ] The module does not execute arbitrary user-provided Python strategy code through `run_backtest`.
-- [ ] `run_backtest` shall define required fields, optional fields, defaults, enum values, unknown-field behavior, malformed-payload behavior, size limits, path resolution rules, validation order, authorization behavior, and artifact-root behavior before implementation.
+- [X] Any network, multi-user, agent-orchestrated, or externally accessible `run_backtest` surface shall require authenticated actor identity. *app/services/simulator/validation/schema.py:102*
+- [X] The `run_backtest` AI Tool shall reject raw arbitrary Python strategy code strings before execution. *app/services/simulator/validation/schema.py:27*
+- [X] The orchestration layer shall explicitly vet and sandbox any code-based strategy path before it can be executed. *app/services/simulator/orchestrator.py:105*
+- [X] The system shall return `SIM_ARBITRARY_CODE_REJECTED` when raw arbitrary strategy code is passed to `run_backtest`. *tests/unit/app/services/simulator/test_08a_foundation.py:91*
+- [X] `SIM_IOC_REMAINDER_CANCELLED` shall be classified as a non-fatal diagnostic code. *app/services/simulator/orchestrator.py:47*
+- [X] The system shall return `SIM_CHECKPOINT_INCOMPATIBLE` when a resumed run fails checkpoint compatibility validation. *tests/unit/app/services/simulator/test_08a_foundation.py:178*
+- [X] `SIM_IOC_REMAINDER_CANCELLED` *tests/unit/app/services/simulator/test_08a_foundation.py:209*
+- [X] The module does not own strategy logic, strategy lifecycle approval, or strategy-generated signal logic; those belong to `app/services/strategies/`. *app/services/simulator/orchestrator.py:13*
+- [X] The module does not execute arbitrary user-provided Python strategy code through `run_backtest`. *app/services/simulator/orchestrator.py:105*
+- [X] `run_backtest` shall define required fields, optional fields, defaults, enum values, unknown-field behavior, malformed-payload behavior, size limits, path resolution rules, validation order, authorization behavior, and artifact-root behavior before implementation. *app/services/simulator/validation/schema.py:64*
 - [ ] `run_backtest` shall define response envelopes for `success`, `failed`, `queued`, `cancelled`, and `diagnostic_failed` statuses before implementation.
 - [ ] Optimization, walk-forward, Monte Carlo, visual replay export, production-promotion manifests, and service-mode lifecycle operations shall be implemented only when their requirements are explicitly tagged for the active release phase.
-- [ ] `actor_context` shall define authenticated actor identity and roles for any networked, multi-user, or agent-orchestrated invocation.
-- [ ] `status` values shall include `success`, `failed`, `queued`, `cancelled`, and `diagnostic_failed` before implementation.
-- [ ] The system shall fill available volume and cancel the remainder for `IOC` orders.
-- [ ] When an `IOC` order is partially filled, the unfilled remainder shall be cancelled.
-- [ ] `SIM_IOC_REMAINDER_CANCELLED` shall not be treated as a fatal simulator error when the partial fill itself is valid.
-- [ ] The `run_backtest` AI Tool shall enforce the strategy registry and sandbox rules defined in `docs/source-requirements/04-strategy.md`.
+- [X] `actor_context` shall define authenticated actor identity and roles for any networked, multi-user, or agent-orchestrated invocation. *app/services/simulator/models/tick.py:23*
+- [X] `status` values shall include `success`, `failed`, `queued`, `cancelled`, and `diagnostic_failed` before implementation. *app/services/simulator/README.md:9*
+- [X] The system shall fill available volume and cancel the remainder for `IOC` orders. *app/services/simulator/models/liquidity.py:51*
+- [X] When an `IOC` order is partially filled, the unfilled remainder shall be cancelled. *app/services/simulator/models/liquidity.py:51*
+- [X] `SIM_IOC_REMAINDER_CANCELLED` shall not be treated as a fatal simulator error when the partial fill itself is valid. *tests/unit/app/services/simulator/test_08a_foundation.py:209*
+- [X] The `run_backtest` AI Tool shall enforce the strategy registry and sandbox rules defined in `docs/source-requirements/04-strategy.md`. *app/services/simulator/orchestrator.py:105*
 - [ ] Long-running optimization, walk-forward, and Monte Carlo jobs shall periodically checkpoint progress to disk in a restartable format.
 - [ ] A `ResumePolicy` shall define maximum checkpoint age, checkpoint compatibility rules, automatic resume eligibility, and restart-from-scratch behavior.
 - [ ] Pending orders, SL, TP, and limit prices shall be adjusted or cancelled according to broker/config policy.
-- [ ] The `run_backtest` AI Tool shall not accept raw arbitrary Python strategy code as a string input.
-- [ ] The `run_backtest` AI Tool shall reject raw strategy-code injection attempts before execution.
-- [ ] The `run_backtest` AI Tool shall return `SIM_ARBITRARY_CODE_REJECTED` when raw arbitrary strategy code is rejected.
-- [ ] Raw Python strategy code is supplied to `run_backtest`.
-- [ ] IOC order partially fills and cancels remainder.
-- [ ] `run_backtest` contract tests for success, failed, cancelled, queued where supported, and diagnostic-failed envelopes.
-- [ ] Contract tests shall verify failed, queued, cancelled, and diagnostic-failed responses preserve the same envelope shape and include deterministic `SIM_*` error codes where applicable.
+- [X] The `run_backtest` AI Tool shall not accept raw arbitrary Python strategy code as a string input. *app/services/simulator/validation/schema.py:27*
+- [X] The `run_backtest` AI Tool shall reject raw strategy-code injection attempts before execution. *tests/unit/app/services/simulator/test_08a_foundation.py:63*
+- [X] The `run_backtest` AI Tool shall return `SIM_ARBITRARY_CODE_REJECTED` when raw arbitrary strategy code is rejected. *app/services/simulator/orchestrator.py:402*
+- [X] Raw Python strategy code is supplied to `run_backtest`. *tests/unit/app/services/simulator/test_08a_foundation.py:82*
+- [X] IOC order partially fills and cancels remainder. *tests/unit/app/services/simulator/test_08a_foundation.py:203*
+- [X] `run_backtest` contract tests for success, failed, cancelled, queued where supported, and diagnostic-failed envelopes. *tests/unit/app/services/simulator/test_08a_foundation.py:116*
+- [X] Contract tests shall verify failed, queued, cancelled, and diagnostic-failed responses preserve the same envelope shape and include deterministic `SIM_*` error codes where applicable. *tests/unit/app/services/simulator/test_08a_foundation.py:157*
 - [ ] Security tests shall verify unauthenticated network or agent-orchestrated access is rejected, each RBAC role is enforced, secrets in payloads are rejected and redacted, and rejected raw strategy code is not executed or logged in full.
 - [ ] Market-halt tests shall cover market-wide halts, symbol halts, limit-up/limit-down states, halted order rejection or deferral, and resumed trading.
 - [ ] Advanced-order tests shall cover trailing stops, pegged orders, cancel-replace behavior, queue-priority effects, and deterministic repricing.
 - [ ] Checkpoint and resume tests shall cover checkpoint age limits, checkpoint compatibility, OOM-style restart, worker loss, requeue behavior, and duplicate artifact prevention.
 - [ ] Service-operations tests shall cover resource quotas, queue backpressure, queued run status, queue limit rejection, cancellation, environment drift warnings, synthetic transaction probes, and canary divergence handling.
-- [ ] AI Tool strategy security tests shall verify `run_backtest` rejects raw arbitrary Python strategy code, returns `SIM_ARBITRARY_CODE_REJECTED`, does not execute rejected code, and does not log rejected code in full.
+- [X] AI Tool strategy security tests shall verify `run_backtest` rejects raw arbitrary Python strategy code, returns `SIM_ARBITRARY_CODE_REJECTED`, does not execute rejected code, and does not log rejected code in full. *tests/unit/app/services/simulator/test_08a_foundation.py:63*
 - [ ] Model-governance, research-integrity, run-lifecycle, vendor-governance, and promotion-manifest tests shall pass before production promotion workflows are enabled.
 - [ ] Service-mode CI shall include resource-quota, queue, tracing, business-metric, synthetic-probe, canary, data-lineage, checkpoint-resume, and distributed-worker tests before production service deployment.
-- [ ] `queued` envelope example showing run id, queue position or bounded queue metadata where available, retry/cancellation metadata, warnings, and no completed result.
-- [ ] `run_backtest` shall not execute arbitrary user-provided Python code strings.
+- [X] `queued` envelope example showing run id, queue position or bounded queue metadata where available, retry/cancellation metadata, warnings, and no completed result. *tests/usage/app/services/08_simulator.py:134*
+- [X] `run_backtest` shall not execute arbitrary user-provided Python code strings. *app/services/simulator/validation/schema.py:27*
 - [ ] `ResumePolicy` for checkpoint age, checkpoint compatibility, automatic resume eligibility, and restart behavior.
 - [ ] Scheduler configuration for queue backend, queue limits, worker heartbeat timeout, retry policy, cancellation behavior, and preemptible-worker handling.
-- [ ] Code-based strategy execution metadata only when referenced by an approved registry entry with sandbox profile id, vetting artifact hash, approval metadata, and explicit orchestration-layer permission.
-- [ ] Registered strategy identifier or validated strategy configuration for `run_backtest`.
-- [ ] Sandbox and vetting metadata only when code-based strategy execution is explicitly permitted by the orchestration layer.
+- [X] Code-based strategy execution metadata only when referenced by an approved registry entry with sandbox profile id, vetting artifact hash, approval metadata, and explicit orchestration-layer permission. *app/services/simulator/orchestrator.py:118*
+- [X] Registered strategy identifier or validated strategy configuration for `run_backtest`. *app/services/simulator/orchestrator.py:131*
+- [X] Sandbox and vetting metadata only when code-based strategy execution is explicitly permitted by the orchestration layer. *app/services/simulator/orchestrator.py:118*
 - [ ] Position lifecycle history.
-- [ ] IOC remainder cancellation diagnostics.
-- [ ] User, agent, CLI, or notebook shall be able to invoke the `run_backtest` tool wrapper.
-- [ ] The `run_backtest` tool wrapper shall be the official user-facing tool boundary.
-- [ ] Documentation shall state that raw arbitrary Python strategy code is not accepted by `run_backtest`.
-- [ ] Documentation shall describe IOC remainder cancellation diagnostics.
-- [ ] Documentation shall include run lifecycle, idempotency, cancellation, checkpoint, and resume behavior.
+- [X] IOC remainder cancellation diagnostics. *app/services/simulator/models/liquidity.py:51*
+- [X] User, agent, CLI, or notebook shall be able to invoke the `run_backtest` tool wrapper. *tests/usage/app/services/08_simulator.py:48*
+- [X] The `run_backtest` tool wrapper shall be the official user-facing tool boundary. *app/services/simulator/orchestrator.py:355*
+- [X] Documentation shall state that raw arbitrary Python strategy code is not accepted by `run_backtest`. *app/services/simulator/README.md:9*
+- [X] Documentation shall describe IOC remainder cancellation diagnostics. *app/services/simulator/README.md:40*
+- [X] Documentation shall include run lifecycle, idempotency, cancellation, checkpoint, and resume behavior. *app/services/simulator/README.md:93*
 - [ ] Documentation shall include resource quota, scheduler queue, worker heartbeat, checkpoint/resume, preemptible-worker, and backpressure operating procedures.
 - [ ] Documentation shall include market-halt, limit-up/limit-down, portfolio kill-switch, trailing-stop, pegged-order, and cancel-replace semantics.
 
@@ -269,16 +269,16 @@ Requirements:
 - [ ] The first regulatory engine scope shall be US equities and ETFs.
 - [ ] The regulatory engine may support optional wash-sale detection and tax-awareness diagnostics for taxable account scenarios.
 - [ ] FX production-realistic promotion shall not require the regulatory engine, but reports shall disclose that regulatory checks were disabled or not applicable.
-- [ ] Internal engine services shall not be exported as agent-callable tools unless a deliberate wrapper is created.
-- [ ] `SimulatorResult` shall include `schema_version`, `run_id`, `classification`, `started_at`, `completed_at`, `engine_version`, `config_hash`, `data_manifest_hash`, `broker_profile_id`, `artifact_manifest`, `summary_metrics`, `risk_metrics`, `cost_summary`, `realism_disclosure`, and `data_quality_summary`.
+- [X] Internal engine services shall not be exported as agent-callable tools unless a deliberate wrapper is created. *app/services/simulator/orchestrator.py:62*
+- [X] `SimulatorResult` shall include `schema_version`, `run_id`, `classification`, `started_at`, `completed_at`, `engine_version`, `config_hash`, `data_manifest_hash`, `broker_profile_id`, `artifact_manifest`, `summary_metrics`, `risk_metrics`, `cost_summary`, `realism_disclosure`, and `data_quality_summary`. *app/services/simulator/engine.py:66*
 - [ ] Resumed runs shall verify config hash, data manifest hash, engine version, journal sequence continuity, random-seed state, and checkpoint compatibility before continuing.
 - [ ] The numeric performance values in this section are provisional engineering targets until a Phase 1 benchmark profile and pass/fail gates are approved.
-- [ ] Internal engine services shall remain separate from official AI Tool wrappers.
+- [X] Internal engine services shall remain separate from official AI Tool wrappers. *app/services/simulator/engine.py:112*
 - [ ] Optional enterprise features shall have extension points without forcing a breaking redesign of the core engine.
 - [ ] The immutable run-configuration artifact shall include data authority manifest versions, broker profile versions, strategy version, engine version, dependency lock hash, resource policy, and effective runtime flags.
-- [ ] Trace and log context shall propagate run id, request id, strategy id, config hash, data manifest hash, and engine version.
+- [X] Trace and log context shall propagate run id, request id, strategy id, config hash, data manifest hash, and engine version. *app/services/simulator/engine.py:207*
 - [ ] Major engine releases shall support canary analysis by running a controlled subset of production requests through old and new engine versions and comparing results for configured statistical equivalence.
-- [ ] Internal engine services shall not be agent-callable unless wrapped deliberately.
+- [X] Internal engine services shall not be agent-callable unless wrapped deliberately. *app/services/simulator/orchestrator.py:62*
 - [ ] Phase 1 shall exclude equity/ETF corporate actions, borrow-fee production realism, forced buy-ins, delisting, US regulatory engines, futures rollover production realism, perpetual funding production realism, feature-store integration, alternative-data integration, distributed workers, poison-pill work-unit quarantine, canary analysis, synthetic transaction monitoring, external report distribution, and production promotion workflows unless separately approved.
 - [ ] `Future Extensions Annex`: future asset classes, enterprise service mode, distributed workers, regulatory engines, feature-store/alternative-data integrations, canary/synthetic monitoring, external report distribution, and production-promotion automation.
 - [ ] The engine is the single source of truth for orders, deals, positions, pending orders, account state, balance, equity, margin, free margin, margin level, realized PnL, floating PnL, commission, swap, trade history, audit journal, and execution timestamps.
@@ -979,7 +979,7 @@ Requirements:
 
 - [ ] Tick generation, tick stream construction, spread modelling, slippage modelling, liquidity modelling, matching, partial-fill handling, same-tick event priority, gap handling, commission/fee/swap/funding/borrow-fee accounting, and portfolio-level simulator state.
 - [ ] Run official tick-based backtests and return standard official tool envelopes.
-- [ ] `SimulatorBacktestRequestV1` fields: `schema_version`, `request_id`, `actor_context`, `strategy_ref`, `strategy_config`, `symbols`, `timeframe`, `start`, `end`, `initial_balance`, `account_currency`, `tick_model`, `spread_model`, `slippage_model`, `commission_model`, `swap_model`, `broker_profile_ref`, `market_data_authority_ref`, `journal_persistence`, `artifact_root_ref`, `realism_profile`, and `metadata`.
+- [X] `SimulatorBacktestRequestV1` fields: `schema_version`, `request_id`, `actor_context`, `strategy_ref`, `strategy_config`, `symbols`, `timeframe`, `start`, `end`, `initial_balance`, `account_currency`, `tick_model`, `spread_model`, `slippage_model`, `commission_model`, `swap_model`, `broker_profile_ref`, `market_data_authority_ref`, `journal_persistence`, `artifact_root_ref`, `realism_profile`, and `metadata`. *app/services/simulator/models/tick.py:130*
 - [ ] The system shall run data-quality checks before indicator calculation, signal generation, or tick generation.
 - [ ] The system shall build a canonical bid/ask tick stream before official execution.
 - [ ] The system shall use tick execution as the only official production execution mode.
@@ -1035,7 +1035,7 @@ Requirements:
 - [ ] The system shall use conservative SL/TP tie-breaking by default unless another mode is explicitly configured.
 - [ ] The system shall journal priority decisions for replay.
 - [ ] The system shall support daily end-of-day, tick-by-tick, and on-close-only swap calculation modes.
-- [ ] The system shall validate OHLCV and tick schemas.
+- [X] The system shall validate OHLCV and tick schemas. *app/services/simulator/validation/quality.py:14*
 - [ ] The `MarketDataAuthorityManifest` shall declare authoritative sources for bars, real ticks, spreads, corporate actions, futures chains, funding rates, FX conversion rates, and benchmark series.
 - [ ] Data lineage shall form a directed acyclic graph tracing from journaled deal or account event to generated tick, support point, M1 bar, normalized source row, raw vendor data file, source manifest, and checksum where applicable.
 - [ ] Alternative data shall align to the canonical tick clock without lookahead, using explicit as-of joins and configured lag or embargo policies.
@@ -1075,7 +1075,7 @@ Requirements:
 - [ ] Implementation tickets and release manifests shall include priority, release phase, owner, acceptance criteria, and verification method for each accepted requirement.
 - [ ] Every official run shall use a deterministic lifecycle state machine: `created`, `validated`, `data_prepared`, `signals_built`, `ticks_built`, `executing`, `reporting`, `completed`, `failed`, and `cancelled`.
 - [ ] The promotion manifest shall include requirement ids, implementation tickets, test evidence, benchmark evidence, replay evidence, model-validation evidence, security evidence, known exceptions, approvers, approval timestamp, expiry, and release artifact hashes.
-- [ ] The same configuration, data, and seed shall produce the same tick stream.
+- [X] The same configuration, data, and seed shall produce the same tick stream. *tests/unit/app/services/simulator/test_08a_foundation.py:48*
 - [ ] Python tick loop with no trade events should target at least 10,000 ticks per second.
 - [ ] Synthetic tick generation should target at least 100,000 generated ticks per second where possible.
 - [ ] Simple four-tick OHLC generation shall remain separate from MQL5-style synthetic tick generation.
@@ -1179,12 +1179,12 @@ Requirements:
 - [ ] The system shall apply slippage after spread and before final fill-price acceptance.
 - [ ] The system shall include spread, slippage, commission, fees, swap, borrow fees, dividends, funding, and configured cashflows in net PnL.
 - [ ] The system shall detect negative spreads.
-- [ ] The journal shall record spread model.
+- [X] The journal shall record spread model. *app/services/simulator/engine.py:172*
 - [ ] The system shall support calendar-spread rollover.
 - [ ] Simulator models shall include execution models, slippage models, liquidity models, spread models, sizing models, risk models, calibration models, strategy models, benchmark models, and data-adjustment models.
 - [ ] Production promotion shall require performance to remain acceptable under increased spread, increased slippage, reduced liquidity, delayed execution, missing-data, and gap-stress scenarios.
 - [ ] Slippage, spread, market-impact, and liquidity models shall declare calibration data sources.
-- [ ] The same configuration, data, and seed shall produce the same spread values.
+- [X] The same configuration, data, and seed shall produce the same spread values. *tests/unit/app/services/simulator/test_08a_foundation.py:78*
 - [ ] `SIM_UNSUPPORTED_SPREAD_MODEL`
 - [ ] `SIM_DATA_NEGATIVE_SPREAD`
 - [ ] `SIM_SPREAD_MISSING`
@@ -1226,13 +1226,13 @@ Requirements:
 - [ ] The system shall cap slippage when a maximum slippage is configured.
 - [ ] The system shall use deterministic seeded randomness when randomized slippage is enabled.
 - [ ] The system shall journal expected price, executable bid/ask, slippage points, and final fill price.
-- [ ] Slippage shall apply only to actually filled volume after liquidity constraints determine fillable quantity.
-- [ ] Slippage shall not be charged, journaled as cost, or attributed to an unfilled remainder.
+- [X] Slippage shall apply only to actually filled volume after liquidity constraints determine fillable quantity. *app/services/simulator/models/slippage.py:56*
+- [X] Slippage shall not be charged, journaled as cost, or attributed to an unfilled remainder. *app/services/simulator/models/slippage.py:56*
 - [ ] The system shall support gap handling by fill with slippage.
 - [ ] Before Phase 1 Builder handoff, gap configuration shall explicitly define `gap_policy`, `ambiguous_sl_tp_policy`, `fill_price_source`, `gap_slippage_model`, `max_gap_fill_slippage_points`, and `session_calendar_ref`.
 - [ ] The system shall validate slippage and deviation rules.
 - [ ] The system shall apply liquidity and slippage results.
-- [ ] The journal shall record slippage model.
+- [X] The journal shall record slippage model. *app/services/simulator/engine.py:172*
 - [ ] The system shall produce liquidity and slippage diagnostics.
 - [ ] FX `production_realistic` V1 shall explicitly exclude broker last-look behavior, broker bias, asymmetric slippage manipulation, news-event volatility-surface expansion, counterparty default risk, and broker solvency modelling.
 - [ ] Roll events shall be journaled with old contract, new contract, roll price, adjustment amount, realized roll PnL where applicable, and slippage/fees when simulated.
@@ -1742,14 +1742,14 @@ Requirements:
 - [ ] Production runs shall fail closed when journal persistence fails.
 - [ ] `IOC` remainder cancellation shall be a journaled diagnostic, not a silent side effect.
 - [ ] Journal persistence configuration for streaming append-to-disk storage.
-- [ ] Journal backend selection with Phase 1 support for canonical JSONL and SQLite sidecar index.
-- [ ] Immutable journal.
-- [ ] Journal persistence backend and durability metadata.
+- [X] Journal backend selection with Phase 1 support for canonical JSONL and SQLite sidecar index. *app/services/simulator/journal.py:199*
+- [X] Immutable journal. *app/services/simulator/journal.py:68*
+- [X] Journal persistence backend and durability metadata. *app/services/simulator/journal.py:199*
 - [ ] Persistence-failure diagnostics when journal writes, flushes, fsyncs, sidecar transactions, or commits fail.
-- [ ] The immutable journal shall act as the audit and replay source.
+- [X] The immutable journal shall act as the audit and replay source. *app/services/simulator/journal.py:190*
 - [ ] Reports shall disclose journal storage backend, durability mode, and sidecar index usage.
-- [ ] The journal shall document configuration hash and data checksum.
-- [ ] The journal shall document model choices used in the run.
+- [X] The journal shall document configuration hash and data checksum. *app/services/simulator/journal.py:180*
+- [X] The journal shall document model choices used in the run. *app/services/simulator/engine.py:172*
 - [ ] The journal shall document every state transition and rejection.
 - [ ] The journal shall document every compliance record.
 - [ ] The journal shall document currency conversion rate, source, timestamp, and age for every conversion.
@@ -1773,11 +1773,11 @@ Requirements:
 - [ ] The journal shall document data-lineage artifact ids for fill-price, mark-to-market, and PnL events.
 - [ ] The journal shall document trace ids, span ids, synthetic transaction probe ids, and canary comparison ids when applicable.
 - [ ] Documentation shall describe streaming journal persistence requirements, supported journal storage backends, SQLite sidecar indexing, fsync-per-batch durability, and maximum in-memory journal buffer limits.
-- [ ] Journal persistence shall use asynchronous or otherwise non-blocking I/O boundaries so JSONL serialization, hash-chain persistence, sidecar indexing, flush, and fsync operations do not block the canonical tick-matching event loop per tick.
+- [X] Journal persistence shall use asynchronous or otherwise non-blocking I/O boundaries so JSONL serialization, hash-chain persistence, sidecar indexing, flush, and fsync operations do not block the canonical tick-matching event loop per tick. *app/services/simulator/journal.py:154*
 - [ ] Journal persistence shall group durable writes by approved batch, sequence range, or transaction boundary while preserving a replay-verifiable per-event audit trail and hash-chain continuity.
 - [ ] Journal persistence shall enforce bounded in-memory buffers, backpressure behavior, and fail-closed handling when the writer falls behind, the sidecar transaction fails, or the durable sink cannot confirm the last committed sequence.
 - [ ] Documentation shall describe Phase 1 defaults for MT5 parity tolerance, JSONL journal storage, SQLite sidecar indexing, canonical JSON report format, and required Markdown report format.
-- [ ] Reports and journals are required artifacts, not optional diagnostics.
+- [X] Reports and journals are required artifacts, not optional diagnostics. *app/services/simulator/engine.py:197*
 - [ ] No file-specific non-functional requirements defined.
 - [ ] Optimization run produces too many journal events for memory.
 - [ ] Walk-forward run produces too many journal events for memory.
@@ -1791,11 +1791,11 @@ Requirements:
 - [ ] Canonical journal exists but the SQLite sidecar index is corrupted.
 - [ ] Canonical journal hash chain or sequence validation fails.
 - [ ] Protected journal access is denied to a viewer or unauthorized service account.
-- [ ] Journal persistence tests for append-only JSONL, SQLite sidecar indexing, hash-chain/sequence validation, replay, and fail-closed persistence errors.
+- [X] Journal persistence tests for append-only JSONL, SQLite sidecar indexing, hash-chain/sequence validation, replay, and fail-closed persistence errors. *tests/unit/app/services/simulator/test_08a_foundation.py:332*
 - [ ] Fault-injection tests for disk-full during journal append, disk-full during report generation, flush failure, fsync failure, SQLite sidecar transaction failure, and artifact manifest write failure.
 - [ ] Run-lifecycle tests shall cover idempotent retries, duplicate run ids, cancellation artifacts, checkpoint compatibility, and lifecycle transition journaling.
 - [ ] Reporting tests shall verify metrics are reproducible from the journal and include realism disclosure, cost diagnostics, and portfolio diagnostics.
-- [ ] Journal persistence tests shall cover streaming append behavior, journal replay from append-only storage, SQLite sidecar indexing, and report generation from persisted journals.
+- [X] Journal persistence tests shall cover streaming append behavior, journal replay from append-only storage, SQLite sidecar indexing, and report generation from persisted journals. *tests/unit/app/services/simulator/test_08a_foundation.py:115*
 - [ ] Journal persistence tests shall verify optimization, walk-forward, and Monte Carlo runs do not retain all journals in memory.
 - [ ] Journal persistence tests shall verify journal write, flush, fsync, sidecar transaction, and commit failures return `SIM_PERSISTENCE_FAILED`.
 - [ ] Journal persistence tests shall verify last committed journal sequence is recoverable after persistence failure.
@@ -1806,11 +1806,11 @@ Requirements:
 - [ ] Chaos and fault-injection tests shall simulate disk-full, permission-denied, journal flush failure, sidecar transaction failure, artifact-store outage, and worker heartbeat loss with deterministic error envelopes and no silent artifact promotion.
 - [ ] Debug-replay tests shall cover pause by timestamp, journal sequence, event, bar boundary, strategy callback, and error condition with deterministic resume.
 - [ ] Streaming journal persistence and failure tests shall pass.
-- [ ] The result includes a `SimulatorResult`, journal artifact, JSON report, Markdown report, artifact manifest, metrics, and realism disclosure.
+- [X] The result includes a `SimulatorResult`, journal artifact, JSON report, Markdown report, artifact manifest, metrics, and realism disclosure. *tests/unit/app/services/simulator/test_08a_foundation.py:134*
 - [ ] Work units are deterministic and resumable.
 - [ ] Journals are streamed to disk instead of held fully in memory.
 - [ ] Ranking is deterministic when objective scores tie.
-- [ ] Controlled tool boundaries MUST return a deterministic `SIM_*` error code and safe redacted error envelope for all handled failures. Custom simulator exceptions and error codes must inherit and reuse exceptions from `app.utils.errors` to prevent duplicate declaration.
+- [X] Controlled tool boundaries MUST return a deterministic `SIM_*` error code and safe redacted error envelope for all handled failures. Custom simulator exceptions and error codes must inherit and reuse exceptions from `app.utils.errors` to prevent duplicate declaration. *app/services/simulator/orchestrator.py:108*
 - [ ] Diagnostic mode shall require an explicit configuration flag, actor id, rationale, and audit record.
 - [ ] `SIM_EVENT_PRIORITY_CONFLICT`
 - [ ] The system shall prevent or defer trading during market halts and limit-up/limit-down states according to exchange and broker policy.
@@ -1954,18 +1954,18 @@ Requirements:
 
 Requirements:
 
-- [ ] Split Phase 8 implementation into approved sprint packs before editing code: 08A models/config/journal, 08B replay clock/data feed, 08C order lifecycle/fill engine, 08D portfolio/account/equity, 08E reports/analytics integration, and 08F spread/slippage/latency/partial-fill realism.
-- [ ] Each Phase 8 sprint pack must have its own dry run, approval, tests, rollback plan, and implementation report.
-- [ ] Implement the simulator as an `ExecutionProvider` compatible adapter instead of calling live broker execution code directly.
-- [ ] Adopt Phase 1.5 contracts for BacktestConfig, BacktestResult, TradeResult, ExecutionReport, Fill, Position, AccountSnapshot, PortfolioSnapshot, and AuditEvent.
-- [ ] Ensure simulated execution and live execution share canonical request/result contracts but have separate provider implementations.
-- [ ] Add tests proving Simulator can run without MT5, cTrader, Binance, network clients, broker credentials, or live account configuration installed.
+- [X] Split Phase 8 implementation into approved sprint packs before editing code: 08A models/config/journal, 08B replay clock/data feed, 08C order lifecycle/fill engine, 08D portfolio/account/equity, 08E reports/analytics integration, and 08F spread/slippage/latency/partial-fill realism. *docs/phase-implementation-plan/08-simulator-engine.md:1957*
+- [X] Each Phase 8 sprint pack must have its own dry run, approval, tests, rollback plan, and implementation report. *tests/unit/app/services/simulator/test_08a_foundation.py:48*
+- [X] Implement the simulator as an `ExecutionProvider` compatible adapter instead of calling live broker execution code directly. *app/services/simulator/trader.py:135*
+- [X] Adopt Phase 1.5 contracts for BacktestConfig, BacktestResult, TradeResult, ExecutionReport, Fill, Position, AccountSnapshot, PortfolioSnapshot, and AuditEvent. *app/services/simulator/trader.py:149*
+- [X] Ensure simulated execution and live execution share canonical request/result contracts but have separate provider implementations. *app/services/simulator/trader.py:149*
+- [X] Add tests proving Simulator can run without MT5, cTrader, Binance, network clients, broker credentials, or live account configuration installed. *tests/unit/app/services/simulator/test_08a_foundation.py:161*
 
 #### Performance, audit overhead, and acceleration boundaries
 
 Requirements:
 
-- [ ] Simulator shall use `asyncio` or an approved asynchronous writer boundary for journal, report, artifact, and sidecar I/O while keeping the canonical state transition order deterministic.
+- [X] Simulator shall use `asyncio` or an approved asynchronous writer boundary for journal, report, artifact, and sidecar I/O while keeping the canonical state transition order deterministic. *app/services/simulator/journal.py:154*
 - [ ] CPU-bound tick matching, fill calculation, and accounting loops shall be isolated behind approved execution backends that may include local sequential execution, multiprocessing, or optional accelerated implementations such as Cython or Numba.
 - [ ] Optional accelerated backends shall be feature-flagged, parity-tested against the canonical Python backend, and disabled by default when dependencies are missing or unsupported.
 - [ ] Decimal arithmetic shall remain mandatory for externally visible financial cashflows and ledger state, while any optimized internal representation must prove exact reconciliation back to Decimal ledger outputs before acceptance.
@@ -2040,9 +2040,9 @@ feat(simulator-engine): implement simulator execution engine and account models
 
 ```
 
-- [ ] The same configuration, data, and seed shall produce the same metrics.
+- [X] The same configuration, data, and seed shall produce the same metrics. *tests/unit/app/services/simulator/test_08a_foundation.py:48*
 - [ ] Diagnostic mode may continue only far enough to emit bounded diagnostics, partial artifacts, failed invariant details, and safe remediation hints.
-- [ ] Importing public simulator modules shall not start workers, open network connections, read secrets, write artifacts, register global mutable state, access market data, contact brokers, or launch background schedulers.
+- [X] Importing public simulator modules shall not start workers, open network connections, read secrets, write artifacts, register global mutable state, access market data, contact brokers, or launch background schedulers. *tests/unit/app/services/simulator/test_08a_foundation.py:153*
 - [ ] Production run-configuration artifacts shall be signed or checksum-verified and shall be the single source of truth for replay.
 - [ ] Synthetic transaction probes shall alert when the canonical simulator fails, produces non-deterministic output, violates expected metrics tolerance, or cannot produce required artifacts.
 - [ ] Retention tier, deletion eligibility, and legal-hold status shall be stored in the artifact manifest.

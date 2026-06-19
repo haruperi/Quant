@@ -24,7 +24,9 @@ def get_active_broker_name() -> str:
 
     if settings_obj is None:
         try:
-            from app.core.config import settings as core_settings
+            from app.core.config import (
+                settings as core_settings,
+            )
 
             settings_obj = core_settings
         except ImportError:

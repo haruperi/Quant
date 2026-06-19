@@ -22,6 +22,7 @@ from app.utils.errors import ValidationError
 from app.utils.logger import logger
 from app.utils.normalization import utc_now
 from app.utils.observability import MetricRegistry
+from app.utils.security import redact_mapping, redact_text
 
 if TYPE_CHECKING:
     from app.services.risk.storage import (
@@ -161,6 +162,44 @@ class RiskReport(RiskContract):
         default_factory=dict, description="trace and version metadata."
     )
 
+    def to_json(self) -> str:
+        """Serialize and redact sensitive fields, returning a JSON string."""
+        from app.utils.security import redact_mapping, redact_text
+        from app.utils.standard import canonical_json
+
+        dump = self.model_dump()
+
+        # Explicitly redact the description/reason strings in decisions list
+        if "decisions" in dump:
+            for dec in dump["decisions"]:
+                if dec.get("reason"):
+                    dec["reason"] = redact_text(dec["reason"])
+
+        # Explicitly redact the metadata dictionary
+        if dump.get("metadata"):
+            dump["metadata"] = redact_mapping(dump["metadata"])
+
+        # Explicitly redact the drawdown state dictionary
+        if dump.get("drawdown_state"):
+            dump["drawdown_state"] = redact_mapping(dump["drawdown_state"])
+
+        return canonical_json(_coerce_report_value(dump))
+
+
+def _coerce_report_value(v: Any) -> Any:  # noqa: ANN401
+    """Coerce Decimal to float and datetime to ISO format recursively."""
+    from decimal import Decimal
+
+    if isinstance(v, Decimal):
+        return float(v)
+    if isinstance(v, datetime):
+        return v.isoformat()
+    if isinstance(v, dict):
+        return {k: _coerce_report_value(val) for k, val in v.items()}
+    if isinstance(v, list):
+        return [_coerce_report_value(val) for val in v]
+    return v
+
 
 def _to_float(v: Any) -> float | None:  # noqa: ANN401
     """Safely convert value to float, returning None on failure."""
@@ -204,12 +243,14 @@ def build_risk_decision_summary(
         symbol = getattr(proposed_action, "symbol", None)
         volume = getattr(proposed_action, "volume", None)
 
+    reason_redacted = redact_text(decision.reason) if decision.reason else ""
+
     return RiskDecisionSummary(
         decision_id=decision.decision_id,
         request_id=decision.request_id,
         status=decision.status,
         rule_key=decision.rule_key,
-        reason=decision.reason,
+        reason=reason_redacted,
         timestamp=decision.snapshot_as_of,
         symbol=symbol,
         volume=_to_float(volume),
@@ -238,10 +279,13 @@ class RiskReportBuilder:
 
     def _parse_events(
         self, events: list[Any]
-    ) -> tuple[list[RiskDecisionSummary], set[str], RiskDecisionPackage | None]:
+    ) -> tuple[
+        list[RiskDecisionSummary], set[str], set[str], RiskDecisionPackage | None
+    ]:
         """Parse decisions and gather breaches/warnings from audit events."""
         decisions_list: list[RiskDecisionSummary] = []
         breaches: set[str] = set()
+        warnings: set[str] = set()
         latest_decision: RiskDecisionPackage | None = None
 
         for event in events:
@@ -252,9 +296,20 @@ class RiskReportBuilder:
                     summary = build_risk_decision_summary(dec)
                     decisions_list.append(summary)
 
-                    # Gather breaches/warnings from decision
+                    # Gather warnings from details if present
+                    dec_details = dec.details or {}
+                    dec_warnings = (
+                        dec_details.get("warning_flags")
+                        or dec_details.get("warnings")
+                        or []
+                    )
+                    for flag in dec_warnings:
+                        warnings.add(flag)
+
+                    # Gather breaches from decision (excluding warnings)
                     for flag in dec.composite_breach_flags:
-                        breaches.add(flag)
+                        if flag not in dec_warnings:
+                            breaches.add(flag)
 
                     # Update latest
                     if (
@@ -265,7 +320,7 @@ class RiskReportBuilder:
                 except (ValueError, TypeError) as e:
                     logger.warning(f"Error parsing decision from audit event: {e}")
 
-        return decisions_list, breaches, latest_decision
+        return decisions_list, breaches, warnings, latest_decision
 
     def build(self, request_id: str | None = None) -> RiskReport:
         """Build and populate the RiskReport.
@@ -277,8 +332,7 @@ class RiskReportBuilder:
             RiskReport: Populated report.
         """
         events = self.audit_sink.get_all_events()
-        decisions_list, breaches, latest_decision = self._parse_events(events)
-        warnings: set[str] = set()
+        decisions_list, breaches, warnings, latest_decision = self._parse_events(events)
 
         # Extract stats from latest decision details to prevent recomputing
         policy_profile = None
@@ -305,6 +359,16 @@ class RiskReportBuilder:
             stress_loss_val = details.get("stress_loss")
             margin_usage_val = details.get("margin_usage")
 
+            # Fallback to risk_snapshot if fields are missing in details
+            snap = latest_decision.risk_snapshot
+            if snap:
+                if portfolio_exposure is None:
+                    portfolio_exposure = snap.exposure
+                if var_val is None:
+                    var_val = snap.var_es
+                if stress_loss_val is None:
+                    stress_loss_val = snap.stress_loss
+
         # Fallback to store if latest_decision lacks drawdown
         drawdown = self.state_store.get_drawdown_state()
         drawdown_dict = None
@@ -315,11 +379,14 @@ class RiskReportBuilder:
                 "hard_limit": float(drawdown.hard_limit),
                 "multiplier": float(drawdown.multiplier),
             }
+        elif latest_decision and latest_decision.details:
+            drawdown_dict = latest_decision.details.get("drawdown_state")
 
-        meta = {
+        meta: dict[str, Any] = {
             "risk.request_id": request_id or "",
             "risk.schema_version": "1.0.0",
         }
+        meta = redact_mapping(meta)
 
         # Build final report_id
         from app.utils.standard import stable_identifier

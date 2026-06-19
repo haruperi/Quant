@@ -26,16 +26,20 @@ graph TD
 
 ## 2. Configuration Profiles (`configs/`)
 
-Risk profiles are stored as YAML configurations under `app/services/risk/configs/`. Each profile defines defaults for daily loss, total loss, effective leverage, and live execution authorization.
+Risk profiles are stored as JSON configurations under `app/services/risk/configs/`. Each profile defines defaults for daily loss, total loss, effective leverage, and live execution authorization.
 
-* **`default.yaml`**: Safe defaults for local testing and simulations. Live execution disabled.
-* **`prop_firm_default.yaml`**: Conservative limits adhering to standard prop-firm constraints.
-* **`paper.yaml`**: Standard limits for paper-trading environments.
-* **`live_conservative.yaml`**: Stricter limits with `allow_live_execution` set to `true`.
+* **`default.json`**: Safe defaults for local testing and simulations. Live execution disabled.
+* **`prop_firm_default.json`**: Conservative limits adhering to standard prop-firm constraints.
+* **`paper.json`**: Standard limits for paper-trading environments.
+* **`live_conservative.json`**: Stricter limits with `allow_live_execution` set to `true`.
+
+> [!IMPORTANT]
+> All default values in these configuration profiles are conservative safety baselines designed to protect capital and enforce safe operational boundaries. They are not optimized for trading performance, and should not be interpreted as optimized target parameters or performance promises.
+
 
 ---
 
-## 3. Hard Safety Ceilings
+## 3. Hard Safety Ceilings & Live Profile Guardrails
 
 To prevent accidental overrides from setting extreme or dangerous limits, the configuration parser validates all values against hard-coded global ceilings defined in [config.py](file:///c:/Users/rharu/Documents/MyApplications/Quant/app/services/risk/config.py):
 
@@ -48,6 +52,12 @@ To prevent accidental overrides from setting extreme or dangerous limits, the co
 | `max_risk_per_trade` | `0.10` (10%) | Maximum capital risk allocation for a single trade. |
 
 Any override rule or profile value exceeding these ceilings triggers an immediate `ValidationError` or evaluates to a `REJECT` state.
+
+### Live Profile Guardrails
+For live configurations (`allow_live_execution` set to `true`), the following additional constraints are enforced strictly during validation:
+1. **Prop-Firm Drawdown Limits**: Live profiles daily loss limit must remain strictly below `0.04` (4.0%) daily drawdown and total loss limit below `0.08` (8.0%) total drawdown to comply with standard external prop-firm limits.
+2. **Owner/Admin Approval for Increased Limits**: Any increase of risk parameters above conservative default baselines (defined by `CONSERVATIVE_DEFAULTS`, e.g. `max_risk_per_trade` > `0.002` or `max_effective_leverage` > `5.0`) requires explicit owner or admin role signatures within `operator_approval_fields.operator_id`.
+
 
 ---
 

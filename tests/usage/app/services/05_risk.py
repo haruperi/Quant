@@ -18,6 +18,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
+from agentic.tools.risk import build_portfolio_risk_snapshot
 from app.services.risk import (
     STAGE_SEQUENCE,
     AccountRiskSnapshot,
@@ -72,7 +73,6 @@ from app.services.risk import (
 from app.services.risk.config import load_risk_config
 from app.services.risk.policy import resolve_policy, validate_override_token
 from app.services.risk.stress import PriceShockScenario
-from app.services.risk.tools import build_portfolio_risk_snapshot_tool
 from app.utils.errors import ValidationError as AppValidationError
 from pydantic import ValidationError
 
@@ -1606,7 +1606,7 @@ def example_15_official_risk_tools() -> None:
     }
     market_context = {"mode": "paper"}
 
-    res = build_portfolio_risk_snapshot_tool(
+    res = build_portfolio_risk_snapshot(
         portfolio_state=portfolio,
         market_context=market_context,
         request_id="req_tool_demo",

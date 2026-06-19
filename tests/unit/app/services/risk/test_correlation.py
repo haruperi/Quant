@@ -487,6 +487,7 @@ def test_evaluate_proposed_trade_correlation(
             "GBPUSD": sample_bars_b,
         },
         "GBPUSD_volume_step": 0.01,
+        "min_correlation_samples": 2,
     }
 
     # 2. Perfect correlation (1.0) -> Rejects because exceeds hard rejection threshold
@@ -544,3 +545,171 @@ def test_evaluate_proposed_trade_correlation(
     # Based on actual returns alignment, let's verify it triggered
     # either REDUCE_SIZE or APPROVE
     assert status_red in {RiskDecisionStatus.REDUCE_SIZE, RiskDecisionStatus.APPROVE}
+
+
+def test_timestamp_alignment_misaligned() -> None:
+    """Verify that returns are only aligned on identical opening timestamps."""
+    from app.services.risk.correlation import align_return_series
+
+    base_time = datetime(2026, 6, 18, 10, 0, tzinfo=UTC)
+
+    # A has bars at 10:00, 10:01, 10:02
+    rets_a = {
+        base_time: Decimal("0.01"),
+        base_time + timedelta(minutes=1): Decimal("0.02"),
+        base_time + timedelta(minutes=2): Decimal("0.03"),
+    }
+    # B has bars at 10:01, 10:02, 10:03
+    rets_b = {
+        base_time + timedelta(minutes=1): Decimal("-0.01"),
+        base_time + timedelta(minutes=2): Decimal("-0.02"),
+        base_time + timedelta(minutes=3): Decimal("-0.03"),
+    }
+
+    aligned_a, aligned_b = align_return_series(rets_a, rets_b)
+    # Common keys should be 10:01 and 10:02
+    assert len(aligned_a) == 2
+    assert len(aligned_b) == 2
+    assert aligned_a == [Decimal("0.02"), Decimal("0.03")]
+    assert aligned_b == [Decimal("-0.01"), Decimal("-0.02")]
+
+
+def test_changing_correlation() -> None:
+    """Verify that Pearson correlation changes correctly across return pairs."""
+    from app.services.risk.correlation import calculate_pearson
+
+    # Positively correlated series
+    x = [Decimal("0.01"), Decimal("0.02"), Decimal("0.03")]
+    y = [Decimal("0.02"), Decimal("0.04"), Decimal("0.06")]
+
+    corr_pos = calculate_pearson(x, y)
+    assert corr_pos == pytest.approx(Decimal("1.0"), abs=1e-4)
+
+    # Negatively correlated series
+    z = [Decimal("-0.02"), Decimal("-0.04"), Decimal("-0.06")]
+    corr_neg = calculate_pearson(x, z)
+    assert corr_neg == pytest.approx(Decimal("-1.0"), abs=1e-4)
+
+
+def test_conservative_fallback_in_production(base_portfolio: PortfolioState) -> None:
+    """Verify conservative fallback in production when samples are insufficient."""
+    # Config with live execution allowed
+    live_config = RiskConfig(
+        profile_name="live_profile",
+        allow_live_execution=True,
+        min_correlation_samples=20,
+    )
+
+    proposed = ProposedTrade(
+        symbol="GBPUSD",
+        side="buy",
+        volume=Decimal("1.0"),
+        price=Decimal("1.2500"),
+        strategy_id="TF-01",
+    )
+
+    # Minimal bars (1 bar -> 0 return samples)
+    market_data = {
+        "EURUSD": [{"time": "2026-06-18T10:00:00Z", "open": 1.1, "close": 1.1}],
+        "GBPUSD": [{"time": "2026-06-18T10:00:00Z", "open": 1.2, "close": 1.2}],
+    }
+
+    # Active position
+    base_portfolio.positions = [
+        PositionState(
+            position_id="pos-1",
+            symbol="EURUSD",
+            direction="long",
+            quantity=Decimal("1.0"),
+            entry_price=Decimal("1.1"),
+            current_price=Decimal("1.1"),
+            floating_pnl=Decimal("0.0"),
+            margin_required=Decimal("1000.0"),
+            strategy_id="TF-01",
+            open_time=datetime.now(UTC),
+        )
+    ]
+
+    snapshot = CorrelationSnapshot(
+        matrix={},
+        lookback=50,
+        timeframe="M1",
+        method="pearson",
+        sample_count=0,
+        fallback_status=False,
+    )
+
+    market_context = {
+        "market_data": market_data,
+        "environment": "micro_live",
+    }
+
+    # Should fall back to 1.0 (perfect correlation) -> REJECT
+    status, vol, msg = evaluate_proposed_trade_correlation(
+        proposed_trade=proposed,
+        portfolio_state=base_portfolio,
+        snapshot=snapshot,
+        config=live_config,
+        market_context=market_context,
+    )
+
+    assert status == RiskDecisionStatus.REJECT
+    assert vol == Decimal("0.0")
+    assert "exceeds hard rejection ceiling" in msg
+
+
+def test_correlation_engine(
+    sample_bars_a: list[dict[str, Any]],
+    sample_bars_b: list[dict[str, Any]],
+) -> None:
+    """Verify methods exposed by CorrelationEngine."""
+    from app.services.risk import CorrelationEngine
+
+    engine = CorrelationEngine()
+
+    # 1. calculate_returns
+    rets = engine.calculate_returns(
+        sample_bars_a, ReturnType.CLOSE_TO_CLOSE, exclude_last=False
+    )
+    assert len(rets) == len(sample_bars_a) - 1
+
+    # 2. align_return_series
+    rets_b = engine.calculate_returns(
+        sample_bars_b, ReturnType.CLOSE_TO_CLOSE, exclude_last=False
+    )
+    aligned_a, _aligned_b = engine.align_return_series(rets, rets_b)
+    assert len(aligned_a) == len(rets)
+
+    # 3. calculate_correlation_matrix
+    market_data = {"A": sample_bars_a, "B": sample_bars_b}
+    matrix = engine.calculate_correlation_matrix(
+        market_data, lookback=50, min_samples=2, exclude_last=False
+    )
+    assert matrix["A"]["B"] == pytest.approx(Decimal("1.0"), abs=1e-4)
+
+
+def test_correlation_matrix_and_cluster_models() -> None:
+    """Verify CorrelationMatrix and CorrelationCluster serialization and fields."""
+    from app.services.risk.models import CorrelationCluster, CorrelationMatrix
+
+    matrix_data = {
+        "EURUSD": {"GBPUSD": Decimal("0.85"), "EURUSD": Decimal("1.0")},
+        "GBPUSD": {"EURUSD": Decimal("0.85"), "GBPUSD": Decimal("1.0")},
+    }
+
+    corr_matrix = CorrelationMatrix(
+        symbols=["EURUSD", "GBPUSD"],
+        matrix=matrix_data,
+    )
+
+    assert corr_matrix.symbols == ["EURUSD", "GBPUSD"]
+    assert corr_matrix.matrix["EURUSD"]["GBPUSD"] == Decimal("0.85")
+
+    cluster = CorrelationCluster(
+        cluster_id="Cluster_0",
+        symbols=["EURUSD", "GBPUSD"],
+        exposure=Decimal("172500.00"),
+    )
+
+    assert cluster.cluster_id == "Cluster_0"
+    assert cluster.exposure == Decimal("172500.00")

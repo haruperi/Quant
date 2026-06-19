@@ -332,3 +332,183 @@ def test_singleton_get_kill_switch_manager(temp_persistence_path: Any) -> None:
     m1 = get_kill_switch_manager(persistence_path=temp_persistence_path)
     m2 = get_kill_switch_manager()
     assert m1 is m2
+
+
+# ---------------------------------------------------------------------------
+# New tests: missing enum states, module-level functions, typed records
+# ---------------------------------------------------------------------------
+
+
+def test_unknown_state_fails_closed_in_live_mode(manager: KillSwitchManager) -> None:
+    """UNKNOWN state must always fail closed, blocking trading in all modes."""
+    with manager._lock:
+        manager.states["global"] = {
+            "state": KillSwitchStateEnum.UNKNOWN,
+            "reason": "Cannot determine state",
+            "triggered_at": None,
+            "triggered_by": "test",
+        }
+
+    # Blocked in live mode
+    assert manager.is_blocked("global", "*", is_live=True)
+    # Also blocked in non-live mode — UNKNOWN is never safe
+    assert manager.is_blocked("global", "*", is_live=False)
+
+
+def test_triggered_state_is_blocked(manager: KillSwitchManager) -> None:
+    """TRIGGERED state must be treated as blocked until fully propagated."""
+    with manager._lock:
+        manager.states["strategies"]["strat_triggered"] = {
+            "state": KillSwitchStateEnum.TRIGGERED,
+            "reason": "Halt signalled",
+            "triggered_at": None,
+            "triggered_by": "test",
+        }
+
+    assert manager.is_blocked("strategy", "strat_triggered")
+    assert not manager.is_blocked("strategy", "other_strat")
+
+
+def test_pending_resume_still_blocked(manager: KillSwitchManager) -> None:
+    """PENDING_RESUME state must remain blocked until approval completes."""
+    with manager._lock:
+        manager.states["portfolio"] = {
+            "state": KillSwitchStateEnum.PENDING_RESUME,
+            "reason": "Awaiting compliance approval",
+            "triggered_at": None,
+            "triggered_by": "operator",
+        }
+
+    assert manager.is_blocked("portfolio", "*")
+    # Strategy-level queries also blocked due to portfolio-level halt
+    assert manager.is_blocked("strategy", "any_strat")
+
+
+def test_trigger_kill_switch_fn(temp_persistence_path: Any) -> None:
+    """Module-level trigger_kill_switch() must delegate to the global singleton."""
+    import app.services.risk.kill_switch as ks_module
+    from app.services.risk.kill_switch import (
+        _manager_lock,
+        trigger_kill_switch,
+    )
+
+    # Force a fresh singleton with a temp path for isolation
+    with _manager_lock:
+        ks_module._global_kill_switch_manager = KillSwitchManager(
+            persistence_path=temp_persistence_path
+        )
+
+    trigger_kill_switch(
+        scope="strategy", target="strat_fn", reason="Function-level trigger"
+    )
+
+    mgr = get_kill_switch_manager()
+    assert mgr.is_blocked("strategy", "strat_fn")
+
+
+def test_resume_after_kill_switch_fn(temp_persistence_path: Any) -> None:
+    """Module-level resume_after_kill_switch() must delegate to the global singleton."""
+    import app.services.risk.kill_switch as ks_module
+    from app.services.risk.kill_switch import (
+        _manager_lock,
+        resume_after_kill_switch,
+        trigger_kill_switch,
+    )
+
+    with _manager_lock:
+        ks_module._global_kill_switch_manager = KillSwitchManager(
+            persistence_path=temp_persistence_path
+        )
+
+    trigger_kill_switch(
+        scope="symbol", target="GBPUSD", reason="Function-level trigger"
+    )
+    mgr = get_kill_switch_manager()
+    assert mgr.is_blocked("symbol", "GBPUSD")
+
+    resume_after_kill_switch(scope="symbol", target="GBPUSD", operator_role="admin")
+    assert not mgr.is_blocked("symbol", "GBPUSD")
+
+
+def test_no_bypass_without_token_or_role(manager: KillSwitchManager) -> None:
+    """Verify that there is no bypass path for resume without approval evidence."""
+    manager.trigger("global", "*", "Hard breach")
+    assert manager.is_blocked("global", "*")
+
+    # Empty string token must not satisfy the gate
+    with pytest.raises(ValidationError) as exc:
+        manager.resume("global", "*", approval_token="")
+    assert exc.value.code == "APPROVAL_REQUIRED"
+
+    # Whitespace-only token must not satisfy the gate
+    with pytest.raises(ValidationError) as exc:
+        manager.resume("global", "*", approval_token="   ")
+    assert exc.value.code == "APPROVAL_REQUIRED"
+
+    # No arguments at all
+    with pytest.raises(ValidationError) as exc:
+        manager.resume("global", "*")
+    assert exc.value.code == "APPROVAL_REQUIRED"
+
+    # Kill switch must still be active after all failed attempts
+    assert manager.is_blocked("global", "*")
+
+
+def test_risk_kill_switch_dataclass() -> None:
+    """RiskKillSwitch typed snapshot carries correct fields and is immutable."""
+    from app.services.risk.kill_switch import KillSwitchScope, RiskKillSwitch
+
+    snap = RiskKillSwitch(
+        scope=KillSwitchScope.SYMBOL,
+        target="EURUSD",
+        state=KillSwitchStateEnum.ACTIVE,
+        reason="Extreme spread",
+        triggered_at=None,
+        triggered_by="limit_engine",
+    )
+    assert snap.scope == KillSwitchScope.SYMBOL
+    assert snap.target == "EURUSD"
+    assert snap.state == KillSwitchStateEnum.ACTIVE
+    assert snap.triggered_by == "limit_engine"
+
+    # frozen=True — must be immutable
+    with pytest.raises((AttributeError, TypeError)):
+        snap.state = KillSwitchStateEnum.INACTIVE  # type: ignore[misc]
+
+
+def test_portfolio_kill_switch_dataclass() -> None:
+    """PortfolioKillSwitch is a typed subclass of RiskKillSwitch."""
+    from app.services.risk.kill_switch import KillSwitchScope, PortfolioKillSwitch
+
+    snap = PortfolioKillSwitch(
+        scope=KillSwitchScope.PORTFOLIO,
+        target="*",
+        state=KillSwitchStateEnum.TRIGGERED,
+        reason="Reconciliation failure",
+        triggered_at=None,
+        triggered_by="reconciliation_service",
+    )
+    from app.services.risk.kill_switch import RiskKillSwitch
+
+    assert isinstance(snap, RiskKillSwitch)
+    assert snap.scope == KillSwitchScope.PORTFOLIO
+    assert snap.state == KillSwitchStateEnum.TRIGGERED
+
+
+def test_strategy_kill_switch_dataclass() -> None:
+    """StrategyKillSwitch is a typed subclass of RiskKillSwitch."""
+    from app.services.risk.kill_switch import KillSwitchScope, StrategyKillSwitch
+
+    snap = StrategyKillSwitch(
+        scope=KillSwitchScope.STRATEGY,
+        target="strat_alpha",
+        state=KillSwitchStateEnum.PENDING_RESUME,
+        reason="Daily loss limit",
+        triggered_at=None,
+        triggered_by="limit_engine",
+    )
+    from app.services.risk.kill_switch import RiskKillSwitch
+
+    assert isinstance(snap, RiskKillSwitch)
+    assert snap.scope == KillSwitchScope.STRATEGY
+    assert snap.state == KillSwitchStateEnum.PENDING_RESUME

@@ -172,3 +172,196 @@ def test_observability_registry_recording():
     assert "haruquant_risk_decision_total" in metric_names
     assert "haruquant_risk_audit_persistence_health" in metric_names
     assert "haruquant_risk_kill_switch_state" in metric_names
+
+
+def test_report_warnings_and_breaches():
+    """Verify that warnings are correctly segregated from breaches in reports."""
+    store = InMemoryRiskStateStore()
+    gov = RiskGovernor(
+        state_store=store,
+        audit_sink=store,
+        policy_store=store,
+        decision_store=store,
+    )
+
+    trade = ProposedTrade(
+        strategy_id="strat_1",
+        symbol="EURUSD",
+        side="buy",
+        volume=Decimal("0.1"),
+    )
+    portfolio = PortfolioState(
+        account_id="acc_1",
+        balance=Decimal("10000.00"),
+        equity=Decimal("10000.00"),
+        margin_used=Decimal("0.00"),
+        free_margin=Decimal("10000.00"),
+        floating_pnl=Decimal("0.00"),
+        realized_pnl=Decimal("0.00"),
+        currency="USD",
+        as_of=datetime.now(UTC),
+    )
+    req = RiskAssessmentRequest(
+        proposed_action=trade,
+        portfolio_state=portfolio,
+        risk_config=RiskConfig(profile_name="default"),
+        calendar_evidence=[],
+        market_context={
+            "mode": "paper",
+            "environment": "local",
+            "freshness": datetime.now(UTC).isoformat(),
+            "daily_loss_pct": 0.0,
+            "max_stress_ratio": 2.0,
+            "drawdown": 0.09,  # Triggers advisory warning
+        },
+    )
+    req.request_id = "req_warning_test"
+
+    decision = gov.review_trade_risk(req)
+
+    # Check that warning_flags exists in decision details
+    assert "warning_flags" in decision.details
+    assert "max_drawdown_limit" in decision.details["warning_flags"]
+
+    # Generate report
+    report = generate_risk_report(
+        state_store=store,
+        audit_sink=store,
+        decision_store=store,
+    )
+
+    assert "max_drawdown_limit" in report.warnings
+    assert "max_drawdown_limit" not in report.breaches
+
+
+def test_report_json_serialization_and_redaction():
+    """Verify JSON serialization, Decimal/datetime conversion, and redaction logic."""
+    from app.services.risk.reports import RiskDecisionSummary, RiskReport
+
+    dec = RiskDecisionSummary(
+        decision_id="dec_1",
+        request_id="req_1",
+        status="reject",
+        rule_key="test_rule",
+        reason="Rejected because password=my_secret_pwd was incorrect",
+        timestamp=datetime.now(UTC),
+        symbol="EURUSD",
+        volume=0.5,
+    )
+
+    report = RiskReport(
+        report_id="report_test",
+        generated_at=datetime.now(UTC),
+        policy_profile="default",
+        config_hash="abc123config_hash_of_64_chars_length_long_enough",
+        mode="paper",
+        portfolio_exposure=1000.0,
+        breaches=[],
+        warnings=[],
+        decisions=[dec],
+        metadata={
+            "risk.user_key": (
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."  # pragma: allowlist secret
+                "eyJzdWIiOiIxMjM0NTY3ODkwIi"  # pragma: allowlist secret
+                "wibmFtZSI6IkpvaG4gRG9lIi"  # pragma: allowlist secret
+                "wiaWF0IjoxNTE2MjM5MDIyfQ."  # pragma: allowlist secret
+                "SflKxwRJSMeKKF2QT4fwpMeJ"  # pragma: allowlist secret
+                "f36POk6yJV_adQssw5c"  # pragma: allowlist secret
+            ),
+            "risk.safe_key": "safe_value",
+        },
+    )
+
+    json_str = report.to_json()
+    assert "[REDACTED]" in json_str
+    # Verify metadata JWT is redacted
+    assert "eyJhbGci" not in json_str
+    # Verify reason password is redacted
+    assert "my_secret_pwd" not in json_str
+    # Verify config_hash is preserved
+    assert "abc123config_hash_of_64_chars_length_long_enough" in json_str
+
+
+def test_report_no_recompute_and_fallback():
+    """Verify report generation does not recompute and falls back to snapshot values."""
+    from app.services.risk.models import PortfolioRiskSnapshot
+
+    store = InMemoryRiskStateStore()
+    gov = RiskGovernor(
+        state_store=store,
+        audit_sink=store,
+        policy_store=store,
+        decision_store=store,
+    )
+
+    trade = ProposedTrade(
+        strategy_id="strat_1",
+        symbol="EURUSD",
+        side="buy",
+        volume=Decimal("0.1"),
+    )
+    portfolio = PortfolioState(
+        account_id="acc_1",
+        balance=Decimal("10000.00"),
+        equity=Decimal("10000.00"),
+        margin_used=Decimal("0.00"),
+        free_margin=Decimal("10000.00"),
+        floating_pnl=Decimal("0.00"),
+        realized_pnl=Decimal("0.00"),
+        currency="USD",
+        as_of=datetime.now(UTC),
+    )
+    req = RiskAssessmentRequest(
+        proposed_action=trade,
+        portfolio_state=portfolio,
+        risk_config=RiskConfig(profile_name="default"),
+        calendar_evidence=[],
+        market_context={
+            "mode": "paper",
+            "environment": "local",
+            "freshness": datetime.now(UTC).isoformat(),
+            "daily_loss_pct": 0.0,
+            "max_stress_ratio": 2.0,
+        },
+    )
+    req.request_id = "req_fallback_test"
+
+    decision = gov.review_trade_risk(req)
+
+    # Clear audit events to replace with our modified decision event
+    store._audit_events.clear()
+
+    # Manually delete metrics from details to force fallback to risk_snapshot
+    if "var" in decision.details:
+        del decision.details["var"]
+    if "stress_loss" in decision.details:
+        del decision.details["stress_loss"]
+    if "portfolio_exposure" in decision.details:
+        del decision.details["portfolio_exposure"]
+
+    decision.risk_snapshot = PortfolioRiskSnapshot(
+        positions=[],
+        pending_orders=[],
+        in_flight_orders=[],
+        exposure=Decimal("9999.0"),
+        var_es=Decimal("123.45"),
+        stress_loss=Decimal("0.5"),
+        drawdown=Decimal("0.0"),
+    )
+    store.save_decision(decision)
+
+    # Write a new audit event with the modified decision
+    from app.services.risk.audit import create_risk_audit_event
+
+    create_risk_audit_event(decision, req.proposed_action, store)
+
+    # Generate report and check fallbacks
+    report = generate_risk_report(
+        state_store=store,
+        audit_sink=store,
+        decision_store=store,
+    )
+
+    assert report.portfolio_exposure == 9999.0
+    assert report.var == 123.45
+    assert report.stress_loss == 0.5

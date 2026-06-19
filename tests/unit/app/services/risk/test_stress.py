@@ -497,3 +497,97 @@ def test_stress_engine_performance_load() -> None:
     assert elapsed_ms < 50.0, (
         f"Stress evaluation took too long: {elapsed_ms:.2f}ms (target < 50ms)"
     )
+
+
+def test_stress_testing_engine_and_evaluate_wrappers(
+    base_portfolio: PortfolioState,
+    base_config: RiskConfig,
+    market_context: dict[str, Any],
+) -> None:
+    """Verify StressTestingEngine and evaluate_* wrappers."""
+    from app.services.risk import (
+        StressTestingEngine,
+        evaluate_correlation_to_one_shock,
+        evaluate_jpy_risk_off_shock,
+        evaluate_margin_spike_shock,
+        evaluate_news_candle_shock,
+        evaluate_platform_disconnect_shock,
+        evaluate_rollover_liquidity_shock,
+        evaluate_slippage_shock,
+        evaluate_spread_widening_shock,
+        evaluate_usd_shock,
+    )
+
+    # 1. StressTestingEngine check
+    engine = StressTestingEngine(base_config)
+    results = engine.run_analysis(base_portfolio, market_context, None)
+    assert len(results) == 13
+
+    # 2. evaluate_usd_shock
+    res_usd = evaluate_usd_shock(base_portfolio, None, market_context, base_config)
+    assert res_usd.scenario_name == "USD Shock Up"
+
+    # 3. evaluate_jpy_risk_off_shock
+    # Setup JPY position for evaluation
+    base_portfolio.positions = [
+        PositionState(
+            position_id="pos-jpy",
+            symbol="USDJPY",
+            direction="long",
+            quantity=Decimal("1.0"),
+            entry_price=Decimal("110.00"),
+            current_price=Decimal("110.00"),
+            floating_pnl=Decimal("0.0"),
+            margin_required=Decimal("1000.0"),
+            strategy_id="TF-01",
+            open_time=datetime.now(UTC),
+        )
+    ]
+    res_jpy = evaluate_jpy_risk_off_shock(
+        base_portfolio, None, market_context, base_config
+    )
+    assert res_jpy.scenario_name == "JPY Risk-Off"
+
+    # 4. evaluate_spread_widening_shock
+    res_spread = evaluate_spread_widening_shock(
+        base_portfolio, None, market_context, base_config
+    )
+    assert res_spread.scenario_name == "Spread Widening 5x"
+
+    # 5. evaluate_slippage_shock
+    res_slip = evaluate_slippage_shock(
+        base_portfolio, None, market_context, base_config
+    )
+    assert res_slip.scenario_name == "Slippage Shock 50 pips"
+
+    # 6. evaluate_correlation_to_one_shock
+    market_context["USDJPY_volatility"] = Decimal("0.01")
+    res_corr = evaluate_correlation_to_one_shock(
+        base_portfolio, None, market_context, base_config
+    )
+    assert res_corr.scenario_name == "Correlation to One"
+
+    # 7. evaluate_news_candle_shock
+    res_news = evaluate_news_candle_shock(
+        base_portfolio, None, market_context, base_config
+    )
+    assert res_news.scenario_name == "News Candle 5% Shock"
+
+    # 8. evaluate_rollover_liquidity_shock
+    res_roll = evaluate_rollover_liquidity_shock(
+        base_portfolio, None, market_context, base_config
+    )
+    assert res_roll.scenario_name == "Rollover Liquidity Shock"
+
+    # 9. evaluate_margin_spike_shock
+    res_margin = evaluate_margin_spike_shock(
+        base_portfolio, None, market_context, base_config
+    )
+    assert res_margin.scenario_name == "Margin Requirement Spike 2x"
+
+    # 10. evaluate_platform_disconnect_shock
+    res_platform = evaluate_platform_disconnect_shock(
+        base_portfolio, None, market_context, base_config
+    )
+    assert res_platform.scenario_name == "Platform Disconnect"
+    assert not res_platform.pass_status

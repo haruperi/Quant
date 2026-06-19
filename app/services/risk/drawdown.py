@@ -22,17 +22,21 @@ from app.services.risk.models import (
     RiskReasonCode,
     RiskSeverity,
 )
+from app.utils.errors import ValidationError
 from app.utils.logger import logger
 
 
-class DrawdownThrottlingState(StrEnum):
-    """Drawdown-based throttling categories."""
+class RiskStepDownState(StrEnum):
+    """Drawdown-based throttling categories/states."""
 
     NORMAL = "normal"
     CAUTION = "caution"
     DEFENSIVE = "defensive"
     RECOVERY_ONLY = "recovery_only"
     HALTED = "halted"
+
+
+DrawdownThrottlingState = RiskStepDownState
 
 
 def calculate_daily_drawdown(
@@ -193,6 +197,7 @@ def check_revenge_trading(
     proposed_trade: ProposedTrade | None,
     drawdown_state: DrawdownState,
     market_context: dict[str, Any],
+    config: RiskConfig | None = None,
 ) -> tuple[bool, str]:
     """Check if the proposed trade constitutes catch-up or revenge risk behavior.
 
@@ -203,11 +208,25 @@ def check_revenge_trading(
         proposed_trade: Candidate proposed trade.
         drawdown_state: Active DrawdownState.
         market_context: Context containing historical volume metadata.
+        config: Optional active risk config profile.
 
     Returns:
         tuple (revenge_detected: bool, reason_message: str)
     """
     if proposed_trade is None:
+        return False, ""
+
+    # Allow revenge/catch-up trade bypass under simulation policy
+    # if explicitly configured
+    is_simulation = (
+        market_context.get("mode") == "simulation"
+        or market_context.get("environment") == "simulation"
+    )
+    allow_revenge = market_context.get("allow_revenge_trading") is True or (
+        config is not None
+        and config.experimental_features.get("allow_revenge_trading") is True
+    )
+    if is_simulation and allow_revenge:
         return False, ""
 
     if drawdown_state.multiplier >= Decimal("1.0"):
@@ -234,6 +253,205 @@ def check_revenge_trading(
     return False, ""
 
 
+def _check_reset_approval(market_context: dict[str, Any]) -> LimitResult | None:
+    """Check if drawdown reset is requested and operator token is valid."""
+    is_reset = (
+        market_context.get("reset_drawdown") is True
+        or market_context.get("reset_drawdown_state") is True
+    )
+    if is_reset and not (
+        market_context.get("approval_token_valid")
+        or market_context.get("approval_token")
+    ):
+        return LimitResult(
+            limit_name="max_drawdown_limit",
+            status=RiskDecisionStatus.BLOCK,
+            reason_code=RiskReasonCode.APPROVAL_REQUIRED,
+            message="Drawdown reset requires operator approval token.",
+            severity=RiskSeverity.HARD_BREACH,
+            breached=True,
+        )
+    return None
+
+
+def _check_daily_loss(
+    portfolio_state: PortfolioState,
+    market_context: dict[str, Any],
+    config: RiskConfig,
+) -> LimitResult | None:
+    """Check if daily drawdown limit is reached."""
+    daily_start_raw = market_context.get("daily_start_balance")
+    if daily_start_raw is not None:
+        daily_start_balance = Decimal(str(daily_start_raw))
+        daily_dd = calculate_daily_drawdown(portfolio_state, daily_start_balance)
+        if daily_dd >= config.max_daily_loss_pct:
+            return LimitResult(
+                limit_name="max_drawdown_limit",
+                status=RiskDecisionStatus.BLOCK,
+                reason_code=RiskReasonCode.DAILY_LOSS_BREACH,
+                message=(
+                    f"Daily hard loss limit breached: {daily_dd:.2%} >= "
+                    f"{config.max_daily_loss_pct:.2%}."
+                ),
+                severity=RiskSeverity.CRITICAL_BREACH,
+                breached=True,
+            )
+    return None
+
+
+def _check_strategy_loss(
+    portfolio_state: PortfolioState,
+    proposed_trade: ProposedTrade | None,
+    market_context: dict[str, Any],
+    config: RiskConfig,
+) -> LimitResult | None:
+    """Check if strategy-level drawdown limit is reached."""
+    if proposed_trade is None:
+        return None
+
+    strategy_id = proposed_trade.strategy_id
+    strat_peak_raw = market_context.get(f"{strategy_id}_peak_equity")
+    if strat_peak_raw is not None:
+        strat_peak = Decimal(str(strat_peak_raw))
+    else:
+        strat_peak = portfolio_state.strategy_allocations.get(
+            strategy_id, Decimal("0.0")
+        )
+
+    max_strat_loss = Decimal(
+        str(
+            market_context.get("max_strategy_loss_pct")
+            or config.experimental_features.get("max_strategy_loss_pct")
+            or "0.04"
+        )
+    )
+    if strat_peak > 0:
+        strat_dd = calculate_strategy_drawdown(strategy_id, portfolio_state, strat_peak)
+        if strat_dd >= max_strat_loss:
+            return LimitResult(
+                limit_name="max_drawdown_limit",
+                status=RiskDecisionStatus.REJECT,
+                reason_code=RiskReasonCode.DRAWDOWN_BREACH,
+                message=(
+                    f"Strategy loss limit breached for strategy '{strategy_id}': "
+                    f"{strat_dd:.2%} >= {max_strat_loss:.2%}."
+                ),
+                severity=RiskSeverity.HARD_BREACH,
+                breached=True,
+            )
+    return None
+
+
+def apply_drawdown_throttle(
+    portfolio_state: PortfolioState,
+    proposed_trade: ProposedTrade | None,
+    market_context: dict[str, Any],
+    config: RiskConfig,
+) -> LimitResult:
+    """Implement drawdown-aware risk throttling before hard loss limits are hit.
+
+    Applies risk step-down multipliers as drawdown increases, checks
+    strategy-level limits, daily hard loss limits, revenge trading
+    behaviors, and reset approval requirements.
+    """
+    # 1. Reset approval check
+    result = _check_reset_approval(market_context)
+
+    # 2. Daily hard loss limit check
+    if result is None:
+        result = _check_daily_loss(portfolio_state, market_context, config)
+
+    # 3. Strategy-level loss limit check
+    if result is None:
+        result = _check_strategy_loss(
+            portfolio_state, proposed_trade, market_context, config
+        )
+
+    # 4. Total Drawdown and Revenge Checks
+    if result is None:
+        peak_balance_raw = market_context.get("peak_balance")
+        if peak_balance_raw is None:
+            peak_balance = portfolio_state.balance
+        else:
+            peak_balance = Decimal(str(peak_balance_raw))
+
+        drawdown = calculate_total_drawdown(portfolio_state, peak_balance)
+        soft_limit = config.max_total_loss_pct_advisory
+        hard_limit = config.max_total_loss_pct
+
+        # Determine state and scale-down multiplier
+        throttling_state, multiplier = determine_drawdown_throttling(
+            drawdown, soft_limit, hard_limit
+        )
+
+        state = DrawdownState(
+            current_drawdown=drawdown,
+            soft_limit=soft_limit,
+            hard_limit=hard_limit,
+            multiplier=multiplier,
+        )
+
+        # 4.1. Hard halt limit check
+        if throttling_state == DrawdownThrottlingState.HALTED:
+            result = LimitResult(
+                limit_name="max_drawdown_limit",
+                status=RiskDecisionStatus.BLOCK,
+                reason_code=RiskReasonCode.DRAWDOWN_BREACH,
+                message=(
+                    f"Total drawdown halt threshold breached: {drawdown:.2%} >= "
+                    f"{hard_limit:.2%}."
+                ),
+                severity=RiskSeverity.CRITICAL_BREACH,
+                breached=True,
+                details=state.model_dump(),
+            )
+        else:
+            # 4.2. Check for revenge/catch-up trade behavior
+            is_revenge, revenge_msg = check_revenge_trading(
+                proposed_trade, state, market_context, config
+            )
+            if is_revenge:
+                result = LimitResult(
+                    limit_name="max_drawdown_limit",
+                    status=RiskDecisionStatus.REJECT,
+                    reason_code=RiskReasonCode.DRAWDOWN_BREACH,
+                    message=revenge_msg,
+                    severity=RiskSeverity.HARD_BREACH,
+                    breached=True,
+                    details=state.model_dump(),
+                )
+            # If in warning or scaled states, return advisory warnings
+            elif throttling_state in {
+                DrawdownThrottlingState.CAUTION,
+                DrawdownThrottlingState.DEFENSIVE,
+                DrawdownThrottlingState.RECOVERY_ONLY,
+            }:
+                result = LimitResult(
+                    limit_name="max_drawdown_limit",
+                    status=RiskDecisionStatus.REDUCE_SIZE,
+                    reason_code=RiskReasonCode.DRAWDOWN_BREACH,
+                    message=(
+                        f"Drawdown throttling active ({throttling_state.value}): "
+                        f"risk sizing multiplier of {multiplier} enforced."
+                    ),
+                    severity=RiskSeverity.SOFT_BREACH,
+                    breached=False,
+                    details=state.model_dump(),
+                )
+            else:
+                result = LimitResult(
+                    limit_name="max_drawdown_limit",
+                    status=RiskDecisionStatus.APPROVE,
+                    reason_code=RiskReasonCode.OK,
+                    message="Total drawdown is within safe limits.",
+                    severity=RiskSeverity.INFO,
+                    breached=False,
+                    details=state.model_dump(),
+                )
+
+    return result
+
+
 def verify_drawdown_limits(
     portfolio_state: PortfolioState,
     proposed_trade: ProposedTrade | None,
@@ -242,92 +460,77 @@ def verify_drawdown_limits(
 ) -> LimitResult:
     """Enforce total drawdown limits and check for revenge trading behavior.
 
-    Args:
-        portfolio_state: Current portfolio snapshot.
-        proposed_trade: Candidate proposed trade.
-        market_context: Market details.
-        config: Active risk configuration.
-
-    Returns:
-        LimitResult showing drawdown approval status.
+    Delegates check sequence directly to apply_drawdown_throttle.
     """
-    peak_balance_raw = market_context.get("peak_balance")
-    if peak_balance_raw is None:
-        peak_balance = portfolio_state.balance
-    else:
-        peak_balance = Decimal(str(peak_balance_raw))
-
-    drawdown = calculate_total_drawdown(portfolio_state, peak_balance)
-    soft_limit = config.max_total_loss_pct_advisory
-    hard_limit = config.max_total_loss_pct
-
-    # Determine state and scale-down multiplier
-    throttling_state, multiplier = determine_drawdown_throttling(
-        drawdown, soft_limit, hard_limit
+    return apply_drawdown_throttle(
+        portfolio_state, proposed_trade, market_context, config
     )
 
-    state = DrawdownState(
-        current_drawdown=drawdown,
-        soft_limit=soft_limit,
-        hard_limit=hard_limit,
-        multiplier=multiplier,
-    )
 
-    # 1. Hard halt limit check
-    if throttling_state == DrawdownThrottlingState.HALTED:
-        return LimitResult(
-            limit_name="max_drawdown_limit",
-            status=RiskDecisionStatus.BLOCK,
-            reason_code=RiskReasonCode.DRAWDOWN_BREACH,
-            message=(
-                f"Total drawdown halt threshold breached: {drawdown:.2%} >= "
-                f"{hard_limit:.2%}."
-            ),
-            severity=RiskSeverity.CRITICAL_BREACH,
-            breached=True,
-            details=state.model_dump(),
+class DrawdownGovernor:
+    """Orchestrator for managing portfolio and strategy drawdowns.
+
+    Throttles risk based on step-down thresholds and multipliers.
+    """
+
+    def __init__(self, config: RiskConfig | None = None) -> None:
+        """Initialize with optional active configuration profile.
+
+        Args:
+            config: Optional active risk config profile.
+        """
+        self.config = config
+
+    def calculate_daily_drawdown(
+        self, portfolio_state: PortfolioState, daily_start_balance: Decimal
+    ) -> Decimal:
+        """Calculate daily drawdown percentage."""
+        return calculate_daily_drawdown(portfolio_state, daily_start_balance)
+
+    def calculate_total_drawdown(
+        self, portfolio_state: PortfolioState, peak_balance: Decimal
+    ) -> Decimal:
+        """Calculate total account drawdown percentage."""
+        return calculate_total_drawdown(portfolio_state, peak_balance)
+
+    def calculate_strategy_drawdown(
+        self,
+        strategy_id: str,
+        portfolio_state: PortfolioState,
+        strategy_peak_equity: Decimal,
+    ) -> Decimal:
+        """Calculate drawdown for a specific strategy's allocated capital."""
+        return calculate_strategy_drawdown(
+            strategy_id, portfolio_state, strategy_peak_equity
         )
 
-    # 2. Check for revenge/catch-up trade behavior
-    is_revenge, revenge_msg = check_revenge_trading(
-        proposed_trade, state, market_context
-    )
-    if is_revenge:
-        return LimitResult(
-            limit_name="max_drawdown_limit",
-            status=RiskDecisionStatus.REJECT,
-            reason_code=RiskReasonCode.DRAWDOWN_BREACH,
-            message=revenge_msg,
-            severity=RiskSeverity.HARD_BREACH,
-            breached=True,
-            details=state.model_dump(),
+    def determine_drawdown_throttling(
+        self, drawdown: Decimal, soft_limit: Decimal, hard_limit: Decimal
+    ) -> tuple[RiskStepDownState, Decimal]:
+        """Map a drawdown level to a throttling category and multiplier."""
+        return determine_drawdown_throttling(drawdown, soft_limit, hard_limit)
+
+    def apply_drawdown_throttle(
+        self,
+        portfolio_state: PortfolioState,
+        proposed_trade: ProposedTrade | None,
+        market_context: dict[str, Any],
+        config: RiskConfig | None = None,
+    ) -> LimitResult:
+        """Implement drawdown-aware risk throttling before hard loss limits are hit."""
+        active_config = config or self.config
+        if active_config is None:
+            raise ValidationError(
+                "DrawdownGovernor requires a RiskConfig to apply throttling."
+            )
+        return apply_drawdown_throttle(
+            portfolio_state, proposed_trade, market_context, active_config
         )
 
-    # If in warning or scaled states, return advisory warnings
-    if throttling_state in {
-        DrawdownThrottlingState.CAUTION,
-        DrawdownThrottlingState.DEFENSIVE,
-        DrawdownThrottlingState.RECOVERY_ONLY,
-    }:
-        return LimitResult(
-            limit_name="max_drawdown_limit",
-            status=RiskDecisionStatus.REDUCE_SIZE,
-            reason_code=RiskReasonCode.DRAWDOWN_BREACH,
-            message=(
-                f"Drawdown throttling active ({throttling_state.value}): "
-                f"risk sizing multiplier of {multiplier} enforced."
-            ),
-            severity=RiskSeverity.SOFT_BREACH,
-            breached=False,
-            details=state.model_dump(),
-        )
+    def persist_state(self, state: DrawdownState, file_path: str | Path) -> None:
+        """Serialize and write DrawdownState to a JSON file."""
+        persist_drawdown_state(state, file_path)
 
-    return LimitResult(
-        limit_name="max_drawdown_limit",
-        status=RiskDecisionStatus.APPROVE,
-        reason_code=RiskReasonCode.OK,
-        message="Total drawdown is within safe limits.",
-        severity=RiskSeverity.INFO,
-        breached=False,
-        details=state.model_dump(),
-    )
+    def restore_state(self, file_path: str | Path) -> DrawdownState | None:
+        """Restore and deserialize DrawdownState from a JSON file."""
+        return restore_drawdown_state(file_path)

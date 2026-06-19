@@ -382,3 +382,362 @@ def test_exposure_filtering_by_strategy_and_symbol(
     )
     assert "JPY" in res_symbol
     assert "EUR" not in res_symbol
+
+
+def test_calculate_symbol_exposure(
+    base_portfolio: PortfolioState,
+    base_config: RiskConfig,
+    eur_usd_context: dict[str, Any],
+) -> None:
+    """Test symbol exposure calculation."""
+    base_portfolio.positions = [
+        PositionState(
+            position_id="pos-1",
+            symbol="EURUSD",
+            direction="long",
+            quantity=Decimal("1.0"),
+            entry_price=Decimal("1.10"),
+            current_price=Decimal("1.10"),
+            floating_pnl=Decimal("0.00"),
+            margin_required=Decimal("1000.00"),
+            strategy_id="strat-1",
+            open_time=datetime.now(UTC),
+        )
+    ]
+    from app.services.risk import calculate_symbol_exposure
+
+    res = calculate_symbol_exposure(base_portfolio, None, base_config, eur_usd_context)
+    assert "EURUSD" in res
+    assert res["EURUSD"].symbol == "EURUSD"
+    # Long 1.0 standard lot EURUSD = 100k contract size
+    assert res["EURUSD"].signed_amount == Decimal("100000.0")
+    # Base rate to account currency (USD) is 1.10, so gross and
+    # net should be 110,000 USD.
+    assert res["EURUSD"].gross == Decimal("110000.0")
+    assert res["EURUSD"].net == Decimal("110000.0")
+    assert res["EURUSD"].account_currency_equivalent == Decimal("110000.0")
+
+
+def test_nzd_support(
+    base_portfolio: PortfolioState,
+    base_config: RiskConfig,
+    eur_usd_context: dict[str, Any],
+) -> None:
+    """Test default NZD resolving and fallback conversion rate."""
+    base_portfolio.positions = [
+        PositionState(
+            position_id="pos-1",
+            symbol="NZDUSD",
+            direction="long",
+            quantity=Decimal("1.0"),
+            entry_price=Decimal("0.60"),
+            current_price=Decimal("0.60"),
+            floating_pnl=Decimal("0.00"),
+            margin_required=Decimal("1000.00"),
+            strategy_id="strat-1",
+            open_time=datetime.now(UTC),
+        )
+    ]
+    # Do not supply NZDUSD contract size or rates in context,
+    # should use default/fallback conversion.
+    res = calculate_currency_exposure(
+        base_portfolio, None, base_config, {"mode": RiskMode.PAPER}
+    )
+    # NZD leg: Long 100k NZD. Fallback conversion rate to USD is 0.60.
+    # NZD net equivalent in USD = 60,000 USD
+    assert "NZD" in res
+    assert res["NZD"].net == Decimal("60000.0")
+
+
+def test_hidden_concentration_detection(
+    base_portfolio: PortfolioState,
+    base_config: RiskConfig,
+    eur_usd_context: dict[str, Any],
+) -> None:
+    """Test detection of hidden USD short concentration."""
+    from app.services.risk import detect_hidden_concentration
+
+    # 1. Single pair long EURUSD -> no concentration warning
+    base_portfolio.positions = [
+        PositionState(
+            position_id="pos-1",
+            symbol="EURUSD",
+            direction="long",
+            quantity=Decimal("1.0"),
+            entry_price=Decimal("1.10"),
+            current_price=Decimal("1.10"),
+            floating_pnl=Decimal("0.00"),
+            margin_required=Decimal("1000.00"),
+            strategy_id="strat-1",
+            open_time=datetime.now(UTC),
+        )
+    ]
+    warnings = detect_hidden_concentration(
+        base_portfolio, None, base_config, eur_usd_context
+    )
+    assert len(warnings) == 0
+
+    # 2. Add long GBPUSD -> USD-short concentration warning
+    base_portfolio.positions.append(
+        PositionState(
+            position_id="pos-2",
+            symbol="GBPUSD",
+            direction="long",
+            quantity=Decimal("1.0"),
+            entry_price=Decimal("1.25"),
+            current_price=Decimal("1.25"),
+            floating_pnl=Decimal("0.00"),
+            margin_required=Decimal("1000.00"),
+            strategy_id="strat-1",
+            open_time=datetime.now(UTC),
+        )
+    )
+    warnings = detect_hidden_concentration(
+        base_portfolio, None, base_config, eur_usd_context
+    )
+    assert len(warnings) == 1
+    assert "Hidden USD short concentration detected" in warnings[0]
+    assert "EURUSD" in warnings[0]
+    assert "GBPUSD" in warnings[0]
+
+
+def test_exposure_engines_and_snapshot(
+    base_portfolio: PortfolioState,
+    base_config: RiskConfig,
+    eur_usd_context: dict[str, Any],
+) -> None:
+    """Test engines (Currency, Symbol, Cluster) and snapshot builder."""
+    base_portfolio.positions = [
+        PositionState(
+            position_id="pos-1",
+            symbol="EURUSD",
+            direction="long",
+            quantity=Decimal("1.0"),
+            entry_price=Decimal("1.10"),
+            current_price=Decimal("1.10"),
+            floating_pnl=Decimal("0.00"),
+            margin_required=Decimal("1000.00"),
+            strategy_id="strat-1",
+            open_time=datetime.now(UTC),
+        )
+    ]
+    base_config.currency_clusters = {"EURO_PE": ["EUR"]}
+
+    from app.services.risk import (
+        ClusterExposureEngine,
+        CurrencyExposureEngine,
+        ExposureSnapshotBuilder,
+        SymbolExposureEngine,
+        calculate_currency_leg_exposure,
+        calculate_net_currency_exposure,
+        calculate_projected_exposure,
+    )
+
+    # Test calculate_currency_leg_exposure
+    legs = calculate_currency_leg_exposure(
+        "EURUSD",
+        "buy",
+        Decimal("1.0"),
+        Decimal("1.10"),
+        Decimal("100000.0"),
+        "EUR",
+        "USD",
+    )
+    assert len(legs) == 2
+
+    # Test calculate_net_currency_exposure
+    net_ccy = calculate_net_currency_exposure(
+        base_portfolio, None, base_config, eur_usd_context
+    )
+    assert net_ccy["EUR"] == Decimal("110000.0")
+
+    # Test calculate_projected_exposure
+    proj = calculate_projected_exposure(
+        base_portfolio, None, base_config, eur_usd_context
+    )
+    assert proj["EUR"].net == Decimal("110000.0")
+
+    # Test CurrencyExposureEngine
+    ccy_engine = CurrencyExposureEngine(base_config)
+    ccy_res = ccy_engine.calculate_exposure(base_portfolio, None, eur_usd_context)
+    assert "EUR" in ccy_res
+
+    # Test SymbolExposureEngine
+    sym_engine = SymbolExposureEngine(base_config)
+    sym_res = sym_engine.calculate_exposure(base_portfolio, None, eur_usd_context)
+    assert "EURUSD" in sym_res
+
+    # Test ClusterExposureEngine
+    cluster_engine = ClusterExposureEngine(base_config)
+    cluster_res = cluster_engine.calculate_exposure(
+        base_portfolio, None, eur_usd_context
+    )
+    assert "EURO_PE" in cluster_res
+
+    # Test ExposureSnapshotBuilder
+    builder = ExposureSnapshotBuilder(base_config)
+    snap = builder.build_snapshot(base_portfolio, None, eur_usd_context)
+    assert snap["portfolio_id"] == "acc-123"
+    assert snap["portfolio_exposure"] == Decimal("220000.0")
+    assert "EURUSD" in snap["symbol_exposures"]
+    assert "strat-1" in snap["strategy_exposures"]
+
+
+def test_exposure_resolve_base_quote_edge_cases() -> None:
+    """Test _resolve_base_quote fallback and suffix parsing logic."""
+    from app.services.risk.exposure import _resolve_base_quote
+
+    # 1. Dictionary specs in market context
+    ctx_spec = {"EURUSD": {"base": "eur", "quote": "usd"}}
+    assert _resolve_base_quote("EURUSD", ctx_spec) == ("EUR", "USD")
+
+    # 2. Suffix keys in context
+    ctx_keys = {"EURUSD_base": "EUR", "EURUSD_quote": "USD"}
+    assert _resolve_base_quote("EURUSD", ctx_keys) == ("EUR", "USD")
+
+    # 3. Custom suffix matching
+    assert _resolve_base_quote("GOLDUSD", {}) == ("GOLD", "USD")
+    assert _resolve_base_quote("US30", {}) == ("US30", "USD")
+
+
+def test_exposure_conversion_rate_formatting_lookups() -> None:
+    """Test rates lookup with slashes, underscores, and direct pairs in context."""
+    from app.services.risk.exposure import _resolve_conversion_rate
+
+    # Slashes lookup
+    ctx_slash = {"EUR/USD": 1.09}
+    assert _resolve_conversion_rate("EUR", "USD", ctx_slash) == Decimal("1.09")
+
+    # Underscores lookup
+    ctx_und = {"EUR_USD": 1.085}
+    assert _resolve_conversion_rate("EUR", "USD", ctx_und) == Decimal("1.085")
+
+    # Slashes reverse lookup
+    ctx_slash_rev = {"USD/EUR": 0.90}
+    assert _resolve_conversion_rate("EUR", "USD", ctx_slash_rev) == Decimal(
+        "1.0"
+    ) / Decimal("0.90")
+
+
+def test_exposure_proposed_trade_fallback_price(
+    base_portfolio: PortfolioState,
+    base_config: RiskConfig,
+) -> None:
+    """Test ProposedTrade with <= 0 price falls back to market context price."""
+    proposed = ProposedTrade(
+        strategy_id="strat-1",
+        symbol="EURUSD",
+        side="buy",
+        volume=Decimal("1.0"),
+        price=Decimal("0.0"),
+    )
+    ctx = {
+        "mode": RiskMode.PAPER,
+        "EURUSD_contract_size": 100000.0,
+        "EURUSD_price": 1.12,
+    }
+    res = calculate_currency_exposure(base_portfolio, proposed, base_config, ctx)
+    # EUR leg: Long 100k, USD leg: Short 112k USD equivalent
+    assert res["USD"].net == Decimal("-112000.0")
+
+
+def test_decompose_position_invalid_side() -> None:
+    """Test decompose_position raises ValueError on invalid side."""
+    with pytest.raises(ValueError, match="Invalid position/order side"):
+        decompose_position(
+            symbol="EURUSD",
+            side="invalid",
+            quantity=Decimal("1.0"),
+            price=Decimal("1.10"),
+            contract_size=Decimal("100000.0"),
+            base_ccy="EUR",
+            quote_ccy="USD",
+        )
+
+
+def test_exposure_live_mode_missing_fields_validation(
+    base_portfolio: PortfolioState,
+    base_config: RiskConfig,
+) -> None:
+    """Test live mode validation rejects orders with missing required fields."""
+    base_config.pending_order_policy = "full-potential"
+    # Order missing side
+    base_portfolio.orders = [
+        {
+            "symbol": "EURUSD",
+            "quantity": 1.0,
+            "price": 1.10,
+            "status": "active",
+        }
+    ]
+    ctx = {
+        "mode": RiskMode.FULL_LIVE,
+        "is_reconciled": True,
+        "portfolio_reconciled": True,
+        "broker_connected": True,
+    }
+    with pytest.raises(ValidationError, match="Missing required order fields"):
+        calculate_currency_exposure(base_portfolio, None, base_config, ctx)
+
+
+def test_symbol_exposure_with_orders_and_proposed_trade(
+    base_portfolio: PortfolioState,
+    base_config: RiskConfig,
+    eur_usd_context: dict[str, Any],
+) -> None:
+    """Test calculate_symbol_exposure with orders and proposed trade."""
+    from app.services.risk import calculate_symbol_exposure
+
+    base_config.pending_order_policy = "full-potential"
+    base_portfolio.orders = [
+        {
+            "symbol": "EURUSD",
+            "side": "sell",
+            "quantity": 0.5,
+            "status": "active",
+        }
+    ]
+    proposed = ProposedTrade(
+        strategy_id="strat-1",
+        symbol="EURUSD",
+        side="buy",
+        volume=Decimal("0.2"),
+    )
+
+    res = calculate_symbol_exposure(
+        base_portfolio, proposed, base_config, eur_usd_context
+    )
+    assert "EURUSD" in res
+    # 0.5 lot sell orders = -50k, 0.2 lot proposed buy = +20k. Net exposure = -30k
+    assert res["EURUSD"].signed_amount == Decimal("-30000.0")
+
+
+def test_hidden_concentration_with_orders(
+    base_portfolio: PortfolioState,
+    base_config: RiskConfig,
+    eur_usd_context: dict[str, Any],
+) -> None:
+    """Test detect_hidden_concentration with pending orders."""
+    from app.services.risk import detect_hidden_concentration
+
+    base_config.pending_order_policy = "full-potential"
+    base_portfolio.orders = [
+        {
+            "symbol": "EURUSD",
+            "side": "buy",
+            "quantity": 1.0,
+            "status": "active",
+        },
+        {
+            "symbol": "GBPUSD",
+            "side": "buy",
+            "quantity": 1.0,
+            "status": "active",
+        },
+    ]
+
+    warnings = detect_hidden_concentration(
+        base_portfolio, None, base_config, eur_usd_context
+    )
+    assert len(warnings) == 1
+    assert "Hidden USD short concentration detected" in warnings[0]

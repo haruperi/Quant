@@ -14,18 +14,26 @@ from typing import Any
 
 import pytest
 from app.services.risk import (
+    ExpectedShortfallEngine,
     ExpectedShortfallMethod,
+    ExpectedShortfallResult,
     ExpectedShortfallSnapshot,
     PortfolioState,
+    PortfolioVaREngine,
+    PortfolioVarianceInputs,
     PositionState,
     RiskConfig,
     VaRMethod,
+    VaRResult,
     VaRSnapshot,
+    calculate_covariance_matrix,
+    calculate_historical_var,
+    calculate_parametric_var,
+    calculate_risk_contribution,
     calculate_var_es_snapshots,
 )
 from app.services.risk.var_es import (
     calculate_covariance,
-    calculate_covariance_matrix,
     calculate_ewma_covariance,
     calculate_historical_var_es,
     calculate_parametric_var_es,
@@ -347,3 +355,124 @@ def test_calculate_var_es_snapshots_insufficient_samples(
             config=base_config,
             min_samples=50,
         )
+
+
+def test_portfolio_variance_inputs_validation() -> None:
+    """Verify PortfolioVarianceInputs schema validation."""
+    weights = {"EURUSD": Decimal("0.60"), "GBPUSD": Decimal("0.40")}
+    covariance_matrix = {
+        "EURUSD": {"EURUSD": Decimal("0.0004"), "GBPUSD": Decimal("0.0002")},
+        "GBPUSD": {"EURUSD": Decimal("0.0002"), "GBPUSD": Decimal("0.0009")},
+    }
+    inputs = PortfolioVarianceInputs(
+        weights=weights, covariance_matrix=covariance_matrix
+    )
+    assert inputs.weights == weights
+    assert inputs.covariance_matrix == covariance_matrix
+
+
+def test_standalone_parametric_and_historical_var() -> None:
+    """Verify calculate_parametric_var and calculate_historical_var standalone math."""
+    weights = {"A": Decimal("1.0")}
+    matrix = {"A": {"A": Decimal("0.0004")}}
+    exposure = Decimal("50000.00")
+
+    var_param = calculate_parametric_var(
+        weights=weights,
+        matrix=matrix,
+        confidence=Decimal("0.95"),
+        total_gross_exposure=exposure,
+    )
+    assert var_param > 0
+
+    aligned_returns = {
+        "A": [
+            Decimal("-0.05"),
+            Decimal("-0.02"),
+            Decimal("-0.01"),
+            Decimal("0.03"),
+            Decimal("0.05"),
+        ]
+    }
+    var_hist = calculate_historical_var(
+        aligned_returns=aligned_returns,
+        weights=weights,
+        confidence=Decimal("0.80"),
+        total_gross_exposure=Decimal("100000.00"),
+    )
+    assert var_hist == Decimal("2000.00")
+
+
+def test_singular_calculate_risk_contribution() -> None:
+    """Verify singular calculate_risk_contribution wrapper works correctly."""
+    weights = {"A": Decimal("1.0")}
+    matrix = {"A": {"A": Decimal("0.0004")}}
+    mrc, crc = calculate_risk_contribution(
+        weights=weights,
+        matrix=matrix,
+        portfolio_vol=Decimal("0.02"),
+        confidence=Decimal("0.95"),
+        total_gross_exposure=Decimal("50000.00"),
+    )
+    assert "A" in mrc
+    assert "A" in crc
+
+
+def test_var_and_es_engines_full_flow(
+    base_portfolio: PortfolioState,
+    base_config: RiskConfig,
+    sample_bars_a: list[dict[str, Any]],
+    sample_bars_b: list[dict[str, Any]],
+) -> None:
+    """Verify PortfolioVaREngine and ExpectedShortfallEngine integration."""
+    base_portfolio.positions = [
+        PositionState(
+            position_id="pos-1",
+            symbol="EURUSD",
+            direction="long",
+            quantity=Decimal("1.0"),
+            entry_price=Decimal("1.1000"),
+            current_price=Decimal("1.1000"),
+            floating_pnl=Decimal("0.0"),
+            margin_required=Decimal("1000.0"),
+            strategy_id="TF-01",
+            open_time=datetime.now(UTC),
+        )
+    ]
+
+    market_context = {
+        "EURUSD_contract_size": 100000.0,
+        "GBPUSD_contract_size": 100000.0,
+        "conversion_rates": {
+            "EUR": 1.10,
+            "GBP": 1.25,
+            "USD": 1.0,
+        },
+        "market_data": {
+            "EURUSD": sample_bars_a,
+            "GBPUSD": sample_bars_b,
+        },
+    }
+
+    # Test PortfolioVaREngine
+    var_engine = PortfolioVaREngine(base_config)
+    var_res = var_engine.calculate_var(
+        portfolio_state=base_portfolio,
+        market_context=market_context,
+        min_samples=10,
+        exclude_last=False,
+    )
+    assert isinstance(var_res, VaRResult)
+    assert var_res.exposure == Decimal("110000.00")
+    assert var_res.result > 0
+
+    # Test ExpectedShortfallEngine
+    es_engine = ExpectedShortfallEngine(base_config)
+    es_res = es_engine.calculate_es(
+        portfolio_state=base_portfolio,
+        market_context=market_context,
+        min_samples=10,
+        exclude_last=False,
+    )
+    assert isinstance(es_res, ExpectedShortfallResult)
+    assert es_res.average_tail_loss > var_res.result

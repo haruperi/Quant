@@ -12,8 +12,12 @@ from typing import Any
 import pytest
 from app.services.risk import RiskConfig, RiskDecisionStatus, RiskReasonCode
 from app.services.risk.lifecycle import (
+    RiskLifecycleState,
     evaluate_lifecycle_promotion,
     evaluate_live_readiness,
+    review_live_readiness,
+    review_mode_promotion,
+    review_strategy_admission,
 )
 
 
@@ -227,4 +231,170 @@ def test_live_readiness_checks(base_config: RiskConfig) -> None:
     # 5. Passes if all parameters are true
     market_context["portfolio_reconciliation_active"] = True
     res = evaluate_live_readiness("strat1", "shadow", market_context, base_config)
+    assert res.status == RiskDecisionStatus.APPROVE
+
+
+def test_risk_lifecycle_state_enum() -> None:
+    """Verify that all lifecycle states are present in the StrEnum."""
+    assert RiskLifecycleState.RESEARCH.value == "research"
+    assert RiskLifecycleState.SIMULATION.value == "simulation"
+    assert RiskLifecycleState.PAPER.value == "paper"
+    assert RiskLifecycleState.SHADOW.value == "shadow"
+    assert RiskLifecycleState.LIVE_READONLY.value == "live-read-only"
+    assert RiskLifecycleState.MICRO_LIVE.value == "micro-live"
+    assert RiskLifecycleState.FULL_LIVE.value == "full-live"
+
+
+def test_strategy_admission_review(base_config: RiskConfig) -> None:
+    """Verify strategy admission gate logic."""
+    # 1. Missing evidence packages
+    evidence_missing: dict[str, Any] = {
+        "backtest": {},
+        "walk_forward": {},
+        # missing out_of_sample, simulation, risk_metrics
+    }
+    res = review_strategy_admission("strat1", evidence_missing, base_config)
+    assert res.status == RiskDecisionStatus.REJECT
+    assert res.reason_code == RiskReasonCode.STALE_EVIDENCE
+    assert res.breached
+    assert any("Missing required" in b for b in res.breaches)
+
+    # 2. Complete evidence but failing metric thresholds
+    evidence_fail = {
+        "backtest": {
+            "trade_count": 50,  # required min_backtest_trades=100
+            "sharpe_ratio": "1.2",  # required min_backtest_sharpe=1.5
+            "max_drawdown": "0.10",
+        },
+        "walk_forward": {},
+        "out_of_sample": {},
+        "simulation": {},
+        "risk_metrics": {},
+    }
+    res = review_strategy_admission("strat1", evidence_fail, base_config)
+    assert res.status == RiskDecisionStatus.REJECT
+    assert res.breached
+    assert any("trades low" in b for b in res.breaches)
+
+    # 3. Approved admission
+    evidence_pass = {
+        "backtest": {
+            "trade_count": 120,
+            "sharpe_ratio": "1.8",
+            "max_drawdown": "0.12",
+        },
+        "walk_forward": {},
+        "out_of_sample": {},
+        "simulation": {},
+        "risk_metrics": {},
+    }
+    res = review_strategy_admission("strat1", evidence_pass, base_config)
+    assert res.status == RiskDecisionStatus.APPROVE
+    assert not res.breached
+
+
+def test_live_readiness_new_checks(base_config: RiskConfig) -> None:
+    """Verify readiness checklist with new required parameters."""
+    market_context: dict[str, Any] = {
+        "audit_persistence_active": True,
+        "kill_switch_configured": True,
+        "portfolio_reconciliation_active": True,
+        "idempotency_evidence_present": True,
+        "broker_metadata_available": True,
+        "risk_config_available": True,
+        "policy_enforcement_active": True,
+    }
+
+    # All pass
+    res = review_live_readiness("strat1", "live-read-only", market_context, base_config)
+    assert res.status == RiskDecisionStatus.APPROVE
+    assert not res.breached
+
+    # Fail closed when broker metadata is unavailable
+    market_context["broker_metadata_available"] = False
+    res = review_live_readiness("strat1", "live-read-only", market_context, base_config)
+    assert res.status == RiskDecisionStatus.BLOCK
+    assert res.breached
+    assert any("broker metadata" in b for b in res.breaches)
+
+    # Fail closed when policy enforcement is unavailable
+    market_context["broker_metadata_available"] = True
+    market_context["policy_enforcement_active"] = False
+    res = review_live_readiness("strat1", "live-read-only", market_context, base_config)
+    assert res.status == RiskDecisionStatus.BLOCK
+    assert any("policy enforcement" in b for b in res.breaches)
+
+
+def test_mode_promotion_new_transitions(base_config: RiskConfig) -> None:
+    """Verify transition metric checking and sequential gates for new sequence."""
+    evidence = {
+        "trade_count": 100,
+        "sharpe_ratio": "2.0",
+        "profit_factor": "1.5",
+        "tracking_error": "0.02",
+        "duration_days": 40,
+    }
+
+    # 1. Research -> Simulation (Walk-forward checks)
+    evidence["trade_count"] = 60  # min_wf_trades = 50
+    evidence["sharpe_ratio"] = "1.3"  # min_wf_sharpe = 1.2
+    res = review_mode_promotion(
+        "strat1", "research", "simulation", evidence, base_config
+    )
+    assert res.status == RiskDecisionStatus.APPROVE
+
+    # 2. Simulation -> Paper (Sim checks)
+    evidence["trade_count"] = 35  # min_sim_trades = 30
+    evidence["profit_factor"] = "1.2"  # min_sim_pf = 1.1
+    res = review_mode_promotion("strat1", "simulation", "paper", evidence, base_config)
+    assert res.status == RiskDecisionStatus.APPROVE
+
+    # 3. Paper -> Shadow (Paper checks)
+    # Missing approval token => status = NEEDS_APPROVAL
+    res = review_mode_promotion("strat1", "paper", "shadow", evidence, base_config)
+    assert res.status == RiskDecisionStatus.NEEDS_APPROVAL
+    assert res.breached
+
+    # With mock validation
+    res = review_mode_promotion(
+        "strat1",
+        "paper",
+        "shadow",
+        evidence,
+        base_config,
+        market_context={"approval_token_valid": True},
+    )
+    assert res.status == RiskDecisionStatus.APPROVE
+
+    # 4. Shadow -> Live-read-only
+    res = review_mode_promotion(
+        "strat1",
+        "shadow",
+        "live-read-only",
+        evidence,
+        base_config,
+        market_context={"approval_token_valid": True},
+    )
+    assert res.status == RiskDecisionStatus.APPROVE
+
+    # 5. Live-read-only -> Micro-live
+    res = review_mode_promotion(
+        "strat1",
+        "live-read-only",
+        "micro-live",
+        evidence,
+        base_config,
+        market_context={"approval_token_valid": True},
+    )
+    assert res.status == RiskDecisionStatus.APPROVE
+
+    # 6. Micro-live -> Full-live
+    res = review_mode_promotion(
+        "strat1",
+        "micro-live",
+        "full-live",
+        evidence,
+        base_config,
+        market_context={"approval_token_valid": True},
+    )
     assert res.status == RiskDecisionStatus.APPROVE

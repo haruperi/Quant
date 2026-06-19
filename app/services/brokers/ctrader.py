@@ -1,4 +1,4 @@
-# ruff: noqa: E501, PLR0915, PLR0912, PLR2004, SLF001, TRY301, ANN401, BLE001, TRY300, C901
+# ruff: noqa: E501, PLR0915, PLR0912, PLR2004, SLF001, TRY301, ANN401, BLE001, C901
 """cTrader Open API broker client service.
 
 This module provides the CTraderClient class responsible for managing the lifecycle

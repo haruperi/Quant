@@ -13,11 +13,14 @@ from decimal import Decimal
 from statistics import NormalDist
 from typing import Any
 
+from pydantic import Field
+
 from app.services.risk.models import (
     ExpectedShortfallSnapshot,
     PortfolioState,
     ProposedTrade,
     RiskConfig,
+    RiskContract,
     VaRSnapshot,
 )
 from app.utils.errors import ValidationError
@@ -37,6 +40,44 @@ class ExpectedShortfallMethod:
 
     PARAMETRIC = "parametric"
     HISTORICAL = "historical"
+
+
+class PortfolioVarianceInputs(RiskContract):
+    """Input data parameters for portfolio variance calculations."""
+
+    weights: dict[str, Decimal] = Field(
+        ..., description="Signed portfolio weights per symbol."
+    )
+    covariance_matrix: dict[str, dict[str, Decimal]] = Field(
+        ..., description="Pairwise covariance matrix."
+    )
+
+
+class VaRResult(RiskContract):
+    """Encapsulates Value-at-Risk computation outputs."""
+
+    method: str = Field(..., description="Method used (parametric or historical).")
+    confidence: Decimal = Field(..., description="Confidence level (e.g. 0.95).")
+    portfolio_volatility: Decimal = Field(..., description="Portfolio volatility.")
+    exposure: Decimal = Field(
+        ..., description="Evaluated exposure in account currency."
+    )
+    result: Decimal = Field(..., description="Value-at-Risk amount.")
+    assumptions: dict[str, Any] = Field(
+        default_factory=dict, description="Model assumptions and parameters."
+    )
+
+
+class ExpectedShortfallResult(RiskContract):
+    """Encapsulates Expected Shortfall computation outputs."""
+
+    confidence: Decimal = Field(..., description="Confidence level (e.g. 0.95).")
+    threshold_loss: Decimal = Field(
+        ..., description="Threshold loss level (VaR value)."
+    )
+    average_tail_loss: Decimal = Field(..., description="Average loss in tail.")
+    sample_count: int = Field(..., description="Returns sample size used.")
+    method: str = Field(..., description="Expected shortfall method name.")
 
 
 def calculate_covariance(x: list[Decimal], y: list[Decimal]) -> Decimal:
@@ -264,6 +305,35 @@ def calculate_risk_contributions(
     return mrc, crc
 
 
+def calculate_risk_contribution(
+    weights: dict[str, Decimal],
+    matrix: dict[str, dict[str, Decimal]],
+    portfolio_vol: Decimal,
+    confidence: Decimal,
+    total_gross_exposure: Decimal,
+) -> tuple[dict[str, Decimal], dict[str, Decimal]]:
+    """Calculate marginal and component risk contributions.
+
+    Args:
+        weights: Signed portfolio weights.
+        matrix: Covariance matrix.
+        portfolio_vol: Portfolio volatility.
+        confidence: Confidence level.
+        total_gross_exposure: Total portfolio gross exposure.
+
+    Returns:
+        Tuple containing marginal risk contributions (MRC) and component risk
+        contributions (CRC) per symbol.
+    """
+    return calculate_risk_contributions(
+        weights=weights,
+        matrix=matrix,
+        portfolio_vol=portfolio_vol,
+        confidence=confidence,
+        total_gross_exposure=total_gross_exposure,
+    )
+
+
 def get_position_signed_exposure(
     symbol: str,
     quantity: Decimal,
@@ -405,6 +475,32 @@ def calculate_parametric_var_es(
     return vol, var_val, es_val
 
 
+def calculate_parametric_var(
+    weights: dict[str, Decimal],
+    matrix: dict[str, dict[str, Decimal]],
+    confidence: Decimal,
+    total_gross_exposure: Decimal,
+) -> Decimal:
+    """Calculate parametric portfolio Value-at-Risk.
+
+    Args:
+        weights: Signed portfolio weights.
+        matrix: Covariance matrix.
+        confidence: Confidence level.
+        total_gross_exposure: Total portfolio gross exposure in account currency.
+
+    Returns:
+        Value-at-Risk amount.
+    """
+    _, var_val, _ = calculate_parametric_var_es(
+        weights=weights,
+        matrix=matrix,
+        confidence=confidence,
+        total_gross_exposure=total_gross_exposure,
+    )
+    return var_val
+
+
 def calculate_historical_var_es(
     aligned_returns: dict[str, list[Decimal]],
     weights: dict[str, Decimal],
@@ -448,6 +544,32 @@ def calculate_historical_var_es(
         es_pct = -sum(tail_returns, Decimal("0.0")) / Decimal(len(tail_returns))
 
     return var_pct * total_gross_exposure, es_pct * total_gross_exposure
+
+
+def calculate_historical_var(
+    aligned_returns: dict[str, list[Decimal]],
+    weights: dict[str, Decimal],
+    confidence: Decimal,
+    total_gross_exposure: Decimal,
+) -> Decimal:
+    """Calculate historical portfolio Value-at-Risk.
+
+    Args:
+        aligned_returns: Aligned returns per symbol.
+        weights: Signed portfolio weights.
+        confidence: Confidence level.
+        total_gross_exposure: Total portfolio gross exposure in account currency.
+
+    Returns:
+        Value-at-Risk amount.
+    """
+    var_val, _ = calculate_historical_var_es(
+        aligned_returns=aligned_returns,
+        weights=weights,
+        confidence=confidence,
+        total_gross_exposure=total_gross_exposure,
+    )
+    return var_val
 
 
 def _compute_exposures_and_weights(
@@ -770,3 +892,136 @@ def calculate_expected_shortfall(
         es_method=method,
     )
     return es_snap.average_tail_loss
+
+
+class PortfolioVaREngine:
+    """Engine for estimating portfolio Value-at-Risk."""
+
+    def __init__(self, config: RiskConfig) -> None:
+        """Initialize the engine with configuration.
+
+        Args:
+            config: Active risk configuration profile.
+        """
+        self.config = config
+
+    def calculate_var(
+        self,
+        portfolio_state: PortfolioState,
+        market_context: dict[str, Any],
+        proposed_trade: ProposedTrade | None = None,
+        lookback: int = 50,
+        confidence: Decimal = Decimal("0.95"),
+        method: str = VaRMethod.PARAMETRIC,
+        cov_method: str = "parametric",
+        ewma_decay: Decimal = Decimal("0.94"),
+        shrinkage_intensity: Decimal = Decimal("0.1"),
+        min_samples: int = 20,
+        exclude_last: bool = True,
+    ) -> VaRResult:
+        """Calculate Value-at-Risk using the specified method.
+
+        Args:
+            portfolio_state: Current portfolio state.
+            market_context: Market context containing returns/prices history.
+            proposed_trade: Optional candidate proposed trade.
+            lookback: Returns lookback length.
+            confidence: Confidence level.
+            method: VaR calculation method.
+            cov_method: Method for covariance matrix estimation.
+            ewma_decay: EWMA decay factor.
+            shrinkage_intensity: Shrinkage intensity.
+            min_samples: Minimum required returns samples.
+            exclude_last: Exclude the last bar.
+
+        Returns:
+            VaRResult containing calculated metrics.
+        """
+        var_snap, _ = calculate_var_es_snapshots(
+            portfolio_state=portfolio_state,
+            proposed_trade=proposed_trade,
+            market_context=market_context,
+            config=self.config,
+            lookback=lookback,
+            var_confidence=confidence,
+            var_method=method,
+            cov_method=cov_method,
+            ewma_decay=ewma_decay,
+            shrinkage_intensity=shrinkage_intensity,
+            min_samples=min_samples,
+            exclude_last=exclude_last,
+        )
+        return VaRResult(
+            method=var_snap.method,
+            confidence=var_snap.confidence,
+            portfolio_volatility=var_snap.portfolio_volatility,
+            exposure=var_snap.exposure,
+            result=var_snap.result,
+            assumptions=var_snap.assumptions,
+        )
+
+
+class ExpectedShortfallEngine:
+    """Engine for estimating portfolio Expected Shortfall (CVaR)."""
+
+    def __init__(self, config: RiskConfig) -> None:
+        """Initialize the engine with configuration.
+
+        Args:
+            config: Active risk configuration profile.
+        """
+        self.config = config
+
+    def calculate_es(
+        self,
+        portfolio_state: PortfolioState,
+        market_context: dict[str, Any],
+        proposed_trade: ProposedTrade | None = None,
+        lookback: int = 50,
+        confidence: Decimal = Decimal("0.95"),
+        method: str = ExpectedShortfallMethod.PARAMETRIC,
+        cov_method: str = "parametric",
+        ewma_decay: Decimal = Decimal("0.94"),
+        shrinkage_intensity: Decimal = Decimal("0.1"),
+        min_samples: int = 20,
+        exclude_last: bool = True,
+    ) -> ExpectedShortfallResult:
+        """Calculate Expected Shortfall using the specified method.
+
+        Args:
+            portfolio_state: Current portfolio state.
+            market_context: Market context containing returns/prices history.
+            proposed_trade: Optional candidate proposed trade.
+            lookback: Returns lookback length.
+            confidence: Confidence level.
+            method: ES calculation method.
+            cov_method: Method for covariance matrix estimation.
+            ewma_decay: EWMA decay factor.
+            shrinkage_intensity: Shrinkage intensity.
+            min_samples: Minimum required returns samples.
+            exclude_last: Exclude the last bar.
+
+        Returns:
+            ExpectedShortfallResult containing calculated metrics.
+        """
+        _, es_snap = calculate_var_es_snapshots(
+            portfolio_state=portfolio_state,
+            proposed_trade=proposed_trade,
+            market_context=market_context,
+            config=self.config,
+            lookback=lookback,
+            es_confidence=confidence,
+            es_method=method,
+            cov_method=cov_method,
+            ewma_decay=ewma_decay,
+            shrinkage_intensity=shrinkage_intensity,
+            min_samples=min_samples,
+            exclude_last=exclude_last,
+        )
+        return ExpectedShortfallResult(
+            confidence=es_snap.confidence,
+            threshold_loss=es_snap.threshold_loss,
+            average_tail_loss=es_snap.average_tail_loss,
+            sample_count=es_snap.sample_count,
+            method=es_snap.method,
+        )

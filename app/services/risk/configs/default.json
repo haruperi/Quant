@@ -1,0 +1,91 @@
+{
+  "schema_version": "1.0.0",
+  "profile_name": "default",
+  "allow_live_execution": false,
+  "max_daily_loss_pct": 0.04,
+  "max_total_loss_pct": 0.09,
+  "double_spend_prevention_owner": "risk_cache",
+  "max_margin_utilization_pct": 0.30,
+  "max_effective_leverage": 30.0,
+  "correlation_threshold": 0.70,
+  "default_kelly_fraction": 0.25,
+  "min_kelly_trades": 3,
+  "max_risk_per_trade": 0.0025,
+  "max_total_loss_pct_advisory": 0.08,
+  "pending_order_policy": "ignore",
+  "currency_clusters": {
+    "USD": ["EURUSD", "GBPUSD", "AUDUSD"]
+  },
+  "allocation_method": "correlation_adjusted_parity",
+  "max_allocation_increase_pct": 0.20,
+  "max_strategy_allocation_pct": 0.50,
+  "min_backtest_trades": 100,
+  "min_backtest_sharpe": 1.5,
+  "max_backtest_drawdown": 0.20,
+  "min_wf_trades": 50,
+  "min_wf_sharpe": 1.2,
+  "min_sim_trades": 30,
+  "min_sim_profit_factor": 1.1,
+  "min_paper_trades": 20,
+  "min_paper_sharpe": 1.0,
+  "max_shadow_tracking_error": 0.05,
+  "min_shadow_days": 14,
+  "min_live_days": 30,
+  "min_live_sharpe": 1.0,
+  "var_method": "historical",
+  "var_confidence": 0.95,
+  "var_lookback_days": 250,
+  "es_confidence": 0.95,
+  "max_stress_loss_pct": 0.02,
+  "min_correlation_samples": 20,
+  "currency_leg_limits": {
+    "USD": 100000.0,
+    "EUR": 100000.0
+  },
+  "drawdown_stepdown_thresholds": [0.05, 0.08],
+  "drawdown_stepdown_multipliers": [0.8, 0.5],
+  "maintenance_margin_pct": 0.50,
+  "max_spread_multiplier": 3.0,
+  "max_slippage_pips": 5.0,
+  "rollover_blackout_start_utc": "21:55",
+  "rollover_blackout_end_utc": "22:05",
+  "m1_volatility_adaptive_sizing": true,
+  "m1_spread_to_sigma_ratio_filter": 0.25,
+  "m1_broker_midnight_blackout_minutes": 15,
+  "operator_approval_fields": null,
+  "experimental_features": {},
+  "risk": {
+    "max_risk_per_trade": 0.0025,
+    "max_total_open_risk": 0.0150,
+    "max_symbol_open_risk": 0.0050,
+    "max_currency_bucket_risk": 0.0075,
+    "max_correlated_cluster_risk": 0.0075,
+    "max_margin_usage": 0.30
+  },
+  "drawdown": {
+    "daily_loss_soft_limit": 0.02,
+    "daily_loss_hard_limit": 0.04,
+    "total_drawdown_soft_limit": 0.06,
+    "total_drawdown_hard_limit": 0.09
+  },
+  "correlation": {
+    "lookback_m5": 96,
+    "lookback_h1": 24,
+    "lookback_d1": 10,
+    "reject_threshold": 0.70,
+    "reduce_threshold": 0.50
+  },
+  "tail_risk": {
+    "var_confidence": 0.95,
+    "es_confidence": 0.95,
+    "max_portfolio_var": 0.01,
+    "max_portfolio_es": 0.015,
+    "stress_loss_limit": 0.02
+  },
+  "execution": {
+    "max_spread_to_sigma": 0.25,
+    "max_slippage_to_sigma": 0.20,
+    "rollover_blackout_hours_before": 2,
+    "rollover_blackout_hours_after": 2
+  }
+}

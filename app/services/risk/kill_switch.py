@@ -3,11 +3,17 @@
 
 Handles global, portfolio, strategy, symbol, and currency-level halts.
 Supports persistence, gated resume approvals, and auto-triggering on breaches.
+
+Exports:
+    KillSwitchScope, KillSwitchManager, RiskKillSwitch, PortfolioKillSwitch,
+    StrategyKillSwitch, get_kill_switch_manager, trigger_kill_switch,
+    resume_after_kill_switch, check_risk_kill_switch.
 """
 
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
@@ -25,6 +31,18 @@ from app.utils.errors import ValidationError
 from app.utils.event_bus import InMemoryEventBus, build_event_envelope
 from app.utils.logger import logger
 
+__all__ = [
+    "KillSwitchManager",
+    "KillSwitchScope",
+    "PortfolioKillSwitch",
+    "RiskKillSwitch",
+    "StrategyKillSwitch",
+    "check_risk_kill_switch",
+    "get_kill_switch_manager",
+    "resume_after_kill_switch",
+    "trigger_kill_switch",
+]
+
 
 class KillSwitchScope(StrEnum):
     """Scope boundaries for kill switches."""
@@ -34,6 +52,45 @@ class KillSwitchScope(StrEnum):
     STRATEGY = "strategy"
     SYMBOL = "symbol"
     CURRENCY = "currency"
+
+
+@dataclass(frozen=True)
+class RiskKillSwitch:
+    """Typed immutable snapshot of a kill-switch record at a given scope.
+
+    Attributes:
+        scope: The KillSwitchScope this record belongs to.
+        target: Target identifier (strategy ID, symbol, currency, or '*').
+        state: Current KillSwitchStateEnum value.
+        reason: Structured KillSwitchReason or free-text explanation, if any.
+        triggered_at: UTC timestamp of the last state change, if any.
+        triggered_by: Identifier of the system or operator that triggered, if any.
+    """
+
+    scope: KillSwitchScope
+    target: str
+    state: KillSwitchStateEnum
+    reason: str | None
+    triggered_at: datetime | None
+    triggered_by: str | None
+
+
+@dataclass(frozen=True)
+class PortfolioKillSwitch(RiskKillSwitch):
+    """Kill-switch snapshot scoped to portfolio level.
+
+    Always carries scope=KillSwitchScope.PORTFOLIO. Provided for typed
+    consumers that operate exclusively at the portfolio scope.
+    """
+
+
+@dataclass(frozen=True)
+class StrategyKillSwitch(RiskKillSwitch):
+    """Kill-switch snapshot scoped to a single strategy.
+
+    Always carries scope=KillSwitchScope.STRATEGY. Provided for typed
+    consumers that operate exclusively at the strategy scope.
+    """
 
 
 class KillSwitchManager:
@@ -321,13 +378,20 @@ class KillSwitchManager:
             if not isinstance(record, dict):
                 return is_live  # Fail closed in live modes if shape is corrupted
             state = record.get("state")
-            if state not in {
-                KillSwitchStateEnum.INACTIVE,
-                KillSwitchStateEnum.ACTIVE,
-                KillSwitchStateEnum.LOCKED,
-            }:
-                return True  # Fail closed on unknown states
-            return state in {KillSwitchStateEnum.ACTIVE, KillSwitchStateEnum.LOCKED}
+            # Explicitly map every known state to a blocked/non-blocked decision.
+            # UNKNOWN always fails closed regardless of live mode.
+            if state == KillSwitchStateEnum.INACTIVE:
+                return False
+            if state == KillSwitchStateEnum.ACTIVE:
+                return True
+            if state == KillSwitchStateEnum.LOCKED:
+                return True
+            if state == KillSwitchStateEnum.TRIGGERED:
+                return True  # halt signalled → treat as blocked until propagated
+            if state == KillSwitchStateEnum.PENDING_RESUME:
+                return True  # still blocked until fully deactivated
+            # UNKNOWN or any unrecognised value → always fail closed
+            return True
 
         with self._lock:
             # 1. Check Global
@@ -536,6 +600,70 @@ def get_kill_switch_manager(
                 persistence_path=persistence_path
             )
         return _global_kill_switch_manager
+
+
+def trigger_kill_switch(
+    scope: str,
+    target: str,
+    reason: str,
+    triggered_by: str = "system",
+    event_bus: InMemoryEventBus | None = None,
+) -> None:
+    """Module-level convenience function to trigger a kill switch on the global manager.
+
+    Delegates to :meth:`KillSwitchManager.trigger` on the singleton instance.
+    This is the recommended entry point for external callers that do not hold
+    a direct reference to the manager.
+
+    Args:
+        scope: Kill switch scope (e.g. 'global', 'strategy', 'symbol').
+        target: Target identifier (e.g. strategy ID, symbol name, or '*').
+        reason: Human-readable explanation for the trigger.
+        triggered_by: Identifier of the operator or system component.
+        event_bus: Optional event bus for audit event publication.
+    """
+    manager = get_kill_switch_manager()
+    manager.trigger(
+        scope=scope,
+        target=target,
+        reason=reason,
+        triggered_by=triggered_by,
+        event_bus=event_bus,
+    )
+
+
+def resume_after_kill_switch(
+    scope: str,
+    target: str,
+    approval_token: str | None = None,
+    operator_role: str | None = None,
+    event_bus: InMemoryEventBus | None = None,
+) -> None:
+    """Module-level convenience function to resume trading after a governed kill switch.
+
+    Delegates to :meth:`KillSwitchManager.resume` on the singleton instance.
+    Resume is gated: requires either a valid approval token or admin/compliance
+    operator role. Locked states require an admin/compliance role; tokens alone
+    are insufficient.
+
+    Args:
+        scope: Kill switch scope to resume.
+        target: Target identifier to resume.
+        approval_token: Optional approval token from a governed approval workflow.
+        operator_role: Operator role (e.g. 'admin', 'compliance').
+        event_bus: Optional event bus for audit event publication.
+
+    Raises:
+        ValidationError: If approval requirements are not satisfied.
+    """
+    manager = get_kill_switch_manager()
+    manager.resume(
+        scope=scope,
+        target=target,
+        approval_token=approval_token,
+        operator_role=operator_role,
+        event_bus=event_bus,
+    )
 
 
 def check_risk_kill_switch(

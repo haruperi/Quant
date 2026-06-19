@@ -12,12 +12,21 @@ from typing import Any
 
 import pytest
 from app.services.risk import (
+    LeverageSnapshot,
+    LiquiditySnapshot,
+    MarginRequirement,
+    MarginRiskEngine,
     PortfolioState,
     PositionState,
     ProposedTrade,
     RiskConfig,
     RiskDecisionStatus,
     RiskReasonCode,
+    calculate_free_margin_after_trade,
+    calculate_margin_requirement,
+    check_exit_liquidity,
+    check_leverage_limit,
+    check_margin_usage,
 )
 from app.services.risk.margin import (
     calculate_current_margin,
@@ -275,3 +284,82 @@ def test_verify_margin_limits(
     )
     assert res_lev.status == RiskDecisionStatus.REJECT
     assert res_lev.reason_code == RiskReasonCode.LEVERAGE_BREACH
+
+
+def test_new_margin_standalone_functions(
+    base_portfolio: PortfolioState,
+    base_config: RiskConfig,
+    market_context: dict[str, Any],
+) -> None:
+    """Verify new margin standalone checker functions."""
+    trade = ProposedTrade(
+        strategy_id="TF-01",
+        symbol="EURUSD",
+        side="buy",
+        volume=Decimal("1.0"),
+        price=Decimal("1.1000"),
+    )
+
+    req = calculate_margin_requirement(
+        base_portfolio, trade, market_context, base_config
+    )
+    assert req == pytest.approx(Decimal("4666.6667"))
+
+    free = calculate_free_margin_after_trade(
+        base_portfolio, trade, market_context, base_config
+    )
+    assert free == pytest.approx(Decimal("5333.3333"))
+
+    margin_check = check_margin_usage(
+        base_portfolio, trade, market_context, base_config
+    )
+    assert margin_check.status == RiskDecisionStatus.APPROVE
+    assert not margin_check.breached
+
+    leverage_check = check_leverage_limit(
+        base_portfolio, trade, market_context, base_config
+    )
+    assert leverage_check.status == RiskDecisionStatus.APPROVE
+    assert not leverage_check.breached
+
+    exit_check = check_exit_liquidity(
+        base_portfolio, trade, market_context, base_config
+    )
+    assert exit_check.status == RiskDecisionStatus.APPROVE
+    assert not exit_check.breached
+
+
+def test_margin_risk_engine_evaluation(
+    base_portfolio: PortfolioState,
+    base_config: RiskConfig,
+    market_context: dict[str, Any],
+) -> None:
+    """Verify MarginRiskEngine evaluation flow and result wrappers."""
+    engine = MarginRiskEngine(base_config)
+    trade = ProposedTrade(
+        strategy_id="TF-01",
+        symbol="EURUSD",
+        side="buy",
+        volume=Decimal("1.0"),
+        price=Decimal("1.1000"),
+    )
+
+    margin_req = engine.evaluate_margin(base_portfolio, trade, market_context)
+    assert isinstance(margin_req, MarginRequirement)
+    assert margin_req.current_margin == Decimal("1000.0")
+    assert margin_req.projected_margin == pytest.approx(Decimal("4666.6667"))
+    assert margin_req.pass_status
+
+    lev_snap = engine.evaluate_leverage(base_portfolio, trade, market_context)
+    assert isinstance(lev_snap, LeverageSnapshot)
+    assert lev_snap.effective_leverage == pytest.approx(
+        Decimal("22.0")
+    )  # (110k + 110k) / 10k
+    assert lev_snap.pass_status
+
+    liq_snap = engine.evaluate_exit_liquidity(
+        base_portfolio, trade, market_context, spread_multiplier=Decimal("5.0")
+    )
+    assert isinstance(liq_snap, LiquiditySnapshot)
+    assert liq_snap.exit_liquidity_loss == Decimal("200.00")
+    assert liq_snap.pass_status

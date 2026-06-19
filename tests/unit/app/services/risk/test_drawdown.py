@@ -23,6 +23,7 @@ from app.services.risk import (
 )
 from app.services.risk.drawdown import (
     DrawdownThrottlingState,
+    apply_drawdown_throttle,
     calculate_daily_drawdown,
     calculate_strategy_drawdown,
     calculate_total_drawdown,
@@ -264,3 +265,197 @@ def test_verify_drawdown_limits(
     assert res_halt.status == RiskDecisionStatus.BLOCK
     assert res_halt.breached
     assert res_halt.reason_code == RiskReasonCode.DRAWDOWN_BREACH
+
+
+def test_drawdown_governor(
+    tmp_path: Any, base_portfolio: PortfolioState, base_config: RiskConfig
+) -> None:
+    """Verify DrawdownGovernor class orchestration wrapper behaves as expected."""
+    from app.services.risk.drawdown import DrawdownGovernor, RiskStepDownState
+    from app.services.risk.models import DrawdownState
+
+    gov = DrawdownGovernor(base_config)
+    assert gov.config == base_config
+
+    # Daily drawdown calculation
+    base_portfolio.equity = Decimal("9500.00")
+    assert gov.calculate_daily_drawdown(base_portfolio, Decimal("10000.00")) == Decimal(
+        "0.05"
+    )
+
+    # Total drawdown calculation
+    assert gov.calculate_total_drawdown(base_portfolio, Decimal("10000.00")) == Decimal(
+        "0.05"
+    )
+
+    # Strategy drawdown calculation
+    base_portfolio.positions = [
+        PositionState(
+            position_id="pos-1",
+            symbol="EURUSD",
+            direction="long",
+            quantity=Decimal("1.0"),
+            entry_price=Decimal("1.1000"),
+            current_price=Decimal("1.0950"),
+            floating_pnl=Decimal("-500.00"),
+            margin_required=Decimal("1000.0"),
+            strategy_id="TF-01",
+            open_time=datetime.now(UTC),
+        )
+    ]
+    assert gov.calculate_strategy_drawdown(
+        "TF-01", base_portfolio, Decimal("5000.00")
+    ) == Decimal("0.10")
+
+    # Clear positions to reset strategy drawdown for subsequent governor checks
+    base_portfolio.positions = []
+
+    # Drawdown throttling determination
+    state, mult = gov.determine_drawdown_throttling(
+        Decimal("0.06"), Decimal("0.05"), Decimal("0.10")
+    )
+    assert state == RiskStepDownState.DEFENSIVE
+    assert mult == Decimal("0.5")
+
+    # Apply drawdown throttle wrapper
+    trade = ProposedTrade(
+        strategy_id="TF-01", symbol="EURUSD", side="buy", volume=Decimal("1.0")
+    )
+    res = gov.apply_drawdown_throttle(
+        portfolio_state=base_portfolio,
+        proposed_trade=trade,
+        market_context={"peak_balance": 10000.0, "historical_avg_volume": 2.0},
+    )
+    assert res.status == RiskDecisionStatus.REDUCE_SIZE
+
+    # Persist and restore
+    state_file = tmp_path / "gov_state.json"
+    state_obj = DrawdownState(
+        current_drawdown=Decimal("0.02"),
+        soft_limit=Decimal("0.05"),
+        hard_limit=Decimal("0.10"),
+        multiplier=Decimal("1.0"),
+    )
+    gov.persist_state(state_obj, state_file)
+    restored = gov.restore_state(state_file)
+    assert restored is not None
+    assert restored.current_drawdown == Decimal("0.02")
+
+
+def test_daily_loss_limit_rejections(
+    base_portfolio: PortfolioState, base_config: RiskConfig
+) -> None:
+    """Verify daily hard loss limit rejections."""
+    # Start balance 10000, current equity 8500 -> 15% loss
+    base_portfolio.equity = Decimal("8500.00")
+    trade = ProposedTrade(
+        strategy_id="TF-01", symbol="EURUSD", side="buy", volume=Decimal("1.0")
+    )
+
+    # Config has max_daily_loss_pct = 0.05
+    base_config.max_daily_loss_pct = Decimal("0.05")
+
+    res = apply_drawdown_throttle(
+        portfolio_state=base_portfolio,
+        proposed_trade=trade,
+        market_context={"daily_start_balance": 10000.0, "historical_avg_volume": 1.0},
+        config=base_config,
+    )
+    assert res.status == RiskDecisionStatus.BLOCK
+    assert res.breached
+    assert res.reason_code == RiskReasonCode.DAILY_LOSS_BREACH
+
+
+def test_strategy_loss_limit_restrictions(
+    base_portfolio: PortfolioState, base_config: RiskConfig
+) -> None:
+    """Verify strategy-level drawdown restrictions and rejections."""
+    base_portfolio.positions = [
+        PositionState(
+            position_id="pos-1",
+            symbol="EURUSD",
+            direction="long",
+            quantity=Decimal("1.0"),
+            entry_price=Decimal("1.1000"),
+            current_price=Decimal("1.0950"),
+            floating_pnl=Decimal("-500.00"),
+            margin_required=Decimal("1000.0"),
+            strategy_id="TF-01",
+            open_time=datetime.now(UTC),
+        )
+    ]
+    trade = ProposedTrade(
+        strategy_id="TF-01", symbol="EURUSD", side="buy", volume=Decimal("1.0")
+    )
+
+    # Set strategy loss limit to 5% (0.05) in config experimental features
+    base_config.experimental_features["max_strategy_loss_pct"] = Decimal("0.05")
+
+    res = apply_drawdown_throttle(
+        portfolio_state=base_portfolio,
+        proposed_trade=trade,
+        market_context={"historical_avg_volume": 2.0},
+        config=base_config,
+    )
+    assert res.status == RiskDecisionStatus.REJECT
+    assert res.breached
+    assert "Strategy loss limit breached" in res.message
+
+
+def test_drawdown_reset_approval_requirements(
+    base_portfolio: PortfolioState, base_config: RiskConfig
+) -> None:
+    """Verify that a drawdown reset requires a valid approval token."""
+    trade = ProposedTrade(
+        strategy_id="TF-01", symbol="EURUSD", side="buy", volume=Decimal("1.0")
+    )
+
+    # Attempting reset without token -> BLOCK
+    res_no_token = apply_drawdown_throttle(
+        portfolio_state=base_portfolio,
+        proposed_trade=trade,
+        market_context={"reset_drawdown": True},
+        config=base_config,
+    )
+    assert res_no_token.status == RiskDecisionStatus.BLOCK
+    assert res_no_token.reason_code == RiskReasonCode.APPROVAL_REQUIRED
+
+    # Reset with valid token -> passes drawdown limit check
+    # (runs normal total drawdown check)
+    res_with_token = apply_drawdown_throttle(
+        portfolio_state=base_portfolio,
+        proposed_trade=trade,
+        market_context={
+            "reset_drawdown": True,
+            "approval_token_valid": True,
+            "historical_avg_volume": 1.0,
+        },
+        config=base_config,
+    )
+    assert res_with_token.status == RiskDecisionStatus.APPROVE
+
+
+def test_revenge_trading_simulation_bypass(
+    base_portfolio: PortfolioState, base_config: RiskConfig
+) -> None:
+    """Verify that revenge trading check is bypassed under simulation policy."""
+    base_portfolio.equity = Decimal("9400.00")
+    trade = ProposedTrade(
+        strategy_id="TF-01", symbol="EURUSD", side="buy", volume=Decimal("1.0")
+    )
+
+    # Bypassed when mode is simulation AND allow_revenge_trading
+    # is configured -> REDUCE_SIZE
+    res_bypass = apply_drawdown_throttle(
+        portfolio_state=base_portfolio,
+        proposed_trade=trade,
+        market_context={
+            "peak_balance": 10000.0,
+            "historical_avg_volume": 1.0,
+            "mode": "simulation",
+            "allow_revenge_trading": True,
+        },
+        config=base_config,
+    )
+    assert res_bypass.status == RiskDecisionStatus.REDUCE_SIZE
+    assert not res_bypass.breached

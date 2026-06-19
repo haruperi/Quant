@@ -11,12 +11,15 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
+from pydantic import Field
+
 from app.services.risk.models import (
     PolicyEnforcementResult,
     PolicyRule,
     PolicyScope,
     RiskApprovalToken,
     RiskConfig,
+    RiskContract,
     RiskDecisionStatus,
 )
 from app.utils.logger import logger
@@ -96,6 +99,19 @@ def _apply_overrides(
     # Precedence Rules sorting (lowest specificity first so highest overrides last)
     matched_rules.sort(key=lambda r: get_rule_specificity_score(r.scope))
 
+    # Map flat keys to their nested path in config_dict
+    nested_map = {
+        "max_risk_per_trade": ("risk", "max_risk_per_trade"),
+        "max_margin_utilization_pct": ("risk", "max_margin_usage"),
+        "max_daily_loss_pct": ("drawdown", "daily_loss_hard_limit"),
+        "max_total_loss_pct": ("drawdown", "total_drawdown_hard_limit"),
+        "correlation_threshold": ("correlation", "reject_threshold"),
+        "var_confidence": ("tail_risk", "var_confidence"),
+        "es_confidence": ("tail_risk", "es_confidence"),
+        "max_stress_loss_pct": ("tail_risk", "stress_loss_limit"),
+        "m1_spread_to_sigma_ratio_filter": ("execution", "max_spread_to_sigma"),
+    }
+
     config_dict = base_config.model_dump()
     for rule in matched_rules:
         for key, val in rule.overrides.items():
@@ -111,6 +127,15 @@ def _apply_overrides(
                     config_dict[key] = bool(val)
                 else:
                     config_dict[key] = val
+
+                # Propagate flat field override to nested config dictionary if mapped
+                if key in nested_map:
+                    nested_name, nested_sub_name = nested_map[key]
+                    if nested_name in config_dict and isinstance(
+                        config_dict[nested_name], dict
+                    ):
+                        config_dict[nested_name][nested_sub_name] = config_dict[key]
+
     return config_dict
 
 
@@ -223,6 +248,8 @@ def resolve_policy(
         policy_hash=policy_hash,
         resolved_config=resolved_config,
         breaches=breaches,
+        policy_version=context.get("policy_version") or "v1-default",
+        policy_scope=context,
     )
 
 
@@ -250,11 +277,21 @@ def validate_override_token(
 
     # 2. Check config compatibility (Task 233)
     if token.config_hash != active_config_hash:
-        logger.warning(
-            f"Override token '{token.token_id}' has mismatched config hash "
-            f"(token: {token.config_hash}, active: {active_config_hash})."
-        )
-        return False
+        compatible_hashes = token.scope.get("compatible_config_hashes", [])
+        if (
+            isinstance(compatible_hashes, list)
+            and active_config_hash in compatible_hashes
+        ):
+            logger.info(
+                f"Override token '{token.token_id}' config mismatch explicitly allowed "
+                f"by governed compatibility (active: {active_config_hash})."
+            )
+        else:
+            logger.warning(
+                f"Override token '{token.token_id}' has mismatched config hash "
+                f"(token: {token.config_hash}, active: {active_config_hash})."
+            )
+            return False
 
     # 3. Check scope alignment
     for key, expected_val in expected_scope.items():
@@ -344,3 +381,120 @@ def validate_risk_policy(config: RiskConfig) -> None:
     if not isinstance(config, RiskConfig):
         raise ValidationError("Invalid RiskConfig object.")
     _validate_ceilings(config.model_dump())
+
+
+class RiskPolicy(RiskContract):
+    """Canonical model for a risk policy specification."""
+
+    policy_id: str = Field(..., description="Unique policy identifier.")
+    profile_name: str = Field(
+        ..., description="Target risk configuration profile name."
+    )
+    rules: list[PolicyRule] = Field(
+        default_factory=list, description="Associated policy override rules."
+    )
+
+
+class PolicyVersion(RiskContract):
+    """Metadata tracking policy schema and release versions."""
+
+    version_id: str = Field(..., description="Unique version identifier.")
+    author: str = Field(
+        ..., description="Author or system entity releasing this version."
+    )
+    created_at: str = Field(
+        default_factory=lambda: utc_now().isoformat(),
+        description="Version creation timestamp.",
+    )
+
+
+class PolicyBundle(RiskContract):
+    """Consolidated bundle of active risk policies and rules."""
+
+    bundle_id: str = Field(..., description="Unique identifier for the bundle.")
+    version: PolicyVersion = Field(..., description="Version details.")
+    policies: list[RiskPolicy] = Field(
+        default_factory=list, description="List of wrapped policies."
+    )
+
+
+class PolicyResolutionQuery(RiskContract):
+    """Context query parameters for resolving a policy enforcement state."""
+
+    environment: str = Field(
+        ..., description="Target environment (e.g. production, staging, local)."
+    )
+    mode: str = Field(..., description="Execution mode (e.g. live_readonly, paper).")
+    account_id: str | None = Field(default=None, description="Account scope.")
+    strategy_id: str | None = Field(default=None, description="Strategy scope.")
+    symbol: str | None = Field(default=None, description="Symbol scope.")
+    currency: str | None = Field(default=None, description="Currency scope.")
+    workflow_id: str | None = Field(default=None, description="Workflow scope.")
+    operator_role: str | None = Field(default=None, description="Operator role scope.")
+
+
+class PolicyOverrideRequest(RiskContract):
+    """Governed request to override config parameters with signed token."""
+
+    request_id: str = Field(..., description="Associated request ID.")
+    token: RiskApprovalToken = Field(
+        ..., description="Governed override approval token."
+    )
+    target_overrides: dict[str, Any] = Field(
+        ..., description="Requested parameter overrides."
+    )
+
+
+class RiskPolicyEngine:
+    """Core engine for matching and enforcing risk policies-as-code."""
+
+    def __init__(self, bundle: PolicyBundle) -> None:
+        self.bundle = bundle
+
+    def resolve(
+        self, query: PolicyResolutionQuery, base_config: RiskConfig
+    ) -> PolicyEnforcementResult:
+        """Resolve policy overrides against base config and matching rules."""
+        context = query.model_dump()
+        rules: list[PolicyRule] = []
+        for policy in self.bundle.policies:
+            rules.extend(policy.rules)
+        res = resolve_policy(base_config, rules, context)
+        res.policy_version = self.bundle.version.version_id
+        res.policy_scope = context
+        return res
+
+
+def resolve_risk_policy(
+    base_config: RiskConfig,
+    rules: list[PolicyRule],
+    context: dict[str, Any],
+) -> PolicyEnforcementResult:
+    """Resolve config by matching rules against context.
+
+    Wrapper for resolve_policy.
+    """
+    return resolve_policy(base_config, rules, context)
+
+
+def check_policy_permission(role: str, action: str, env: str) -> bool:
+    """Check if the operator role has permission to execute the action in env."""
+    env_lower = env.lower()
+    role_lower = role.lower()
+
+    if env_lower in {"staging", "production"}:
+        allowed_roles = {"admin", "compliance_officer", "risk_manager"}
+        if role_lower not in allowed_roles:
+            return False
+        return not (
+            action == "force_resume"
+            and role_lower not in {"admin", "compliance_officer"}
+        )
+
+    return role_lower in {
+        "admin",
+        "compliance_officer",
+        "risk_manager",
+        "developer",
+        "operator",
+    }

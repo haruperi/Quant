@@ -7,9 +7,8 @@ governance gates before execution feasibility and tail-risk exposure checks.
 from __future__ import annotations
 
 import math
-from collections.abc import Callable
 from decimal import Decimal
-from typing import Any
+from typing import Any, Protocol
 
 from pydantic import Field
 
@@ -25,6 +24,16 @@ from app.services.risk.models import (
 )
 from app.utils.logger import logger
 from app.utils.normalization import to_utc_datetime, utc_now
+
+
+class LimitCheck(Protocol):
+    """Protocol representing a single deterministic pre-trade risk limit check."""
+
+    def __call__(
+        self, request: RiskAssessmentRequest, config: RiskConfig, /
+    ) -> LimitResult:
+        """Evaluate the limit check."""
+        ...
 
 
 class LimitResult(RiskContract):
@@ -186,6 +195,15 @@ def check_stale_evidence_limit(
 
     fresh_dt = to_utc_datetime(freshness)
     age = (now - fresh_dt).total_seconds()
+    if not math.isfinite(age) or not math.isfinite(stale_limit):
+        return LimitResult(
+            limit_name="stale_evidence",
+            status=RiskDecisionStatus.BLOCK,
+            reason_code=RiskReasonCode.UNEXPECTED_ERROR,
+            message="Freshness calculation resolved to non-finite value.",
+            severity=RiskSeverity.CRITICAL_BREACH,
+            breached=True,
+        )
     if age > stale_limit:
         status = (
             RiskDecisionStatus.BLOCK
@@ -226,7 +244,11 @@ def check_max_drawdown_limit(
         )
 
     drawdown = Decimal(str(drawdown))
-    if not math.isfinite(drawdown):
+    if (
+        not math.isfinite(float(drawdown))
+        or not math.isfinite(float(config.max_total_loss_pct))
+        or not math.isfinite(float(config.max_total_loss_pct_advisory))
+    ):
         return LimitResult(
             limit_name="max_drawdown_limit",
             status=RiskDecisionStatus.BLOCK,
@@ -300,7 +322,9 @@ def check_daily_loss_limit(
         )
 
     daily_loss_pct = Decimal(str(daily_loss_pct))
-    if not math.isfinite(daily_loss_pct):
+    if not math.isfinite(float(daily_loss_pct)) or not math.isfinite(
+        float(config.max_daily_loss_pct)
+    ):
         return LimitResult(
             limit_name="daily_loss_limit",
             status=RiskDecisionStatus.BLOCK,
@@ -360,6 +384,17 @@ def check_strategy_loss_limit(
         )
 
     strat_loss_pct = Decimal(str(strat_loss_pct))
+    if not math.isfinite(float(strat_loss_pct)) or not math.isfinite(
+        float(strat_limit)
+    ):
+        return LimitResult(
+            limit_name="strategy_loss_limit",
+            status=RiskDecisionStatus.BLOCK,
+            reason_code=RiskReasonCode.UNEXPECTED_ERROR,
+            message="Strategy loss calculation resolved to non-finite value.",
+            severity=RiskSeverity.CRITICAL_BREACH,
+            breached=True,
+        )
     if strat_loss_pct >= strat_limit:
         return LimitResult(
             limit_name="strategy_loss_limit",
@@ -453,6 +488,15 @@ def check_spread_limit(
         )
 
     spread = Decimal(str(spread))
+    if not math.isfinite(float(spread)) or not math.isfinite(float(max_spread)):
+        return LimitResult(
+            limit_name="spread_limit",
+            status=RiskDecisionStatus.BLOCK,
+            reason_code=RiskReasonCode.UNEXPECTED_ERROR,
+            message="Spread calculation resolved to non-finite value.",
+            severity=RiskSeverity.CRITICAL_BREACH,
+            breached=True,
+        )
     if spread > max_spread:
         return LimitResult(
             limit_name="spread_limit",
@@ -493,6 +537,15 @@ def check_slippage_limit(
         )
 
     slippage = Decimal(str(slippage))
+    if not math.isfinite(float(slippage)) or not math.isfinite(float(max_slippage)):
+        return LimitResult(
+            limit_name="slippage_limit",
+            status=RiskDecisionStatus.BLOCK,
+            reason_code=RiskReasonCode.UNEXPECTED_ERROR,
+            message="Slippage calculation resolved to non-finite value.",
+            severity=RiskSeverity.CRITICAL_BREACH,
+            breached=True,
+        )
     if slippage > max_slippage:
         return LimitResult(
             limit_name="slippage_limit",
@@ -532,6 +585,26 @@ def check_trade_frequency_limit(
             breached=False,
         )
 
+    try:
+        freq_f = float(freq)
+    except (ValueError, TypeError) as e:
+        return LimitResult(
+            limit_name="trade_frequency_limit",
+            status=RiskDecisionStatus.BLOCK,
+            reason_code=RiskReasonCode.INVALID_INPUT,
+            message=f"Invalid trade frequency input: {e}",
+            severity=RiskSeverity.CRITICAL_BREACH,
+            breached=True,
+        )
+    if not math.isfinite(float(freq_f)) or not math.isfinite(float(max_freq)):
+        return LimitResult(
+            limit_name="trade_frequency_limit",
+            status=RiskDecisionStatus.BLOCK,
+            reason_code=RiskReasonCode.UNEXPECTED_ERROR,
+            message="Trade frequency calculation resolved to non-finite value.",
+            severity=RiskSeverity.CRITICAL_BREACH,
+            breached=True,
+        )
     if int(freq) > max_freq:
         return LimitResult(
             limit_name="trade_frequency_limit",
@@ -573,6 +646,26 @@ def check_pending_order_limit(
             breached=False,
         )
 
+    try:
+        pending_f = float(pending_count)
+    except (ValueError, TypeError) as e:
+        return LimitResult(
+            limit_name="pending_order_limit",
+            status=RiskDecisionStatus.BLOCK,
+            reason_code=RiskReasonCode.INVALID_INPUT,
+            message=f"Invalid pending orders count input: {e}",
+            severity=RiskSeverity.CRITICAL_BREACH,
+            breached=True,
+        )
+    if not math.isfinite(float(pending_f)) or not math.isfinite(float(max_pending)):
+        return LimitResult(
+            limit_name="pending_order_limit",
+            status=RiskDecisionStatus.BLOCK,
+            reason_code=RiskReasonCode.UNEXPECTED_ERROR,
+            message="Pending orders count calculation resolved to non-finite value.",
+            severity=RiskSeverity.CRITICAL_BREACH,
+            breached=True,
+        )
     if int(pending_count) > max_pending:
         return LimitResult(
             limit_name="pending_order_limit",
@@ -624,6 +717,19 @@ def check_portfolio_exposure_limit(
             breached=True,
         )
 
+    if (
+        not math.isfinite(float(total_exposure))
+        or not math.isfinite(float(equity))
+        or not math.isfinite(float(max_portfolio_exposure))
+    ):
+        return LimitResult(
+            limit_name="portfolio_exposure_limit",
+            status=RiskDecisionStatus.BLOCK,
+            reason_code=RiskReasonCode.UNEXPECTED_ERROR,
+            message="Portfolio exposure calculation resolved to non-finite value.",
+            severity=RiskSeverity.CRITICAL_BREACH,
+            breached=True,
+        )
     ratio = total_exposure / equity
     if ratio > max_portfolio_exposure:
         return LimitResult(
@@ -693,6 +799,19 @@ def check_symbol_exposure_limit(
             breached=True,
         )
 
+    if (
+        not math.isfinite(float(total_exposure))
+        or not math.isfinite(float(equity))
+        or not math.isfinite(float(max_symbol_exposure))
+    ):
+        return LimitResult(
+            limit_name="symbol_exposure_limit",
+            status=RiskDecisionStatus.BLOCK,
+            reason_code=RiskReasonCode.UNEXPECTED_ERROR,
+            message="Symbol exposure calculation resolved to non-finite value.",
+            severity=RiskSeverity.CRITICAL_BREACH,
+            breached=True,
+        )
     ratio = total_exposure / equity
     if ratio > max_symbol_exposure:
         return LimitResult(
@@ -741,6 +860,19 @@ def check_currency_exposure_limit(
             breached=True,
         )
 
+    if (
+        not math.isfinite(float(gross_ccy_exposure))
+        or not math.isfinite(float(equity))
+        or not math.isfinite(float(max_ccy_exposure))
+    ):
+        return LimitResult(
+            limit_name="currency_exposure_limit",
+            status=RiskDecisionStatus.BLOCK,
+            reason_code=RiskReasonCode.UNEXPECTED_ERROR,
+            message="Currency exposure calculation resolved to non-finite value.",
+            severity=RiskSeverity.CRITICAL_BREACH,
+            breached=True,
+        )
     ratio = gross_ccy_exposure / equity
     if ratio > max_ccy_exposure:
         return LimitResult(
@@ -770,7 +902,42 @@ def check_currency_exposure_limit(
 def check_correlation_limit(
     request: RiskAssessmentRequest, _config: RiskConfig
 ) -> LimitResult:
-    """Check if gross exposure in highly correlated clusters exceeds limits."""
+    """Check if cluster exposure or correlation exceeds limits."""
+    # 1. Check individual correlation limit (correlation_limit)
+    portfolio_corr = Decimal(
+        str(request.market_context.get("portfolio_correlation", "0.0"))
+    )
+    max_corr = _config.correlation_threshold
+    reject_thresh = min(
+        Decimal("0.95"),
+        max(Decimal("0.80"), max_corr * Decimal("1.5")),
+    )
+
+    if not math.isfinite(float(portfolio_corr)) or not math.isfinite(float(max_corr)):
+        return LimitResult(
+            limit_name="correlation_limit",
+            status=RiskDecisionStatus.BLOCK,
+            reason_code=RiskReasonCode.UNEXPECTED_ERROR,
+            message="Correlation calculation resolved to non-finite value.",
+            severity=RiskSeverity.CRITICAL_BREACH,
+            breached=True,
+        )
+
+    if abs(portfolio_corr) >= reject_thresh:
+        return LimitResult(
+            limit_name="correlation_limit",
+            status=RiskDecisionStatus.REJECT,
+            reason_code=RiskReasonCode.CORRELATION_BREACH,
+            message=(
+                f"Proposed trade individual correlation {portfolio_corr:.2f} exceeds "
+                f"hard rejection ceiling of {reject_thresh:.2f}."
+            ),
+            severity=RiskSeverity.HARD_BREACH,
+            breached=True,
+            details={"marginal_correlation": float(portfolio_corr)},
+        )
+
+    # 2. Check cluster exposure limit (correlated_cluster_limit)
     cluster_exposure = Decimal(
         str(request.market_context.get("correlated_cluster_exposure", "0.0"))
     )
@@ -789,6 +956,19 @@ def check_correlation_limit(
             breached=True,
         )
 
+    if (
+        not math.isfinite(float(cluster_exposure))
+        or not math.isfinite(float(equity))
+        or not math.isfinite(float(max_cluster_exposure))
+    ):
+        return LimitResult(
+            limit_name="correlated_cluster_limit",
+            status=RiskDecisionStatus.BLOCK,
+            reason_code=RiskReasonCode.UNEXPECTED_ERROR,
+            message="Correlation exposure calculation resolved to non-finite value.",
+            severity=RiskSeverity.CRITICAL_BREACH,
+            breached=True,
+        )
     ratio = cluster_exposure / equity
     if ratio > max_cluster_exposure:
         return LimitResult(
@@ -808,7 +988,7 @@ def check_correlation_limit(
         limit_name="correlated_cluster_limit",
         status=RiskDecisionStatus.APPROVE,
         reason_code=RiskReasonCode.OK,
-        message="Correlated cluster exposure is within safe limits.",
+        message="Correlated cluster and individual correlation are within safe limits.",
         severity=RiskSeverity.INFO,
         breached=False,
     )
@@ -832,7 +1012,11 @@ def check_var_limit(request: RiskAssessmentRequest, _config: RiskConfig) -> Limi
         )
 
     var_val = Decimal(str(var_val))
-    if not math.isfinite(var_val):
+    if (
+        not math.isfinite(float(var_val))
+        or not math.isfinite(float(equity))
+        or not math.isfinite(float(max_var_ratio))
+    ):
         return LimitResult(
             limit_name="var_limit",
             status=RiskDecisionStatus.BLOCK,
@@ -894,7 +1078,11 @@ def check_expected_shortfall_limit(
         )
 
     es_val = Decimal(str(es_val))
-    if not math.isfinite(es_val):
+    if (
+        not math.isfinite(float(es_val))
+        or not math.isfinite(float(equity))
+        or not math.isfinite(float(max_es_ratio))
+    ):
         return LimitResult(
             limit_name="expected_shortfall_limit",
             status=RiskDecisionStatus.BLOCK,
@@ -960,7 +1148,11 @@ def check_stress_loss_limit(
         )
 
     stress_val = Decimal(str(stress_val))
-    if not math.isfinite(stress_val):
+    if (
+        not math.isfinite(float(stress_val))
+        or not math.isfinite(float(equity))
+        or not math.isfinite(float(max_stress_ratio))
+    ):
         return LimitResult(
             limit_name="stress_loss_limit",
             status=RiskDecisionStatus.BLOCK,
@@ -1018,7 +1210,9 @@ def check_leverage_limit(
         leverage = gross / equity if equity > 0 else Decimal(0)
 
     leverage = Decimal(str(leverage))
-    if not math.isfinite(leverage):
+    if not math.isfinite(float(leverage)) or not math.isfinite(
+        float(config.max_effective_leverage)
+    ):
         return LimitResult(
             limit_name="leverage_limit",
             status=RiskDecisionStatus.BLOCK,
@@ -1071,7 +1265,12 @@ def check_margin_limit(
         )
 
     ratio = margin_used / equity
-    if not math.isfinite(ratio):
+    if (
+        not math.isfinite(float(ratio))
+        or not math.isfinite(float(equity))
+        or not math.isfinite(float(margin_used))
+        or not math.isfinite(float(config.max_margin_utilization_pct))
+    ):
         return LimitResult(
             limit_name="margin_limit",
             status=RiskDecisionStatus.BLOCK,
@@ -1106,9 +1305,7 @@ def check_margin_limit(
 
 
 # --- Sequence definition ---
-ORDERED_LIMIT_CHECKS: tuple[
-    Callable[[RiskAssessmentRequest, RiskConfig], LimitResult], ...
-] = (
+ORDERED_LIMIT_CHECKS: tuple[LimitCheck, ...] = (
     check_kill_switch_state,
     check_stale_evidence_limit,
     check_max_drawdown_limit,
@@ -1131,6 +1328,74 @@ ORDERED_LIMIT_CHECKS: tuple[
     check_margin_limit,
 )
 
+REGISTERED_LIMIT_NAMES: set[str] = {
+    "kill_switch_state",
+    "stale_evidence",
+    "max_drawdown_limit",
+    "daily_loss_limit",
+    "strategy_loss_limit",
+    "news_blackout",
+    "rollover_blackout",
+    "spread_limit",
+    "slippage_limit",
+    "trade_frequency_limit",
+    "pending_order_limit",
+    "portfolio_exposure_limit",
+    "symbol_exposure_limit",
+    "currency_exposure_limit",
+    "correlated_cluster_limit",
+    "var_limit",
+    "expected_shortfall_limit",
+    "stress_loss_limit",
+    "leverage_limit",
+    "margin_limit",
+    "check_kill_switch_state",
+    "check_stale_evidence_limit",
+    "check_max_drawdown_limit",
+    "check_daily_loss_limit",
+    "check_strategy_loss_limit",
+    "check_news_blackout",
+    "check_rollover_blackout",
+    "check_spread_limit",
+    "check_slippage_limit",
+    "check_trade_frequency_limit",
+    "check_pending_order_limit",
+    "check_portfolio_exposure_limit",
+    "check_symbol_exposure_limit",
+    "check_currency_exposure_limit",
+    "check_correlation_limit",
+    "check_var_limit",
+    "check_expected_shortfall_limit",
+    "check_stress_loss_limit",
+    "check_leverage_limit",
+    "check_margin_limit",
+    "stale_evidence_limit",
+    "correlation_limit",
+}
+
+FUNCTION_TO_LIMIT_NAMES: dict[LimitCheck, set[str]] = {
+    check_kill_switch_state: {"kill_switch_state"},
+    check_stale_evidence_limit: {"stale_evidence", "stale_evidence_limit"},
+    check_max_drawdown_limit: {"max_drawdown_limit"},
+    check_daily_loss_limit: {"daily_loss_limit"},
+    check_strategy_loss_limit: {"strategy_loss_limit"},
+    check_news_blackout: {"news_blackout"},
+    check_rollover_blackout: {"rollover_blackout"},
+    check_spread_limit: {"spread_limit"},
+    check_slippage_limit: {"slippage_limit"},
+    check_trade_frequency_limit: {"trade_frequency_limit"},
+    check_pending_order_limit: {"pending_order_limit"},
+    check_portfolio_exposure_limit: {"portfolio_exposure_limit"},
+    check_symbol_exposure_limit: {"symbol_exposure_limit"},
+    check_currency_exposure_limit: {"currency_exposure_limit"},
+    check_correlation_limit: {"correlated_cluster_limit", "correlation_limit"},
+    check_var_limit: {"var_limit"},
+    check_expected_shortfall_limit: {"expected_shortfall_limit"},
+    check_stress_loss_limit: {"stress_loss_limit"},
+    check_leverage_limit: {"leverage_limit"},
+    check_margin_limit: {"margin_limit"},
+}
+
 
 class LimitEngine:
     """Consolidated runner executing and aggregating limits check pipelines."""
@@ -1148,17 +1413,58 @@ class LimitEngine:
         Returns:
             list[LimitResult]: Result outcomes of all checkpoints.
         """
+        enabled_limits = request.market_context.get("enabled_limits")
+        run_limits = request.market_context.get("run_limits")
+
+        checked_limits: list[Any] = []
+        if isinstance(enabled_limits, list | tuple | set):
+            checked_limits.extend(enabled_limits)
+        if isinstance(run_limits, list | tuple | set):
+            checked_limits.extend(run_limits)
+
+        unknown_names = [
+            name for name in checked_limits if name not in REGISTERED_LIMIT_NAMES
+        ]
+        if unknown_names:
+            logger.error(f"Unknown limit name(s) in request: {unknown_names}")
+            msg = (
+                f"Unknown limit name(s) in run_limits/enabled_limits: "
+                f"{', '.join(map(str, unknown_names))}"
+            )
+            return [
+                LimitResult(
+                    limit_name="invalid_limit_name",
+                    status=RiskDecisionStatus.BLOCK,
+                    reason_code=RiskReasonCode.INVALID_INPUT,
+                    message=msg,
+                    severity=RiskSeverity.CRITICAL_BREACH,
+                    breached=True,
+                )
+            ]
+
+        run_set = set(checked_limits)
+
         results = []
         for check_func in ORDERED_LIMIT_CHECKS:
+            func_name = getattr(check_func, "__name__", "")
+            if run_set:
+                func_names = {
+                    func_name,
+                    func_name.replace("check_", ""),
+                }
+                func_names.update(FUNCTION_TO_LIMIT_NAMES.get(check_func, set()))
+                if not (func_names & run_set):
+                    continue
+
             try:
                 res = check_func(request, self.config)
                 results.append(res)
             except Exception as e:  # noqa: BLE001
                 # Wrap calculation failure
-                logger.error(f"Limit check failure in '{check_func.__name__}': {e}")
+                logger.error(f"Limit check failure in '{func_name}': {e}")
                 results.append(
                     LimitResult(
-                        limit_name=check_func.__name__.replace("check_", ""),
+                        limit_name=func_name.replace("check_", ""),
                         status=RiskDecisionStatus.BLOCK,
                         reason_code=RiskReasonCode.UNEXPECTED_ERROR,
                         message=f"Limit check calculation failed: {e}",
@@ -1195,30 +1501,38 @@ def run_limit_checks(
     results = engine.execute(request)
 
     # Precedence scoring:
-    # blocked > reject > needs_more_evidence > needs_approval > reduce_size > ok
+    # blocked > fail > needs_more_evidence > warn > pass
+    # 0: BLOCK (blocked)
+    # 1: REJECT (fail)
+    # 2: NEEDS_MORE_EVIDENCE
+    # 3: NEEDS_APPROVAL / REDUCE_SIZE / WARNING (warn)
+    # 4: APPROVE / OK (pass)
     aggregated_status = RiskDecisionStatus.APPROVE
     reason_code = RiskReasonCode.OK
     message = "All limit checks cleared."
     primary_failure_limit = ""
     composite_breach_flags = []
 
-    status_score = {
-        RiskDecisionStatus.BLOCK: 0,
-        RiskDecisionStatus.REJECT: 1,
-        RiskDecisionStatus.NEEDS_MORE_EVIDENCE: 2,
-        RiskDecisionStatus.NEEDS_APPROVAL: 3,
-        RiskDecisionStatus.REDUCE_SIZE: 4,
-        RiskDecisionStatus.APPROVE: 5,
+    status_ranks = {
+        RiskDecisionStatus.BLOCK: 0.0,
+        RiskDecisionStatus.REJECT: 1.0,
+        RiskDecisionStatus.NEEDS_MORE_EVIDENCE: 2.0,
+        RiskDecisionStatus.NEEDS_APPROVAL: 3.0,
+        RiskDecisionStatus.REDUCE_SIZE: 3.5,
     }
+
+    worst_rank = 4.0
 
     for res in results:
         if res.breached or res.status != RiskDecisionStatus.APPROVE:
             composite_breach_flags.append(res.limit_name)
 
-        current_score = status_score.get(res.status, 5)
-        worst_score = status_score.get(aggregated_status, 5)
+        current_rank = status_ranks.get(res.status, 4.0)
+        if res.severity == RiskSeverity.WARNING and res.breached:
+            current_rank = 3.8
 
-        if current_score < worst_score:
+        if current_rank < worst_rank:
+            worst_rank = current_rank
             aggregated_status = res.status
             reason_code = res.reason_code
             message = res.message

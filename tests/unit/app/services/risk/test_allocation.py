@@ -12,11 +12,18 @@ from typing import Any
 
 import pytest
 from app.services.risk import (
+    AllocationMethod,
+    AllocationReviewRequest,
     PortfolioState,
     ProposedAllocation,
+    RiskAllocator,
     RiskConfig,
     RiskDecisionStatus,
     RiskReasonCode,
+    calculate_correlation_adjusted_budget,
+    calculate_equal_risk_budget,
+    calculate_regime_weighted_budget,
+    calculate_volatility_parity_budget,
 )
 from app.services.risk.allocation import (
     apply_drawdown_adjustment,
@@ -224,3 +231,207 @@ def test_verify_allocation_limits_increase_governance(
     )
     assert res_approved.status == RiskDecisionStatus.APPROVE
     assert not res_approved.breached
+
+
+def test_budget_calculation_functions() -> None:
+    """Test standalone budget calculation functions."""
+    strategies = ["strat1", "strat2"]
+    volatilities = {"strat1": Decimal("0.02"), "strat2": Decimal("0.02")}
+    correlation_matrix = {
+        "strat1": {"strat2": Decimal("0.5")},
+        "strat2": {"strat1": Decimal("0.5")},
+    }
+    budget = Decimal("1000.00")
+
+    equal = calculate_equal_risk_budget(strategies, budget)
+    assert equal["strat1"] == Decimal("500.00")
+
+    vol = calculate_volatility_parity_budget(strategies, volatilities, budget)
+    assert vol["strat1"] == Decimal("500.00")
+
+    corr = calculate_correlation_adjusted_budget(
+        strategies, volatilities, correlation_matrix, budget
+    )
+    assert corr["strat1"] == Decimal("500.00")
+
+    regime = calculate_regime_weighted_budget(
+        strategies, volatilities, correlation_matrix, budget, Decimal("0.8")
+    )
+    assert regime["strat1"] == Decimal("400.00")
+
+
+def test_risk_allocator_calculate_allocated_budget(base_config: RiskConfig) -> None:
+    """Test RiskAllocator.calculate_allocated_budget options."""
+    allocator = RiskAllocator(base_config)
+    strategies = ["strat1", "strat2"]
+    volatilities = {"strat1": Decimal("0.02"), "strat2": Decimal("0.02")}
+    correlation_matrix = {
+        "strat1": {"strat2": Decimal("0.5")},
+        "strat2": {"strat1": Decimal("0.5")},
+    }
+    drawdown_multipliers = {"strat1": Decimal("0.5"), "strat2": Decimal("1.0")}
+    market_context: dict[str, Any] = {
+        "volatilities": volatilities,
+        "correlation_matrix": correlation_matrix,
+        "regime_multiplier": Decimal("0.5"),
+        "strategy_drawdown_multipliers": drawdown_multipliers,
+    }
+    budget = Decimal("1000.00")
+
+    # Equal risk
+    allocs = allocator.calculate_allocated_budget(
+        strategies, budget, market_context, AllocationMethod.EQUAL_RISK
+    )
+    assert allocs["strat1"] == Decimal("500.00")
+
+    # Volatility parity
+    allocs = allocator.calculate_allocated_budget(
+        strategies, budget, market_context, AllocationMethod.VOLATILITY_PARITY
+    )
+    assert allocs["strat1"] == Decimal("500.00")
+
+    # Drawdown adjusted
+    allocs = allocator.calculate_allocated_budget(
+        strategies, budget, market_context, AllocationMethod.DRAWDOWN_ADJUSTED
+    )
+    assert allocs["strat1"] == Decimal("250.00")
+    assert allocs["strat2"] == Decimal("500.00")
+
+    # Default live logic
+    market_context["mode"] = "full_live"
+    base_config.allocation_method = "default"
+    allocs = allocator.calculate_allocated_budget(
+        strategies, budget, market_context, None
+    )
+    assert allocs["strat1"] == Decimal("500.00")
+
+
+def test_risk_allocator_review_limits(
+    base_portfolio: PortfolioState, base_config: RiskConfig
+) -> None:
+    """Test advanced limit validation rules."""
+    allocator = RiskAllocator(base_config)
+    proposal = ProposedAllocation(
+        allocations={"strat1": Decimal("3000.00"), "strat2": Decimal("3000.00")},
+        as_of=datetime.now(UTC),
+    )
+
+    # 1. Test symbol budget limits
+    market_context: dict[str, Any] = {
+        "strategy_to_symbols": {"strat1": ["EURUSD"], "strat2": ["GBPUSD"]},
+        "symbol_budget_limit": {"EURUSD": Decimal("2000.00")},
+    }
+    req = AllocationReviewRequest(
+        portfolio_state=base_portfolio,
+        proposal=proposal,
+        market_context=market_context,
+        config=base_config,
+    )
+    res = allocator.review_allocation(req)
+    assert res.status == RiskDecisionStatus.REJECT
+    assert "EURUSD" in res.message
+
+    # 2. Test currency budget limits
+    market_context = {
+        "strategy_to_currencies": {"strat1": "EUR", "strat2": "GBP"},
+        "currency_budget_limit": {"EUR": Decimal("2000.00")},
+    }
+    req = AllocationReviewRequest(
+        portfolio_state=base_portfolio,
+        proposal=proposal,
+        market_context=market_context,
+        config=base_config,
+    )
+    res = allocator.review_allocation(req)
+    assert res.status == RiskDecisionStatus.REJECT
+    assert "EUR" in res.message
+
+    # 3. Test correlation cluster limits
+    correlation_matrix = {
+        "strat1": {"strat2": Decimal("0.8")},
+        "strat2": {"strat1": Decimal("0.8")},
+    }
+    market_context = {
+        "correlation_matrix": correlation_matrix,
+        "cluster_budget_limit": {"cluster_0": Decimal("5000.00")},
+    }
+    req = AllocationReviewRequest(
+        portfolio_state=base_portfolio,
+        proposal=proposal,
+        market_context=market_context,
+        config=base_config,
+    )
+    res = allocator.review_allocation(req)
+    assert res.status == RiskDecisionStatus.REJECT
+    assert "correlation cluster" in res.message
+
+    # 4. Test VaR and Expected Shortfall limits
+    volatilities = {"strat1": Decimal("0.10"), "strat2": Decimal("0.10")}
+    market_context = {
+        "volatilities": volatilities,
+        "correlation_matrix": correlation_matrix,
+        "max_var_limit": Decimal("100.00"),
+    }
+    req = AllocationReviewRequest(
+        portfolio_state=base_portfolio,
+        proposal=proposal,
+        market_context=market_context,
+        config=base_config,
+    )
+    res = allocator.review_allocation(req)
+    assert res.status == RiskDecisionStatus.REJECT
+    assert res.reason_code == RiskReasonCode.VAR_BREACH
+
+    # 5. Test stress loss limits
+    market_context = {
+        "strategy_stress_factors": {
+            "strat1": Decimal("0.10"),
+            "strat2": Decimal("0.20"),
+        },
+        "max_stress_loss_limit": Decimal("500.00"),
+    }
+    req = AllocationReviewRequest(
+        portfolio_state=base_portfolio,
+        proposal=proposal,
+        market_context=market_context,
+        config=base_config,
+    )
+    res = allocator.review_allocation(req)
+    assert res.status == RiskDecisionStatus.REJECT
+    assert res.reason_code == RiskReasonCode.STRESS_BREACH
+
+    # 6. Test margin limits
+    market_context = {
+        "strategy_margin_factors": {
+            "strat1": Decimal("0.05"),
+            "strat2": Decimal("0.10"),
+        },
+        "max_margin_limit": Decimal("300.00"),
+    }
+    req = AllocationReviewRequest(
+        portfolio_state=base_portfolio,
+        proposal=proposal,
+        market_context=market_context,
+        config=base_config,
+    )
+    res = allocator.review_allocation(req)
+    assert res.status == RiskDecisionStatus.REJECT
+    assert res.reason_code == RiskReasonCode.MARGIN_BREACH
+
+    # 7. Test drawdown step-down limits
+    market_context = {
+        "strategy_drawdown_multipliers": {"strat1": Decimal("0.5")},
+    }
+    proposal_increase = ProposedAllocation(
+        allocations={"strat1": Decimal("3500.00"), "strat2": Decimal("3000.00")},
+        as_of=datetime.now(UTC),
+    )
+    req = AllocationReviewRequest(
+        portfolio_state=base_portfolio,
+        proposal=proposal_increase,
+        market_context=market_context,
+        config=base_config,
+    )
+    res = allocator.review_allocation(req)
+    assert res.status == RiskDecisionStatus.REJECT
+    assert res.reason_code == RiskReasonCode.DRAWDOWN_BREACH

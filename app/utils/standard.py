@@ -67,6 +67,10 @@ STANDARD_METADATA_KEYS = frozenset(
         "deletes",
         "trades",
         "requires_network",
+        "read_only",
+        "writes_file",
+        "modifies_database",
+        "places_trade",
     }
 )
 SENSITIVE_KEY_PATTERN = re.compile(
@@ -101,6 +105,10 @@ class StandardMetadata(TypedDict):
     deletes: bool
     trades: bool
     requires_network: bool
+    read_only: bool
+    writes_file: bool
+    modifies_database: bool
+    places_trade: bool
 
 
 class StandardResponse(TypedDict):
@@ -565,6 +573,12 @@ def build_metadata(
         "deletes": bool(deletes),
         "trades": bool(trades),
         "requires_network": bool(requires_network),
+        "read_only": bool(reads and not writes and not updates and not deletes),
+        "writes_file": bool(
+            name in {"generate_risk_report"} or name.endswith("_report")
+        ),
+        "modifies_database": bool(writes or updates or deletes),
+        "places_trade": bool(trades),
     }
 
 

@@ -920,3 +920,170 @@ def run_stress_scenario_analysis(
         market_context=market_context,
         config=config,
     )
+
+
+class StressTestingEngine:
+    """Engine for executing portfolio stress tests under various scenarios."""
+
+    def __init__(self, config: RiskConfig) -> None:
+        self.config = config
+        self.registry = build_default_scenario_registry()
+
+    def run_analysis(
+        self,
+        portfolio_state: PortfolioState,
+        market_context: dict[str, Any],
+        proposed_trade: ProposedTrade | None = None,
+    ) -> list[StressScenarioResult]:
+        """Run stress scenario analysis on the portfolio.
+
+        Args:
+            portfolio_state: Current portfolio state snapshot.
+            market_context: Live market details context dictionary.
+            proposed_trade: Candidate trade under evaluation.
+
+        Returns:
+            List of StressScenarioResult evaluation outcomes.
+        """
+        return self.registry.evaluate_portfolio(
+            portfolio_state=portfolio_state,
+            proposed_trade=proposed_trade,
+            market_context=market_context,
+            config=self.config,
+        )
+
+
+def evaluate_usd_shock(
+    portfolio_state: PortfolioState,
+    proposed_trade: ProposedTrade | None,
+    market_context: dict[str, Any],
+    config: RiskConfig,
+    shock_direction: str = "up",
+) -> StressScenarioResult:
+    """Evaluate USD shock scenario (USD strengthening/weakening)."""
+    return USDShockScenario(shock_direction=shock_direction).evaluate(
+        portfolio_state=portfolio_state,
+        proposed_trade=proposed_trade,
+        market_context=market_context,
+        config=config,
+    )
+
+
+def evaluate_jpy_risk_off_shock(
+    portfolio_state: PortfolioState,
+    proposed_trade: ProposedTrade | None,
+    market_context: dict[str, Any],
+    config: RiskConfig,
+) -> StressScenarioResult:
+    """Evaluate JPY risk-off shock scenario (appreciation)."""
+    return JPYRiskOffScenario().evaluate(
+        portfolio_state=portfolio_state,
+        proposed_trade=proposed_trade,
+        market_context=market_context,
+        config=config,
+    )
+
+
+def evaluate_spread_widening_shock(
+    portfolio_state: PortfolioState,
+    proposed_trade: ProposedTrade | None,
+    market_context: dict[str, Any],
+    config: RiskConfig,
+) -> StressScenarioResult:
+    """Evaluate spread widening (5x) shock scenario."""
+    return SpreadWideningScenario().evaluate(
+        portfolio_state=portfolio_state,
+        proposed_trade=proposed_trade,
+        market_context=market_context,
+        config=config,
+    )
+
+
+def evaluate_slippage_shock(
+    portfolio_state: PortfolioState,
+    proposed_trade: ProposedTrade | None,
+    market_context: dict[str, Any],
+    config: RiskConfig,
+) -> StressScenarioResult:
+    """Evaluate slippage (50 pips) shock scenario."""
+    return SlippageShockScenario().evaluate(
+        portfolio_state=portfolio_state,
+        proposed_trade=proposed_trade,
+        market_context=market_context,
+        config=config,
+    )
+
+
+def evaluate_correlation_to_one_shock(
+    portfolio_state: PortfolioState,
+    proposed_trade: ProposedTrade | None,
+    market_context: dict[str, Any],
+    config: RiskConfig,
+) -> StressScenarioResult:
+    """Evaluate correlation collapse to 1.0 shock scenario."""
+    return CorrelationToOneScenario().evaluate(
+        portfolio_state=portfolio_state,
+        proposed_trade=proposed_trade,
+        market_context=market_context,
+        config=config,
+    )
+
+
+def evaluate_news_candle_shock(
+    portfolio_state: PortfolioState,
+    proposed_trade: ProposedTrade | None,
+    market_context: dict[str, Any],
+    config: RiskConfig,
+) -> StressScenarioResult:
+    """Evaluate news candle 5% shock scenario."""
+    return NewsCandleScenario().evaluate(
+        portfolio_state=portfolio_state,
+        proposed_trade=proposed_trade,
+        market_context=market_context,
+        config=config,
+    )
+
+
+def evaluate_rollover_liquidity_shock(
+    portfolio_state: PortfolioState,
+    proposed_trade: ProposedTrade | None,
+    market_context: dict[str, Any],
+    config: RiskConfig,
+) -> StressScenarioResult:
+    """Evaluate rollover liquidity shock scenario."""
+    return RolloverLiquidityScenario().evaluate(
+        portfolio_state=portfolio_state,
+        proposed_trade=proposed_trade,
+        market_context=market_context,
+        config=config,
+    )
+
+
+def evaluate_margin_spike_shock(
+    portfolio_state: PortfolioState,
+    proposed_trade: ProposedTrade | None,
+    market_context: dict[str, Any],
+    config: RiskConfig,
+) -> StressScenarioResult:
+    """Evaluate margin requirement spike (2x) shock scenario."""
+    return MarginSpikeScenario().evaluate(
+        portfolio_state=portfolio_state,
+        proposed_trade=proposed_trade,
+        market_context=market_context,
+        config=config,
+    )
+
+
+def evaluate_platform_disconnect_shock(
+    portfolio_state: PortfolioState,
+    proposed_trade: ProposedTrade | None,
+    market_context: dict[str, Any],
+    config: RiskConfig,
+) -> StressScenarioResult:
+    """Evaluate platform disconnect shock scenario."""
+    return PlatformDisconnectScenario().evaluate(
+        portfolio_state=portfolio_state,
+        proposed_trade=proposed_trade,
+        market_context=market_context,
+        config=config,
+    )

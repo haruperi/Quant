@@ -175,6 +175,28 @@ class RegimeRiskEngine:
                 now,
             )
 
+        # 1.5. Detect gap events from historical prices
+        gap_event = market_context.get("gap_event", False)
+        prices = market_context.get("historical_prices")
+        if not gap_event and prices and len(prices) >= 2:
+            gap_threshold = Decimal(str(market_context.get("gap_threshold", "0.02")))
+            for i in range(1, len(prices)):
+                p1 = Decimal(str(prices[i - 1]))
+                p2 = Decimal(str(prices[i]))
+                if p1 > 0:
+                    pct_change = abs(p2 - p1) / p1
+                    if pct_change >= gap_threshold:
+                        gap_event = True
+                        break
+        if gap_event:
+            return self._build_error_result(
+                RiskRegime.SUSPENDED,
+                RiskReasonCode.LIFECYCLE_GATES_BREACH,
+                "Gap event detected in price history",
+                now,
+                status=RiskDecisionStatus.REJECT,
+            )
+
         # 2. Reject stale quotes and stale market data snapshots
         freshness = to_utc_datetime(market_snapshot.freshness)
         age_seconds = (now - freshness).total_seconds()
@@ -216,7 +238,9 @@ class RegimeRiskEngine:
         )
 
         # 6. Classify liquidity regime
-        liquidity_regime = self._classify_liquidity(market_context)
+        liquidity_regime = self._classify_liquidity(
+            market_snapshot.spread, market_context
+        )
 
         # 7. Classify news regime
         news_regime = self._classify_news(calendar_evidence, market_context, now)
@@ -359,18 +383,22 @@ class RegimeRiskEngine:
         """Classify volatility regime using rolling window relationships."""
         prices = context.get("historical_prices")
         vol_short = Decimal(0)
+        vol_med = Decimal(0)
         vol_long = Decimal(0)
         has_history = False
 
         if prices and len(prices) > 60:
             vol_short = _calculate_rolling_vol(prices, 5)
+            vol_med = _calculate_rolling_vol(prices, 20)
             vol_long = _calculate_rolling_vol(prices, 60)
             has_history = True
         else:
             v_short = context.get("vol_short")
+            v_med = context.get("vol_med")
             v_long = context.get("vol_long")
             if v_short is not None and v_long is not None:
                 vol_short = Decimal(str(v_short))
+                vol_med = Decimal(str(v_med)) if v_med is not None else vol_short
                 vol_long = Decimal(str(v_long))
                 has_history = True
 
@@ -389,8 +417,9 @@ class RegimeRiskEngine:
         ratio_low = Decimal(str(context.get("volatility_low_multiplier", 0.5)))
 
         ratio = vol_short / vol_long
+        ratio_med = vol_short / vol_med if vol_med > 0 else ratio
 
-        if ratio >= ratio_spike:
+        if ratio >= ratio_spike or ratio_med >= ratio_spike:
             return VolatilityRegime.SPIKE
         if ratio >= ratio_high:
             return VolatilityRegime.HIGH
@@ -398,23 +427,52 @@ class RegimeRiskEngine:
             return VolatilityRegime.LOW
         return VolatilityRegime.NORMAL
 
-    def _classify_liquidity(self, context: dict[str, Any]) -> LiquidityRegime:
+    def _classify_liquidity(
+        self, current_spread: Decimal, context: dict[str, Any]
+    ) -> LiquidityRegime:
         """Classify liquidity regime from frequency, missing bars, and gaps."""
         tick_frequency = context.get("tick_frequency")  # Ticks per minute
         missing_bars = context.get("missing_bars", 0)
         stale_seconds = context.get("stale_seconds", 0)
 
+        # Check tick availability explicitly
+        tick_availability = context.get("tick_availability", True)
+        if not tick_availability:
+            return LiquidityRegime.ILLIQUID
+
+        # Check for spread jumps: if current spread is wider than
+        # max_spread_multiplier times the mean spread
+        spread_jump = context.get("spread_jump", False)
+        if not spread_jump:
+            mean_spread_val = context.get("spread_mean")
+            if mean_spread_val is not None:
+                mean_spread = Decimal(str(mean_spread_val))
+                config_mult = getattr(self.config, "max_spread_multiplier", 3.0)
+                mult = Decimal(str(context.get("max_spread_multiplier", config_mult)))
+                if mean_spread > 0 and current_spread > mean_spread * mult:
+                    spread_jump = True
+
+        # Check session context
+        session_context = str(context.get("session_context", "")).lower()
+        # Adjust thresholds if session is thin/Asian
+        thin_sessions = {"low_liquidity", "thin", "asian", "off_hours"}
+        freq_multiplier = (
+            Decimal("0.5") if session_context in thin_sessions else Decimal("1.0")
+        )
+
         # Check for missing bars or quote staleness first
-        if missing_bars >= 5 or stale_seconds >= 300:
+        if missing_bars >= 5 or stale_seconds >= 300 or spread_jump:
             return LiquidityRegime.ILLIQUID
         if missing_bars >= 2 or stale_seconds >= 60:
             return LiquidityRegime.THIN
 
         if tick_frequency is not None:
             freq = Decimal(str(tick_frequency))
-            if freq <= 2:
+            illiquid_thresh = Decimal(2) * freq_multiplier
+            thin_thresh = Decimal(10) * freq_multiplier
+            if freq <= illiquid_thresh:
                 return LiquidityRegime.ILLIQUID
-            if freq <= 10:
+            if freq <= thin_thresh:
                 return LiquidityRegime.THIN
 
         return LiquidityRegime.NORMAL
@@ -471,6 +529,38 @@ class RegimeRiskEngine:
 
         return NewsRegime.NORMAL
 
+    def _check_utc_rollover_blackout(
+        self, now: datetime, context: dict[str, Any]
+    ) -> bool:
+        """Check current time against configured UTC start/end blackout times."""
+        start_str = context.get(
+            "rollover_blackout_start_utc",
+            getattr(self.config, "rollover_blackout_start_utc", None),
+        )
+        end_str = context.get(
+            "rollover_blackout_end_utc",
+            getattr(self.config, "rollover_blackout_end_utc", None),
+        )
+        if not start_str or not end_str:
+            return False
+
+        try:
+            sh, sm = map(int, start_str.split(":"))
+            eh, em = map(int, end_str.split(":"))
+        except ValueError as e:
+            logger.warning(f"Error parsing rollover config times: {e}")
+            return False
+
+        now_mins = now.hour * 60 + now.minute
+        start_mins = sh * 60 + sm
+        end_mins = eh * 60 + em
+
+        if start_mins <= end_mins:
+            return start_mins <= now_mins <= end_mins
+
+        # Overnight window, e.g. 23:50 to 00:10
+        return now_mins >= start_mins or now_mins <= end_mins
+
     def _classify_rollover(
         self,
         rollover_time: datetime | None,
@@ -478,6 +568,9 @@ class RegimeRiskEngine:
         context: dict[str, Any],
     ) -> RolloverRegime:
         """Classify rollover blackout window surrounding broker midnight."""
+        if self._check_utc_rollover_blackout(now, context):
+            return RolloverRegime.BLACKOUT
+
         if rollover_time is None:
             return RolloverRegime.NORMAL
 

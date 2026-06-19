@@ -112,10 +112,10 @@ app/services/risk/storage.py
 app/services/risk/reports.py
 app/services/risk/tools.py
 app/services/risk/README.md
-configs/risk/default.yaml
-configs/risk/prop_firm_default.yaml
-configs/risk/paper.yaml
-configs/risk/live_conservative.yaml
+app/services/risk/configs/default.json
+app/services/risk/configs/prop_firm_default.json
+app/services/risk/configs/paper.json
+app/services/risk/configs/live_conservative.json
 tests/unit/app/services/risk/
 tests/integration/app/services/risk/
 tests/scenario/app/services/risk/
@@ -858,16 +858,15 @@ validate_risk_approval_token
 generate_risk_report
 ```
 
-- [ ] Export only approved public capabilities through `app/services/risk/__init__.py`.
-- [ ] Export official AI-callable tools only through `app/services/risk/tools.py`.
-- [ ] Every official AI-callable tool shall return the standard HaruQuant response envelope.
-- [ ] Every official AI-callable tool shall include `tool_name`, `tool_version`, `tool_category`, `tool_risk_level`, `request_id`, `execution_ms`, `read_only`, `writes_file`, `modifies_database`, `places_trade`, and `requires_network` metadata.
-- [ ] Every official AI-callable tool shall be classified as read-only, database-writing, file-writing, or approval-sensitive.
-- [ ] No official risk tool shall place broker trades or mutate broker state.
-- [ ] Live-sensitive official tools shall require valid mode, policy profile, operator authority, and freshness evidence.
-- [ ] Public tool docstrings shall explain when agents should use the tool and what the tool cannot do.
-- [ ] Public tools shall never return raw exceptions, raw broker payloads, secrets, full approval packets, or private account identifiers.
-
+- [X] Export only approved public capabilities through `app/services/risk/__init__.py`.
+- [X] Export official AI-callable tools only through `app/services/risk/tools.py`.
+- [X] Every official AI-callable tool shall return the standard HaruQuant response envelope.
+- [X] Every official AI-callable tool shall include `tool_name`, `tool_version`, `tool_category`, `tool_risk_level`, `request_id`, `execution_ms`, `read_only`, `writes_file`, `modifies_database`, `places_trade`, and `requires_network` metadata.
+- [X] Every official AI-callable tool shall be classified as read-only, database-writing, file-writing, or approval-sensitive.
+- [X] No official risk tool shall place broker trades or mutate broker state.
+- [X] Live-sensitive official tools shall require valid mode, policy profile, operator authority, and freshness evidence.
+- [X] Public tool docstrings shall explain when agents should use the tool and what the tool cannot do.
+- [X] Public tools shall never return raw exceptions, raw broker payloads, secrets, full approval packets, or private account identifiers.
 
 ### `app/services/risk/models.py`
 
@@ -914,21 +913,21 @@ RiskBudgetUtilization
 
 Requirements:
 
-- [ ] Define all canonical risk enums with deterministic serialization.
-- [ ] Define `RiskDecisionStatus` values: `approve`, `reduce_size`, `reject`, `block`, `needs_more_evidence`, `needs_approval`, `halt_strategy`, and `halt_all`.
-- [ ] Define `RiskSeverity` values for info, warning, soft breach, hard breach, critical breach, and emergency halt.
-- [ ] Define stable `RiskReasonCode` values for every deterministic rejection, warning, reduction, and halt reason.
-- [ ] Model `ProposedTrade` with symbol, side, requested size, order type, intended stop, intended target, strategy ID, signal ID, timestamp, expected holding period, and evidence references.
-- [ ] Model `RiskAssessmentRequest` with proposed action, account state, portfolio state, market state, pending orders, open positions, policy profile, mode, and freshness metadata.
-- [ ] Model `RiskDecisionPackage` as the single response object for approvals, reductions, rejections, warnings, approval-required states, and halts.
-- [ ] Ensure `RiskDecisionPackage` includes requested size, approved size, max allowed size, action, reason codes, risk snapshot, policy hash, config hash, decision token, expiry, and audit hash reference.
-- [ ] Ensure `RiskDecisionPackage` is JSON-safe and stable across serialization/deserialization.
-- [ ] Ensure rejected decisions include deterministic `RiskRejection` details instead of free-text-only explanations.
-- [ ] Ensure approved decisions produce bounded `OrderIntent` metadata without becoming an execution order.
-- [ ] Ensure all financial values include units, account currency, quote currency, or explicit conversion metadata.
-- [ ] Ensure model validation rejects NaN, infinity, negative prices where invalid, zero stop distance, impossible leverage, missing currency, stale timestamps, and unknown symbols.
-- [ ] Ensure models support closed-bar-only market evidence for risk calculations that require historical bars.
-- [ ] Ensure every model has tests for valid input, invalid input, JSON serialization, equality/canonicalization, and redaction.
+- [X] Define all canonical risk enums with deterministic serialization.
+- [X] Define `RiskDecisionStatus` values: `approve`, `reduce_size`, `reject`, `block`, `needs_more_evidence`, `needs_approval`, `halt_strategy`, and `halt_all`.
+- [X] Define `RiskSeverity` values for info, warning, soft breach, hard breach, critical breach, and emergency halt.
+- [X] Define stable `RiskReasonCode` values for every deterministic rejection, warning, reduction, and halt reason.
+- [X] Model `ProposedTrade` with symbol, side, requested size, order type, intended stop, intended target, strategy ID, signal ID, timestamp, expected holding period, and evidence references.
+- [X] Model `RiskAssessmentRequest` with proposed action, account state, portfolio state, market state, pending orders, open positions, policy profile, mode, and freshness metadata.
+- [X] Model `RiskDecisionPackage` as the single response object for approvals, reductions, rejections, warnings, approval-required states, and halts.
+- [X] Ensure `RiskDecisionPackage` includes requested size, approved size, max allowed size, action, reason codes, risk snapshot, policy hash, config hash, decision token, expiry, and audit hash reference.
+- [X] Ensure `RiskDecisionPackage` is JSON-safe and stable across serialization/deserialization.
+- [X] Ensure rejected decisions include deterministic `RiskRejection` details instead of free-text-only explanations.
+- [X] Ensure approved decisions produce bounded `OrderIntent` metadata without becoming an execution order.
+- [X] Ensure all financial values include units, account currency, quote currency, or explicit conversion metadata.
+- [X] Ensure model validation rejects NaN, infinity, negative prices where invalid, zero stop distance, impossible leverage, missing currency, stale timestamps, and unknown symbols.
+- [X] Ensure models support closed-bar-only market evidence for risk calculations that require historical bars.
+- [X] Ensure every model has tests for valid input, invalid input, JSON serialization, equality/canonicalization, and redaction.
 
 ### `app/services/risk/config.py`
 
@@ -946,20 +945,20 @@ hash_risk_config
 
 Requirements:
 
-- [ ] Create `app/risk/configs/default.yaml` with safe offline/simulation defaults.
-- [ ] Create `app/risk/configs/prop_firm_default.yaml` with conservative prop-firm risk controls.
-- [ ] Create `app/risk/configs/paper.yaml` with paper-trading validation gates.
-- [ ] Create `app/risk/config/live_conservative.yaml` with full fail-closed live controls.
-- [ ] Validate risk configs against a strict schema before use.
-- [ ] Compute a stable config hash for each loaded risk profile.
-- [ ] Reject configs with unknown keys unless explicitly marked experimental and disabled by default.
-- [ ] Reject configs with limits above allowed safety maximums.
-- [ ] Reject configs that enable live mode without explicit operator approval fields.
-- [ ] Support environment-specific overrides only through approved keys.
-- [ ] Ensure config changes invalidate stale approval tokens unless governed compatibility explicitly allows them.
-- [ ] Include defaults for VaR, Expected Shortfall, stress loss, correlation, currency buckets, drawdown step-down, margin, spread, slippage, and rollover blackout.
-- [ ] Include risk policy defaults for the automated M1 micro-scalping system: volatility-adaptive sizing, spread-to-Ïƒ filters, and broker-midnight blackout.
-- [ ] Test config loading, schema validation, hash stability, unknown-key rejection, unsafe-threshold rejection, and profile-specific overrides.
+- [X] Create `app/services/risk/configs/default.json` with safe offline/simulation defaults.
+- [X] Create `app/services/risk/configs/prop_firm_default.json` with conservative prop-firm risk controls.
+- [X] Create `app/services/risk/configs/paper.json` with paper-trading validation gates.
+- [X] Create `app/services/risk/configs/live_conservative.json` with full fail-closed live controls.
+- [X] Validate risk configs against a strict schema before use.
+- [X] Compute a stable config hash for each loaded risk profile.
+- [X] Reject configs with unknown keys unless explicitly marked experimental and disabled by default.
+- [X] Reject configs with limits above allowed safety maximums.
+- [X] Reject configs that enable live mode without explicit operator approval fields.
+- [X] Support environment-specific overrides only through approved keys.
+- [X] Ensure config changes invalidate stale approval tokens unless governed compatibility explicitly allows them.
+- [X] Include defaults for VaR, Expected Shortfall, stress loss, correlation, currency buckets, drawdown step-down, margin, spread, slippage, and rollover blackout.
+- [X] Include risk policy defaults for the automated M1 micro-scalping system: volatility-adaptive sizing, spread-to-Ïƒ filters, and broker-midnight blackout.
+- [X] Test config loading, schema validation, hash stability, unknown-key rejection, unsafe-threshold rejection, and profile-specific overrides.
 
 ### `app/services/risk/policy.py`
 
@@ -980,16 +979,16 @@ check_policy_permission
 
 Requirements:
 
-- [ ] Implement risk policy as deterministic policy-as-code.
-- [ ] Resolve policies by environment, trading mode, strategy, symbol, account, operator role, and workflow scope.
-- [ ] Enforce maximum daily loss, maximum total drawdown, maximum per-trade risk, maximum strategy risk, maximum symbol risk, maximum currency exposure, maximum correlated cluster risk, maximum margin usage, and maximum live-mode authority.
-- [ ] Enforce rollover blackout policy using broker server midnight with configurable before/after hours.
-- [ ] Enforce news blackout policy when a trusted news/calendar source is available.
-- [ ] Fail closed when required policy is missing, ambiguous, expired, unsigned, or has a mismatched config hash.
-- [ ] Require governed approval for risk budget increases, allocation increases beyond threshold, live-mode promotions, overrides, and high-risk state transitions.
-- [ ] Store policy version, policy hash, and policy scope in every decision package.
-- [ ] Prevent agents, UI, API routes, research, optimization, or execution from bypassing policy enforcement.
-- [ ] Test policy resolution, scope precedence, missing policy rejection, override authorization, and policy-hash propagation.
+- [X] Implement risk policy as deterministic policy-as-code.
+- [X] Resolve policies by environment, trading mode, strategy, symbol, account, operator role, and workflow scope.
+- [X] Enforce maximum daily loss, maximum total drawdown, maximum per-trade risk, maximum strategy risk, maximum symbol risk, maximum currency exposure, maximum correlated cluster risk, maximum margin usage, and maximum live-mode authority.
+- [X] Enforce rollover blackout policy using broker server midnight with configurable before/after hours.
+- [X] Enforce news blackout policy when a trusted news/calendar source is available.
+- [X] Fail closed when required policy is missing, ambiguous, expired, unsigned, or has a mismatched config hash.
+- [X] Require governed approval for risk budget increases, allocation increases beyond threshold, live-mode promotions, overrides, and high-risk state transitions.
+- [X] Store policy version, policy hash, and policy scope in every decision package.
+- [X] Prevent agents, UI, API routes, research, optimization, or execution from bypassing policy enforcement.
+- [X] Test policy resolution, scope precedence, missing policy rejection, override authorization, and policy-hash propagation.
 
 ### `app/services/risk/regime.py`
 
@@ -1009,16 +1008,16 @@ assess_risk_regime
 
 Requirements:
 
-- [ ] Implement market regime assessment before sizing and portfolio checks.
-- [ ] Classify spread regime using spread-to-Ïƒ thresholds.
-- [ ] Classify volatility regime using short, medium, and long rolling volatility windows.
-- [ ] Classify liquidity regime using tick availability, missing bars, stale quotes, spread jumps, and session context.
-- [ ] Classify news regime using injected calendar/news evidence when available.
-- [ ] Classify rollover regime and block entries during the configured broker-midnight blackout.
-- [ ] Allow always-on automated trading outside blackout windows only when spread and liquidity gates pass.
-- [ ] Reject or throttle trades during abnormal volatility spikes, gap events, stale market data, and unreliable quote conditions.
-- [ ] Make all regime outputs deterministic and explainable through reason codes.
-- [ ] Test normal, low-volatility, high-volatility, spread-widening, rollover, news, stale-data, and missing-evidence regimes.
+- [X] Implement market regime assessment before sizing and portfolio checks.
+- [X] Classify spread regime using spread-to-Ïƒ thresholds.
+- [X] Classify volatility regime using short, medium, and long rolling volatility windows.
+- [X] Classify liquidity regime using tick availability, missing bars, stale quotes, spread jumps, and session context.
+- [X] Classify news regime using injected calendar/news evidence when available.
+- [X] Classify rollover regime and block entries during the configured broker-midnight blackout.
+- [X] Allow always-on automated trading outside blackout windows only when spread and liquidity gates pass.
+- [X] Reject or throttle trades during abnormal volatility spikes, gap events, stale market data, and unreliable quote conditions.
+- [X] Make all regime outputs deterministic and explainable through reason codes.
+- [X] Test normal, low-volatility, high-volatility, spread-widening, rollover, news, stale-data, and missing-evidence regimes.
 
 ### `app/services/risk/limits.py`
 
@@ -1053,19 +1052,19 @@ run_limit_checks
 
 Requirements:
 
-- [ ] Define `ORDERED_LIMIT_CHECKS` as an explicit deterministic sequence.
-- [ ] Run hard-blocking limits before advisory warnings.
-- [ ] Run kill-switch, stale-evidence, policy, and authority checks before sizing-dependent checks.
-- [ ] Run spread, rollover, market-closed, stale-market, and execution feasibility checks before approving intraday scalping trades.
-- [ ] Run portfolio exposure, symbol exposure, currency exposure, correlation, VaR, Expected Shortfall, stress loss, margin, and leverage checks before final approval.
-- [ ] Implement limit aggregation order: `blocked > fail > needs_more_evidence > warn > pass`.
-- [ ] Produce stable `primary_failure_limit` when multiple limits fail simultaneously.
-- [ ] Produce `composite_breach_flags` for all failed, warned, or missing-evidence limits.
-- [ ] Reject unknown or unregistered limit names.
-- [ ] Reject limit calculations that return non-finite values.
-- [ ] Ensure deterministic limit order never relies on dict, set, or plugin iteration order.
-- [ ] Test every limit check with pass, warning, fail, missing evidence, invalid input, and calculation failure cases.
-- [ ] Add regression tests for deterministic order and primary failure selection.
+- [X] Define `ORDERED_LIMIT_CHECKS` as an explicit deterministic sequence.
+- [X] Run hard-blocking limits before advisory warnings.
+- [X] Run kill-switch, stale-evidence, policy, and authority checks before sizing-dependent checks.
+- [X] Run spread, rollover, market-closed, stale-market, and execution feasibility checks before approving intraday scalping trades.
+- [X] Run portfolio exposure, symbol exposure, currency exposure, correlation, VaR, Expected Shortfall, stress loss, margin, and leverage checks before final approval.
+- [X] Implement limit aggregation order: `blocked > fail > needs_more_evidence > warn > pass`.
+- [X] Produce stable `primary_failure_limit` when multiple limits fail simultaneously.
+- [X] Produce `composite_breach_flags` for all failed, warned, or missing-evidence limits.
+- [X] Reject unknown or unregistered limit names.
+- [X] Reject limit calculations that return non-finite values.
+- [X] Ensure deterministic limit order never relies on dict, set, or plugin iteration order.
+- [X] Test every limit check with pass, warning, fail, missing evidence, invalid input, and calculation failure cases.
+- [X] Add regression tests for deterministic order and primary failure selection.
 
 ### `app/services/risk/sizing.py`
 
@@ -1088,19 +1087,19 @@ calculate_sigma_stop_distance
 
 Requirements:
 
-- [ ] Implement volatility-based position sizing as the default production sizing model.
-- [ ] Calculate initial risk amount from account equity, risk profile, drawdown state, strategy budget, and policy caps.
-- [ ] Calculate stop distance from volatility units such as M1 Ïƒ/ATR when used by the strategy.
-- [ ] Convert stop distance into account-currency risk using symbol metadata, tick value, tick size, contract size, and quote/base conversion.
-- [ ] Support fixed-risk, fixed-fractional, volatility-adjusted, correlation-adjusted, milestone, and Kelly-reference sizing.
-- [ ] Treat Kelly sizing as advisory or upper-bound only unless explicit governed policy enables fractional Kelly.
-- [ ] Require minimum evidence before Kelly-derived sizing can influence live risk.
-- [ ] Apply drawdown step-down multipliers before final size approval.
-- [ ] Apply correlation and currency-exposure reductions before final size approval.
-- [ ] Round final size to broker lot step only after risk calculations are complete.
-- [ ] Reject sizing when symbol metadata is missing, tick value is invalid, stop distance is zero, conversion rate is unavailable, or broker minimum/maximum lot rules cannot be satisfied.
-- [ ] Return `reduce_size` rather than `approve` when requested size exceeds allowed risk but a smaller safe size is possible.
-- [ ] Test sizing across majors, minors, JPY pairs, account-currency conversions, zero volatility, huge volatility, invalid metadata, and broker lot-step rounding.
+- [X] Implement volatility-based position sizing as the default production sizing model.
+- [X] Calculate initial risk amount from account equity, risk profile, drawdown state, strategy budget, and policy caps.
+- [X] Calculate stop distance from volatility units such as M1 Ïƒ/ATR when used by the strategy.
+- [X] Convert stop distance into account-currency risk using symbol metadata, tick value, tick size, contract size, and quote/base conversion.
+- [X] Support fixed-risk, fixed-fractional, volatility-adjusted, correlation-adjusted, milestone, and Kelly-reference sizing.
+- [X] Treat Kelly sizing as advisory or upper-bound only unless explicit governed policy enables fractional Kelly.
+- [X] Require minimum evidence before Kelly-derived sizing can influence live risk.
+- [X] Apply drawdown step-down multipliers before final size approval.
+- [X] Apply correlation and currency-exposure reductions before final size approval.
+- [X] Round final size to broker lot step only after risk calculations are complete.
+- [X] Reject sizing when symbol metadata is missing, tick value is invalid, stop distance is zero, conversion rate is unavailable, or broker minimum/maximum lot rules cannot be satisfied.
+- [X] Return `reduce_size` rather than `approve` when requested size exceeds allowed risk but a smaller safe size is possible.
+- [X] Test sizing across majors, minors, JPY pairs, account-currency conversions, zero volatility, huge volatility, invalid metadata, and broker lot-step rounding.
 
 ### `app/services/risk/exposure.py`
 
@@ -1120,18 +1119,18 @@ calculate_pending_order_exposure
 
 Requirements:
 
-- [ ] Decompose every FX trade into base-currency and quote-currency legs.
-- [ ] Calculate signed symbol exposure, signed currency-leg exposure, gross exposure, net exposure, and account-currency equivalent exposure.
-- [ ] Treat long EURUSD as long EUR and short USD.
-- [ ] Treat short EURUSD as short EUR and long USD.
-- [ ] Include pending orders in projected exposure using configured policy: ignore, near-market-only, probability-weighted, or full-potential.
-- [ ] Include open positions, pending orders, proposed trades, and in-flight orders in projected exposure where evidence is available.
-- [ ] Reject approvals when pending orders are unknown or portfolio state is not reconciled.
-- [ ] Calculate exposure by symbol, strategy, currency, currency cluster, session, account, and portfolio.
-- [ ] Support USD, EUR, GBP, JPY, AUD, NZD, CAD, and CHF buckets by default.
-- [ ] Support custom currency clusters through config.
-- [ ] Flag hidden concentration such as multiple USD-short trades across EURUSD, GBPUSD, AUDUSD, and NZDUSD.
-- [ ] Test currency-leg decomposition, multi-pair exposure aggregation, pending-order policies, conversion failure, and hidden concentration detection.
+- [X] Decompose every FX trade into base-currency and quote-currency legs.
+- [X] Calculate signed symbol exposure, signed currency-leg exposure, gross exposure, net exposure, and account-currency equivalent exposure.
+- [X] Treat long EURUSD as long EUR and short USD.
+- [X] Treat short EURUSD as short EUR and long USD.
+- [X] Include pending orders in projected exposure using configured policy: ignore, near-market-only, probability-weighted, or full-potential.
+- [X] Include open positions, pending orders, proposed trades, and in-flight orders in projected exposure where evidence is available.
+- [X] Reject approvals when pending orders are unknown or portfolio state is not reconciled.
+- [X] Calculate exposure by symbol, strategy, currency, currency cluster, session, account, and portfolio.
+- [X] Support USD, EUR, GBP, JPY, AUD, NZD, CAD, and CHF buckets by default.
+- [X] Support custom currency clusters through config.
+- [X] Flag hidden concentration such as multiple USD-short trades across EURUSD, GBPUSD, AUDUSD, and NZDUSD.
+- [X] Test currency-leg decomposition, multi-pair exposure aggregation, pending-order policies, conversion failure, and hidden concentration detection.
 
 ### `app/services/risk/correlation.py`
 
@@ -1152,17 +1151,17 @@ calculate_cluster_exposure
 
 Requirements:
 
-- [ ] Calculate correlation on returns, not raw prices.
-- [ ] Support log returns, close-to-close returns, open-to-close returns, and σ-normalized returns where configured.
-- [ ] Align bars by identical opening timestamps and use closed bars only.
-- [ ] Support M1, M5/M15, and H1 correlation windows for execution, intraday cluster, and regime correlation.
-- [ ] Use rolling correlation windows with configurable lookback lengths.
-- [ ] Reject correlation evidence when aligned sample size is below minimum threshold unless fallback policy is explicitly configured.
-- [ ] Use conservative correlation fallback behavior in production when evidence is insufficient.
-- [ ] Detect correlation spike conditions and force cluster-risk reduction or rejection when configured.
-- [ ] Compute marginal correlation impact of a proposed trade before approval.
-- [ ] Support correlation-adjusted sizing and correlation-adjusted cluster caps.
-- [ ] Test timestamp alignment, closed-bar exclusion, insufficient sample fallback, perfect positive/negative correlation, changing correlation, and correlation-spike override.
+- [X] Calculate correlation on returns, not raw prices.
+- [X] Support log returns, close-to-close returns, open-to-close returns, and σ-normalized returns where configured.
+- [X] Align bars by identical opening timestamps and use closed bars only.
+- [X] Support M5, H1 and D1 correlation windows for execution, intraday cluster, and regime correlation.
+- [X] Use rolling correlation windows with configurable lookback lengths.
+- [X] Reject correlation evidence when aligned sample size is below minimum threshold unless fallback policy is explicitly configured.
+- [X] Use conservative correlation fallback behavior in production when evidence is insufficient.
+- [X] Detect correlation spike conditions and force cluster-risk reduction or rejection when configured.
+- [X] Compute marginal correlation impact of a proposed trade before approval.
+- [X] Support correlation-adjusted sizing and correlation-adjusted cluster caps.
+- [X] Test timestamp alignment, closed-bar exclusion, insufficient sample fallback, perfect positive/negative correlation, changing correlation, and correlation-spike override.
 
 ### `app/services/risk/var_es.py`
 
@@ -1185,19 +1184,19 @@ calculate_risk_contribution
 
 Requirements:
 
-- [ ] Implement fast parametric portfolio VaR for real-time pre-trade checks.
-- [ ] Implement historical VaR from empirical portfolio return distributions.
-- [ ] Implement Expected Shortfall/CVaR as the primary tail-risk approval metric.
-- [ ] Support configurable confidence levels, with 95% default for intraday governance unless profile overrides.
-- [ ] Support EWMA covariance and shrinkage covariance where configured.
-- [ ] Calculate portfolio variance from signed weights, volatility, covariance, and correlation.
-- [ ] Calculate marginal and component risk contribution by symbol, strategy, and currency bucket.
-- [ ] Convert exposures and losses into account currency before comparing against limits.
-- [ ] Treat VaR as a warning and sizing signal unless policy marks it as hard-blocking.
-- [ ] Treat Expected Shortfall/CVaR and stress loss as hard approval gates for live profiles.
-- [ ] Reject calculations when return windows are too short, covariance is invalid, exposure conversion fails, or results are non-finite.
-- [ ] Document assumptions and limitations of parametric VaR.
-- [ ] Test parametric VaR against golden examples, historical VaR percentile behavior, ES tail averaging, covariance edge cases, and non-normal loss scenarios.
+- [X] Implement fast parametric portfolio VaR for real-time pre-trade checks.
+- [X] Implement historical VaR from empirical portfolio return distributions.
+- [X] Implement Expected Shortfall/CVaR as the primary tail-risk approval metric.
+- [X] Support configurable confidence levels, with 95% default for intraday governance unless profile overrides.
+- [X] Support EWMA covariance and shrinkage covariance where configured.
+- [X] Calculate portfolio variance from signed weights, volatility, covariance, and correlation.
+- [X] Calculate marginal and component risk contribution by symbol, strategy, and currency bucket.
+- [X] Convert exposures and losses into account currency before comparing against limits.
+- [X] Treat VaR as a warning and sizing signal unless policy marks it as hard-blocking.
+- [X] Treat Expected Shortfall/CVaR and stress loss as hard approval gates for live profiles.
+- [X] Reject calculations when return windows are too short, covariance is invalid, exposure conversion fails, or results are non-finite.
+- [X] Document assumptions and limitations of parametric VaR.
+- [X] Test parametric VaR against golden examples, historical VaR percentile behavior, ES tail averaging, covariance edge cases, and non-normal loss scenarios.
 
 ### `app/services/risk/stress.py`
 
@@ -1223,16 +1222,16 @@ evaluate_platform_disconnect_shock
 
 Requirements:
 
-- [ ] Implement stress testing as a mandatory live-profile approval gate.
-- [ ] Include default stress scenarios for USD shock, JPY risk-off shock, GBP volatility shock, spread widening, slippage shock, correlation-to-one, news candle, rollover liquidity, margin spike, platform disconnect, stale quote, and forced liquidation.
-- [ ] Allow custom stress scenarios to be registered through config without arbitrary code execution.
-- [ ] Evaluate proposed trade impact under each enabled stress scenario.
-- [ ] Calculate stress loss in account currency and compare against stress loss limit.
-- [ ] Reject trades that pass normal VaR but fail stress survival limits.
-- [ ] Support scenario severity, shock magnitude, affected symbols, affected currencies, and affected liquidity assumptions.
-- [ ] Support scenario result summaries for audit and reporting.
-- [ ] Run up to 100 scenarios and 500 positions within the approved performance target.
-- [ ] Test default scenarios, custom scenario validation, stress loss calculation, fail-closed behavior, and performance benchmark cases.
+- [X] Implement stress testing as a mandatory live-profile approval gate.
+- [X] Include default stress scenarios for USD shock, JPY risk-off shock, GBP volatility shock, spread widening, slippage shock, correlation-to-one, news candle, rollover liquidity, margin spike, platform disconnect, stale quote, and forced liquidation.
+- [X] Allow custom stress scenarios to be registered through config without arbitrary code execution.
+- [X] Evaluate proposed trade impact under each enabled stress scenario.
+- [X] Calculate stress loss in account currency and compare against stress loss limit.
+- [X] Reject trades that pass normal VaR but fail stress survival limits.
+- [X] Support scenario severity, shock magnitude, affected symbols, affected currencies, and affected liquidity assumptions.
+- [X] Support scenario result summaries for audit and reporting.
+- [X] Run up to 100 scenarios and 500 positions within the approved performance target.
+- [X] Test default scenarios, custom scenario validation, stress loss calculation, fail-closed behavior, and performance benchmark cases.
 
 ### `app/services/risk/margin.py`
 
@@ -1252,14 +1251,14 @@ check_exit_liquidity
 
 Requirements:
 
-- [ ] Calculate current and projected margin usage before approval.
-- [ ] Calculate free margin after proposed trade, pending orders, and in-flight execution reservations.
-- [ ] Enforce maximum margin usage per account, symbol, strategy, currency bucket, and portfolio.
-- [ ] Enforce leverage limits independently from broker-allowed leverage.
-- [ ] Include exit-liquidity stress where configured.
-- [ ] Reject trades when margin metadata is missing, broker constraints are unknown, or projected free margin is unsafe.
-- [ ] Support broker-specific margin rules through injected metadata, not direct broker SDK calls.
-- [ ] Test margin requirement calculation, multi-position projected margin, leverage caps, missing metadata, and margin spike stress.
+- [X] Calculate current and projected margin usage before approval.
+- [X] Calculate free margin after proposed trade, pending orders, and in-flight execution reservations.
+- [X] Enforce maximum margin usage per account, symbol, strategy, currency bucket, and portfolio.
+- [X] Enforce leverage limits independently from broker-allowed leverage.
+- [X] Include exit-liquidity stress where configured.
+- [X] Reject trades when margin metadata is missing, broker constraints are unknown, or projected free margin is unsafe.
+- [X] Support broker-specific margin rules through injected metadata, not direct broker SDK calls.
+- [X] Test margin requirement calculation, multi-position projected margin, leverage caps, missing metadata, and margin spike stress.
 
 ### `app/services/risk/drawdown.py`
 
@@ -1278,15 +1277,15 @@ restore_drawdown_state
 
 Requirements:
 
-- [ ] Implement drawdown-aware risk throttling before hard loss limits are hit.
-- [ ] Support normal, caution, defensive, recovery-only, and halted drawdown states.
-- [ ] Apply risk step-down multipliers as drawdown increases.
-- [ ] Persist and restore drawdown step-down state deterministically on startup.
-- [ ] Reject new risk when daily hard loss limit is reached.
-- [ ] Reject new risk when total hard drawdown limit is reached.
-- [ ] Restrict or reject strategy-level risk when strategy loss limits are reached.
-- [ ] Prevent catch-up, revenge, martingale recovery, or budget-reset behavior after losses unless a governed policy explicitly allows it in simulation only.
-- [ ] Test drawdown state transitions, soft limits, hard limits, startup restoration, corrupted persisted state, and reset approval requirements.
+- [X] Implement drawdown-aware risk throttling before hard loss limits are hit.
+- [X] Support normal, caution, defensive, recovery-only, and halted drawdown states.
+- [X] Apply risk step-down multipliers as drawdown increases.
+- [X] Persist and restore drawdown step-down state deterministically on startup.
+- [X] Reject new risk when daily hard loss limit is reached.
+- [X] Reject new risk when total hard drawdown limit is reached.
+- [X] Restrict or reject strategy-level risk when strategy loss limits are reached.
+- [X] Prevent catch-up, revenge, martingale recovery, or budget-reset behavior after losses unless a governed policy explicitly allows it in simulation only.
+- [X] Test drawdown state transitions, soft limits, hard limits, startup restoration, corrupted persisted state, and reset approval requirements.
 
 ### `app/services/risk/execution_gate.py`
 
@@ -1308,16 +1307,16 @@ check_trade_frequency_limit
 
 Requirements:
 
-- [ ] Validate execution feasibility after portfolio risk checks and before final approval.
-- [ ] Enforce spread-to-Ïƒ limits for M1 micro-scalping profiles.
-- [ ] Enforce expected slippage-to-Ïƒ limits.
-- [ ] Enforce broker stop-level, freeze-level, lot-step, minimum volume, maximum volume, filling mode, and market-open constraints using injected symbol metadata.
-- [ ] Enforce max trade frequency by symbol, strategy, account, and portfolio.
-- [ ] Enforce max holding-time policy when strategy metadata provides expected duration.
-- [ ] Reject trades when stop or target cannot be represented under broker constraints.
-- [ ] Reject trades when broker metadata is stale, missing, or inconsistent.
-- [ ] Return `reduce_size` when only size violates execution feasibility and a smaller size is valid.
-- [ ] Test spread, slippage, stop distance, lot step, market closed, invalid broker metadata, and trade frequency cases.
+- [X] Validate execution feasibility after portfolio risk checks and before final approval.
+- [X] Enforce spread-to-Ïƒ limits for M1 micro-scalping profiles.
+- [X] Enforce expected slippage-to-Ïƒ limits.
+- [X] Enforce broker stop-level, freeze-level, lot-step, minimum volume, maximum volume, filling mode, and market-open constraints using injected symbol metadata.
+- [X] Enforce max trade frequency by symbol, strategy, account, and portfolio.
+- [X] Enforce max holding-time policy when strategy metadata provides expected duration.
+- [X] Reject trades when stop or target cannot be represented under broker constraints.
+- [X] Reject trades when broker metadata is stale, missing, or inconsistent.
+- [X] Return `reduce_size` when only size violates execution feasibility and a smaller size is valid.
+- [X] Test spread, slippage, stop distance, lot step, market closed, invalid broker metadata, and trade frequency cases.
 
 ### `app/services/risk/allocation.py`
 
@@ -1337,14 +1336,14 @@ review_allocation_proposal
 
 Requirements:
 
-- [ ] Implement allocation review for strategy, symbol, currency, and portfolio budgets.
-- [ ] Support equal-risk, volatility parity, correlation-adjusted risk parity, regime-weighted, and drawdown-adjusted allocation methods.
-- [ ] Default live allocation shall be conservative correlation-adjusted volatility risk parity unless profile overrides.
-- [ ] Require evidence before increasing strategy allocation.
-- [ ] Require governed approval for allocation increases above threshold.
-- [ ] Reject allocations that exceed portfolio, strategy, currency, correlation cluster, VaR, ES, stress loss, margin, or drawdown limits.
-- [ ] Prevent optimization or research workflows from promoting allocations without risk review.
-- [ ] Test allocation proposals, budget reductions, evidence missing, correlation adjustment, drawdown adjustment, and approval-required thresholds.
+- [X] Implement allocation review for strategy, symbol, currency, and portfolio budgets.
+- [X] Support equal-risk, volatility parity, correlation-adjusted risk parity, regime-weighted, and drawdown-adjusted allocation methods.
+- [X] Default live allocation shall be conservative correlation-adjusted volatility risk parity unless profile overrides.
+- [X] Require evidence before increasing strategy allocation.
+- [X] Require governed approval for allocation increases above threshold.
+- [X] Reject allocations that exceed portfolio, strategy, currency, correlation cluster, VaR, ES, stress loss, margin, or drawdown limits.
+- [X] Prevent optimization or research workflows from promoting allocations without risk review.
+- [X] Test allocation proposals, budget reductions, evidence missing, correlation adjustment, drawdown adjustment, and approval-required thresholds.
 
 ### `app/services/risk/lifecycle.py`
 
@@ -1363,14 +1362,14 @@ review_mode_promotion
 
 Requirements:
 
-- [ ] Implement lifecycle gates for research, simulation, paper, shadow, live-read-only, micro-live, and full-live modes.
-- [ ] Require strategy admission review before any strategy receives live or paper risk budget.
-- [ ] Require evidence packages for strategy admission, including backtest, walk-forward, out-of-sample, simulation, and risk metrics where available.
-- [ ] Require live-readiness review before live mode can be enabled.
-- [ ] Require mode promotion review before paper, shadow, micro-live, or full-live transitions.
-- [ ] Reject live readiness when audit persistence, kill switch, reconciliation, idempotency, broker metadata, risk config, or policy enforcement is unavailable.
-- [ ] Require approval for high-risk lifecycle transitions.
-- [ ] Test all lifecycle states, missing evidence, promotion blockers, approval-required transitions, and fail-closed live readiness.
+- [X] Implement lifecycle gates for research, simulation, paper, shadow, live-read-only, micro-live, and full-live modes.
+- [X] Require strategy admission review before any strategy receives live or paper risk budget.
+- [X] Require evidence packages for strategy admission, including backtest, walk-forward, out-of-sample, simulation, and risk metrics where available.
+- [X] Require live-readiness review before live mode can be enabled.
+- [X] Require mode promotion review before paper, shadow, micro-live, or full-live transitions.
+- [X] Reject live readiness when audit persistence, kill switch, reconciliation, idempotency, broker metadata, risk config, or policy enforcement is unavailable.
+- [X] Require approval for high-risk lifecycle transitions.
+- [X] Test all lifecycle states, missing evidence, promotion blockers, approval-required transitions, and fail-closed live readiness.
 
 ### `app/services/risk/kill_switch.py`
 
@@ -1389,14 +1388,14 @@ check_risk_kill_switch
 
 Requirements:
 
-- [ ] Implement global, portfolio, strategy, symbol, and currency-bucket kill switches.
-- [ ] Kill switches shall block approvals regardless of signal quality, optimization evidence, or operator convenience.
-- [ ] Kill switches shall support active, inactive, unknown, triggered, pending resume, and locked states.
-- [ ] Unknown kill-switch state shall fail closed for live-sensitive workflows.
-- [ ] Resume after kill switch shall require configured approval and audit evidence.
-- [ ] Emergency kill switches shall support immediate halt-all decisions.
-- [ ] Kill-switch triggers shall include hard loss breach, audit-chain failure, extreme spread, unreconciled state, broker disconnect, margin emergency, and manual operator halt.
-- [ ] Test active, inactive, unknown, attempted override, trigger, resume, approval-required resume, and non-bypass behavior.
+- [X] Implement global, portfolio, strategy, symbol, and currency-bucket kill switches.
+- [X] Kill switches shall block approvals regardless of signal quality, optimization evidence, or operator convenience.
+- [X] Kill switches shall support active, inactive, unknown, triggered, pending resume, and locked states.
+- [X] Unknown kill-switch state shall fail closed for live-sensitive workflows.
+- [X] Resume after kill switch shall require configured approval and audit evidence.
+- [X] Emergency kill switches shall support immediate halt-all decisions.
+- [X] Kill-switch triggers shall include hard loss breach, audit-chain failure, extreme spread, unreconciled state, broker disconnect, margin emergency, and manual operator halt.
+- [X] Test active, inactive, unknown, attempted override, trigger, resume, approval-required resume, and non-bypass behavior.
 
 ### `app/services/risk/governor.py`
 
@@ -1428,26 +1427,26 @@ review_trade_risk
 
 Requirements:
 
-- [ ] Implement `RiskGovernor` as the canonical orchestration layer for pre-trade, allocation, admission, live-readiness, and lifecycle reviews.
-- [ ] `RiskGovernor` shall validate the request schema before any calculation.
-- [ ] `RiskGovernor` shall resolve policy before any sizing or portfolio calculation.
-- [ ] `RiskGovernor` shall check kill-switch and lifecycle state before approving new risk.
-- [ ] `RiskGovernor` shall check market regime, evidence freshness, rollover blackout, spread, and liquidity before sizing intraday trades.
-- [ ] `RiskGovernor` shall compute initial volatility-adjusted size before portfolio-level projected risk.
-- [ ] `RiskGovernor` shall compute projected symbol, strategy, currency, cluster, and portfolio exposure including pending and in-flight orders.
-- [ ] `RiskGovernor` shall run deterministic limits in explicit order.
-- [ ] `RiskGovernor` shall compute correlation impact, portfolio VaR, Expected Shortfall, stress loss, margin usage, drawdown throttle, and execution feasibility before final approval.
-- [ ] `RiskGovernor` shall return `approve` only when all required hard limits pass and no unresolved blocking evidence exists.
-- [ ] `RiskGovernor` shall return `reduce_size` when a smaller safe size can satisfy all hard gates.
-- [ ] `RiskGovernor` shall return `reject` or `block` for hard-limit breaches, active kill switches, invalid input, missing mandatory evidence, or stale state.
-- [ ] `RiskGovernor` shall return `needs_more_evidence` when evidence might permit future approval but current evidence is insufficient.
-- [ ] `RiskGovernor` shall return `needs_approval` for governed overrides, allocation increases, live promotions, and configured warning overrides.
-- [ ] `RiskGovernor` shall return `halt_strategy` or `halt_all` when safety conditions require immediate shutdown.
-- [ ] `RiskGovernor` shall produce one canonical `RiskDecisionPackage` for every request.
-- [ ] `RiskGovernor` shall issue approval tokens only for approved or reduced decisions and only with bounded expiry.
-- [ ] `RiskGovernor` shall persist or emit a tamper-evident audit event for every decision.
-- [ ] `RiskGovernor` shall not call broker order APIs, place trades, or modify live account state.
-- [ ] Test the full governor path for approve, reduce, reject, block, needs-more-evidence, needs-approval, halt-strategy, and halt-all outcomes.
+- [X] Implement `RiskGovernor` as the canonical orchestration layer for pre-trade, allocation, admission, live-readiness, and lifecycle reviews.
+- [X] `RiskGovernor` shall validate the request schema before any calculation.
+- [X] `RiskGovernor` shall resolve policy before any sizing or portfolio calculation.
+- [X] `RiskGovernor` shall check kill-switch and lifecycle state before approving new risk.
+- [X] `RiskGovernor` shall check market regime, evidence freshness, rollover blackout, spread, and liquidity before sizing intraday trades.
+- [X] `RiskGovernor` shall compute initial volatility-adjusted size before portfolio-level projected risk.
+- [X] `RiskGovernor` shall compute projected symbol, strategy, currency, cluster, and portfolio exposure including pending and in-flight orders.
+- [X] `RiskGovernor` shall run deterministic limits in explicit order.
+- [X] `RiskGovernor` shall compute correlation impact, portfolio VaR, Expected Shortfall, stress loss, margin usage, drawdown throttle, and execution feasibility before final approval.
+- [X] `RiskGovernor` shall return `approve` only when all required hard limits pass and no unresolved blocking evidence exists.
+- [X] `RiskGovernor` shall return `reduce_size` when a smaller safe size can satisfy all hard gates.
+- [X] `RiskGovernor` shall return `reject` or `block` for hard-limit breaches, active kill switches, invalid input, missing mandatory evidence, or stale state.
+- [X] `RiskGovernor` shall return `needs_more_evidence` when evidence might permit future approval but current evidence is insufficient.
+- [X] `RiskGovernor` shall return `needs_approval` for governed overrides, allocation increases, live promotions, and configured warning overrides.
+- [X] `RiskGovernor` shall return `halt_strategy` or `halt_all` when safety conditions require immediate shutdown.
+- [X] `RiskGovernor` shall produce one canonical `RiskDecisionPackage` for every request.
+- [X] `RiskGovernor` shall issue approval tokens only for approved or reduced decisions and only with bounded expiry.
+- [X] `RiskGovernor` shall persist or emit a tamper-evident audit event for every decision.
+- [X] `RiskGovernor` shall not call broker order APIs, place trades, or modify live account state.
+- [X] Test the full governor path for approve, reduce, reject, block, needs-more-evidence, needs-approval, halt-strategy, and halt-all outcomes.
 
 ### `app/services/risk/audit.py`
 
@@ -1467,16 +1466,16 @@ revoke_risk_approval_token
 
 Requirements:
 
-- [ ] Create one audit event for every risk request and decision.
-- [ ] Include signal ID, strategy ID, symbol, side, requested size, approved size, reason codes, policy hash, config hash, risk snapshot, VaR, ES, stress loss, exposure, margin, drawdown state, and decision status in audit events.
-- [ ] Redact secrets, broker account identifiers, raw private payloads, and full approval packets from logs and reports.
-- [ ] Use deterministic canonical payloads for audit hashing.
-- [ ] Implement audit-chain genesis hash rule for the first record.
-- [ ] Implement tamper-evident hash chaining for subsequent records.
-- [ ] Validate approval tokens against token signature, expiry, policy hash, config hash, action scope, environment, account, strategy, symbol, and revocation status.
-- [ ] Reject stale, revoked, tampered, expired, or incompatible approval tokens.
-- [ ] Fail closed for live-sensitive workflows when mandatory audit persistence is unavailable.
-- [ ] Test audit event creation, redaction, hash stability, genesis hash, tamper detection, token validation, expiry, revocation, and config-hash incompatibility.
+- [X] Create one audit event for every risk request and decision.
+- [X] Include signal ID, strategy ID, symbol, side, requested size, approved size, reason codes, policy hash, config hash, risk snapshot, VaR, ES, stress loss, exposure, margin, drawdown state, and decision status in audit events.
+- [X] Redact secrets, broker account identifiers, raw private payloads, and full approval packets from logs and reports.
+- [X] Use deterministic canonical payloads for audit hashing.
+- [X] Implement audit-chain genesis hash rule for the first record.
+- [X] Implement tamper-evident hash chaining for subsequent records.
+- [X] Validate approval tokens against token signature, expiry, policy hash, config hash, action scope, environment, account, strategy, symbol, and revocation status.
+- [X] Reject stale, revoked, tampered, expired, or incompatible approval tokens.
+- [X] Fail closed for live-sensitive workflows when mandatory audit persistence is unavailable.
+- [X] Test audit event creation, redaction, hash stability, genesis hash, tamper detection, token validation, expiry, revocation, and config-hash incompatibility.
 
 ### `app/services/risk/storage.py`
 
@@ -1492,13 +1491,13 @@ InMemoryRiskStateStore
 
 Requirements:
 
-- [ ] Define storage ports for risk state, audit events, policies, decisions, kill-switch state, drawdown state, and token revocation state.
-- [ ] Provide an in-memory store for tests and offline simulation.
-- [ ] Do not own durable database migrations unless explicitly assigned by the Data or platform persistence phase.
-- [ ] Define exact port method signatures, required fields, failure behavior, and schema-version compatibility expectations.
-- [ ] Fail closed when mandatory live persistence is unavailable.
-- [ ] Support idempotent decision persistence keyed by request ID, workflow ID, signal ID, and decision material hash.
-- [ ] Test in-memory persistence, duplicate decision handling, persistence failure behavior, schema-version mismatch, and live fail-closed behavior.
+- [X] Define storage ports for risk state, audit events, policies, decisions, kill-switch state, drawdown state, and token revocation state.
+- [X] Provide an in-memory store for tests and offline simulation.
+- [X] Do not own durable database migrations unless explicitly assigned by the Data or platform persistence phase.
+- [X] Define exact port method signatures, required fields, failure behavior, and schema-version compatibility expectations.
+- [X] Fail closed when mandatory live persistence is unavailable.
+- [X] Support idempotent decision persistence keyed by request ID, workflow ID, signal ID, and decision material hash.
+- [X] Test in-memory persistence, duplicate decision handling, persistence failure behavior, schema-version mismatch, and live fail-closed behavior.
 
 ### `app/services/risk/reports.py`
 
@@ -1515,14 +1514,14 @@ build_risk_decision_summary
 
 Requirements:
 
-- [ ] Generate risk reports from stored decisions, snapshots, and audit events without recomputing or fabricating evidence.
-- [ ] Include policy profile, config hash, mode, portfolio exposure, currency exposure, correlation clusters, VaR, ES, stress loss, drawdown state, margin usage, breaches, warnings, and decisions.
-- [ ] Support JSON-safe report output.
-- [ ] Support optional file output only through explicit write-enabled paths.
-- [ ] Redact sensitive data in all reports.
-- [ ] Test report generation, no-recompute behavior, JSON serialization, file-write gating, and redaction.
+- [X] Generate risk reports from stored decisions, snapshots, and audit events without recomputing or fabricating evidence.
+- [X] Include policy profile, config hash, mode, portfolio exposure, currency exposure, correlation clusters, VaR, ES, stress loss, drawdown state, margin usage, breaches, warnings, and decisions.
+- [X] Support JSON-safe report output.
+- [X] Support optional file output only through explicit write-enabled paths.
+- [X] Redact sensitive data in all reports.
+- [X] Test report generation, no-recompute behavior, JSON serialization, file-write gating, and redaction.
 
-### `app/services/risk/tools.py`
+### `agentic/tools/risk.py`
 
 Functions/classes:
 
@@ -1542,26 +1541,26 @@ generate_risk_report_tool
 
 Requirements:
 
-- [ ] Wrap approved risk capabilities in official AI-tool functions with standard response envelopes.
-- [ ] Set `places_trade=False` for every risk tool.
-- [ ] Set `read_only=False` only for tools that write audit, report, or decision state.
-- [ ] Mark live-sensitive review tools as approval-sensitive and fail-closed.
-- [ ] Validate every tool input and return deterministic error envelopes for expected failures.
-- [ ] Propagate request IDs and workflow IDs through tool metadata and audit events.
-- [ ] Prevent tools from returning raw model objects that are not JSON-safe.
-- [ ] Test every official risk tool for success path, invalid input, fail-closed path, metadata correctness, and deterministic error codes.
+- [X] Wrap approved risk capabilities in official AI-tool functions with standard response envelopes.
+- [X] Set `places_trade=False` for every risk tool.
+- [X] Set `read_only=False` only for tools that write audit, report, or decision state.
+- [X] Mark live-sensitive review tools as approval-sensitive and fail-closed.
+- [X] Validate every tool input and return deterministic error envelopes for expected failures.
+- [X] Propagate request IDs and workflow IDs through tool metadata and audit events.
+- [X] Prevent tools from returning raw model objects that are not JSON-safe.
+- [X] Test every official risk tool for success path, invalid input, fail-closed path, metadata correctness, and deterministic error codes.
 
 ### Cross-Module Boundary Rules
 
-- [ ] Risk shall consume Strategy signals but shall not own strategy generation or strategy execution.
-- [ ] Risk shall consume Data market snapshots but shall not own market-data ingestion, cleaning, repair, enrichment, or persistence.
-- [ ] Risk shall consume Portfolio state but shall not own full portfolio accounting unless explicitly assigned by the Portfolio phase.
-- [ ] Risk shall produce approval/rejection decisions but shall not own broker order placement.
-- [ ] Risk shall consume Governance approval metadata through stable interfaces but shall not own enterprise governance policy unless explicitly assigned.
-- [ ] Risk shall consume Execution metadata and broker constraints through injected snapshots but shall not import broker SDKs.
-- [ ] API routes, UI screens, and Conversation flows shall delegate to Risk services and shall not embed risk algorithms.
-- [ ] Optimization and Research shall not bypass Risk when proposing allocation, promotion, or deployment.
-- [ ] Live and Trading shall revalidate Risk tokens immediately before broker mutation.
+- [X] Risk shall consume Strategy signals but shall not own strategy generation or strategy execution.
+- [X] Risk shall consume Data market snapshots but shall not own market-data ingestion, cleaning, repair, enrichment, or persistence.
+- [X] Risk shall consume Portfolio state but shall not own full portfolio accounting unless explicitly assigned by the Portfolio phase.
+- [X] Risk shall produce approval/rejection decisions but shall not own broker order placement.
+- [X] Risk shall consume Governance approval metadata through stable interfaces but shall not own enterprise governance policy unless explicitly assigned.
+- [X] Risk shall consume Execution metadata and broker constraints through injected snapshots but shall not import broker SDKs.
+- [X] API routes, UI screens, and Conversation flows shall delegate to Risk services and shall not embed risk algorithms.
+- [X] Optimization and Research shall not bypass Risk when proposing allocation, promotion, or deployment.
+- [ ] Live and Trading shall revalidate Risk tokens immediately before broker mutation. (**Evidence** : The execution service in **trade.py** contains **no logic, imports, or checks** related to `RiskApprovalToken`, `RiskDecisionToken`, or `RiskDecisionPackage`. Methods like `buy`, `sell`, and internal dispatch functions (`_send_request`) validate basic fields, check a local boolean kill switch, and immediately transmit the trade request to the active broker adapter without checking for a cryptographically verified risk approval token)
 
 ### Institutional Default Policy Values
 
@@ -1583,8 +1582,9 @@ drawdown:
   total_drawdown_hard_limit: 9.0%
 
 correlation:
-  lookback_m1: 120
   lookback_m5: 96
+  lookback_h1: 24
+  lookback_d1: 10
   reject_threshold: 0.70
   reduce_threshold: 0.50
 
@@ -1602,10 +1602,10 @@ execution:
   rollover_blackout_hours_after: 2
 ```
 
-- [ ] Encode institutional default values in config profiles with strict validation.
-- [ ] Document that default values are conservative baselines and not optimized promises.
-- [ ] Require owner approval before increasing risk thresholds above conservative defaults.
-- [ ] Ensure live profiles remain below external prop-firm daily and total drawdown limits.
+- [X] Encode institutional default values in config profiles with strict validation.
+- [X] Document that default values are conservative baselines and not optimized promises.
+- [X] Require owner approval before increasing risk thresholds above conservative defaults.
+- [X] Ensure live profiles remain below external prop-firm daily and total drawdown limits.
 
 ### Unit Tests Required
 
@@ -1615,14 +1615,14 @@ tests/unit/app/services/risk/
 
 Test coverage:
 
-- [ ] Cover every requirement in this phase with normal, edge, invalid-input, fail-closed, logging, schema, and regression tests as applicable.
-- [ ] Preserve the project gate of at least 80% coverage for each affected file and package.
-- [ ] Verify standard envelopes, deterministic error codes, import behavior, and ownership boundaries.
-- [ ] Test every model, enum, config, policy, regime, limit, sizing, exposure, correlation, VaR/ES, stress, margin, drawdown, execution-gate, allocation, lifecycle, kill-switch, governor, audit, storage, report, and tool path.
-- [ ] Test all safety-critical paths without excluding them from coverage unless explicitly justified and approved.
-- [ ] Test that missing optional dependencies do not break importability.
-- [ ] Test that no risk module import performs broker calls, network calls, filesystem writes, subprocess execution, environment mutation, or secret reads.
-- [ ] Test that LLM-facing tools cannot place trades or mutate broker state.
+- [X] Cover every requirement in this phase with normal, edge, invalid-input, fail-closed, logging, schema, and regression tests as applicable.
+- [X] Preserve the project gate of at least 80% coverage for each affected file and package.
+- [X] Verify standard envelopes, deterministic error codes, import behavior, and ownership boundaries.
+- [X] Test every model, enum, config, policy, regime, limit, sizing, exposure, correlation, VaR/ES, stress, margin, drawdown, execution-gate, allocation, lifecycle, kill-switch, governor, audit, storage, report, and tool path.
+- [X] Test all safety-critical paths without excluding them from coverage unless explicitly justified and approved.
+- [X] Test that missing optional dependencies do not break importability.
+- [X] Test that no risk module import performs broker calls, network calls, filesystem writes, subprocess execution, environment mutation, or secret reads.
+- [X] Test that LLM-facing tools cannot place trades or mutate broker state.
 
 ### Integration Tests Required
 

@@ -269,3 +269,90 @@ def test_calculate_rolling_volatility_logic(
     res_spike = assess_risk_regime(normal_snapshot, [], base_config, context_spike)
     assert res_spike.volatility_regime == VolatilityRegime.SPIKE
     assert res_spike.status == RiskDecisionStatus.REJECT
+
+
+def test_vol_med_volatility_classification(
+    base_config: RiskConfig, normal_snapshot: MarketRiskSnapshot
+) -> None:
+    """Test that vol_med is used to detect volatility spikes."""
+    # vol_short / vol_med = 0.025 / 0.010 = 2.5 >= 2.0 (spike multiplier)
+    context = {"vol_short": 0.025, "vol_med": 0.010, "vol_long": 0.020}
+    res = assess_risk_regime(normal_snapshot, [], base_config, context)
+    assert res.volatility_regime == VolatilityRegime.SPIKE
+    assert res.status == RiskDecisionStatus.REJECT
+
+
+def test_liquidity_regime_tick_availability(
+    base_config: RiskConfig, normal_snapshot: MarketRiskSnapshot
+) -> None:
+    """Test that setting tick_availability to False triggers illiquid regime."""
+    context = {"tick_availability": False}
+    res = assess_risk_regime(normal_snapshot, [], base_config, context)
+    assert res.liquidity_regime == LiquidityRegime.ILLIQUID
+    assert res.status == RiskDecisionStatus.REJECT
+
+
+def test_liquidity_regime_spread_jump(
+    base_config: RiskConfig, normal_snapshot: MarketRiskSnapshot
+) -> None:
+    """Test that a spread jump triggers illiquid regime."""
+    # Current spread is 0.0009, spread_mean is 0.0002, multiplier is 3.0.
+    # 0.0009 > 0.0006
+    snap = normal_snapshot.model_copy(update={"spread": Decimal("0.0009")})
+    context = {"spread_mean": 0.0002, "max_spread_multiplier": 3.0}
+    res = assess_risk_regime(snap, [], base_config, context)
+    assert res.liquidity_regime == LiquidityRegime.ILLIQUID
+    assert res.status == RiskDecisionStatus.REJECT
+
+
+def test_liquidity_regime_session_context(
+    base_config: RiskConfig, normal_snapshot: MarketRiskSnapshot
+) -> None:
+    """Test that session context low_liquidity halves the tick frequency thresholds."""
+    # Normally tick_frequency of 3 is thin (<= 10), but with low_liquidity context,
+    # thresholds are halved (illiquid <= 1, thin <= 5). So frequency 3 is thin.
+    context = {"tick_frequency": 3, "session_context": "low_liquidity"}
+    res = assess_risk_regime(normal_snapshot, [], base_config, context)
+    assert res.liquidity_regime == LiquidityRegime.THIN
+    assert res.status == RiskDecisionStatus.APPROVE
+
+
+def test_gap_event_prices(
+    base_config: RiskConfig, normal_snapshot: MarketRiskSnapshot
+) -> None:
+    """Test that a price gap > threshold triggers suspended regime."""
+    prices = [Decimal("100.0"), Decimal("100.5"), Decimal("103.0"), Decimal("103.1")]
+    context = {"historical_prices": prices, "gap_threshold": 0.02}
+    res = assess_risk_regime(normal_snapshot, [], base_config, context)
+    assert res.regime == RiskRegime.SUSPENDED
+    assert res.status == RiskDecisionStatus.REJECT
+    assert "Gap event" in res.reason
+
+
+def test_config_based_rollover_blackout(
+    base_config: RiskConfig, normal_snapshot: MarketRiskSnapshot
+) -> None:
+    """Test that current time inside config start/end UTC window triggers
+
+    rollover blackout.
+    """
+    # Current time hour is mock-tested by passing now
+    # We will override rollover_blackout_start_utc and rollover_blackout_end_utc
+    from app.utils.normalization import utc_now
+
+    now_time = utc_now()
+    # Construct start/end around now
+    start_hour = now_time.hour
+    start_min = max(0, now_time.minute - 2)
+    end_hour = now_time.hour
+    end_min = min(59, now_time.minute + 2)
+
+    context = {
+        "rollover_blackout_start_utc": f"{start_hour:02d}:{start_min:02d}",
+        "rollover_blackout_end_utc": f"{end_hour:02d}:{end_min:02d}",
+    }
+
+    res = assess_risk_regime(normal_snapshot, [], base_config, context)
+    assert res.rollover_regime == RolloverRegime.BLACKOUT
+    assert res.regime == RiskRegime.ROLLOVER_BLACKOUT
+    assert res.status == RiskDecisionStatus.REJECT

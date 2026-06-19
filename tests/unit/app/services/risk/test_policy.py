@@ -36,7 +36,7 @@ def test_resolve_policy_default_no_rules(base_config: RiskConfig) -> None:
     assert result.status == RiskDecisionStatus.APPROVE
     assert result.resolved_config.max_daily_loss_pct == base_config.max_daily_loss_pct
     assert result.policy_hash == (
-        "e3b0c44298fc1c149afbf4c8996fb92427ae41e"  # pragma: allowlist secret
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4"  # pragma: allowlist secret
         "649b934ca495991b7852b855"  # pragma: allowlist secret
     )  # sha256 of empty str
 
@@ -210,3 +210,113 @@ def test_validate_risk_budget_gates(base_config: RiskConfig) -> None:
         validate_risk_budget_gates("strat-1", Decimal("1000.00"), invalid_config)
         is False
     )
+
+
+def test_risk_policy_engine_resolution(base_config: RiskConfig) -> None:
+    """Test RiskPolicyEngine matching and resolution with bundle and policies."""
+    from app.services.risk.models import PolicyRule, PolicyScope
+    from app.services.risk.policy import (
+        PolicyBundle,
+        PolicyResolutionQuery,
+        PolicyVersion,
+        RiskPolicy,
+        RiskPolicyEngine,
+    )
+
+    version = PolicyVersion(version_id="v1.0.0", author="compliance_officer")
+    policy = RiskPolicy(
+        policy_id="pol-001",
+        profile_name="default",
+        rules=[
+            PolicyRule(
+                rule_id="rule-leverage",
+                scope=PolicyScope(
+                    environment="production", mode=RiskMode.FULL_LIVE, symbol="EURUSD"
+                ),
+                overrides={
+                    "max_effective_leverage": Decimal("10.0"),
+                    "allow_live_execution": True,
+                },
+            )
+        ],
+    )
+    bundle = PolicyBundle(bundle_id="bundle-1", version=version, policies=[policy])
+    engine = RiskPolicyEngine(bundle=bundle)
+
+    query = PolicyResolutionQuery(
+        environment="production",
+        mode="full_live",
+        symbol="EURUSD",
+    )
+    # Resolve config with overrides, version metadata, and scope metadata
+    result = engine.resolve(query, base_config)
+    assert result.status == RiskDecisionStatus.APPROVE
+    assert result.resolved_config.max_effective_leverage == Decimal("10.0")
+    assert result.policy_version == "v1.0.0"
+    assert result.policy_scope is not None
+    assert result.policy_scope.get("environment") == "production"
+
+
+def test_check_policy_permission_scenarios() -> None:
+    """Test check_policy_permission role constraints by environment."""
+    from app.services.risk.policy import check_policy_permission
+
+    # In production/staging, only admin, compliance_officer, risk_manager are allowed
+    assert check_policy_permission("admin", "override_limits", "production") is True
+    assert (
+        check_policy_permission("compliance_officer", "override_limits", "staging")
+        is True
+    )
+    assert (
+        check_policy_permission("risk_manager", "override_limits", "production") is True
+    )
+    assert (
+        check_policy_permission("developer", "override_limits", "production") is False
+    )
+    assert check_policy_permission("operator", "override_limits", "production") is False
+
+    # force_resume requires admin or compliance_officer in prod/staging
+    assert check_policy_permission("admin", "force_resume", "production") is True
+    assert (
+        check_policy_permission("compliance_officer", "force_resume", "production")
+        is True
+    )
+    assert (
+        check_policy_permission("risk_manager", "force_resume", "production") is False
+    )
+
+    # In local/simulation, developers and operators are allowed
+    assert check_policy_permission("developer", "override_limits", "local") is True
+    assert check_policy_permission("operator", "override_limits", "local") is True
+    assert check_policy_permission("visitor", "override_limits", "local") is False
+
+
+def test_policy_override_request_validation() -> None:
+    """Test PolicyOverrideRequest validation structure."""
+    from datetime import timedelta
+
+    from app.services.risk.policy import PolicyOverrideRequest
+
+    now = utc_now()
+    token = RiskApprovalToken(
+        token_id="tok-002",
+        request_id="req-2",
+        workflow_id="wf-2",
+        approved_action="override_limits",
+        approver="compliance_officer",
+        expiry_time=now + timedelta(minutes=30),
+        config_hash="hash_123",
+        decision_hash="dec-2",
+        scope={"symbol": "EURUSD"},
+        nonce="nonce-2",
+        signature="sig-2",
+    )
+
+    req = PolicyOverrideRequest(
+        request_id="req-2",
+        token=token,
+        target_overrides={"max_effective_leverage": 15.0},
+    )
+    assert req.request_id == "req-2"
+    assert req.token.token_id == "tok-002"
+    assert req.target_overrides["max_effective_leverage"] == 15.0

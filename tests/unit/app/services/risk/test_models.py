@@ -122,3 +122,38 @@ def test_canonical_json_serialization_failure():
     with pytest.raises(ValidationError) as exc_info:
         trade.to_json()
     assert "Failed to serialize contract" in str(exc_info.value)
+
+
+def test_risk_policy_profile_and_snapshot():
+    from app.services.risk.models import (
+        AccountRiskSnapshot,
+        RiskPolicyProfile,
+        RiskSnapshot,
+    )
+
+    # Test RiskPolicyProfile
+    cfg = RiskConfig(profile_name="test_profile")
+    profile = RiskPolicyProfile(
+        profile_name="test_profile",
+        description="A conservative test profile.",
+        config=cfg,
+    )
+    assert profile.profile_name == "test_profile"
+    assert profile.config.max_daily_loss_pct == cfg.max_daily_loss_pct
+
+    # Test RiskSnapshot base class instantiation
+    snap = RiskSnapshot()
+    assert isinstance(snap, RiskSnapshot)
+
+    # Test that AccountRiskSnapshot inherits from RiskSnapshot
+    acc_snap = AccountRiskSnapshot(
+        equity=Decimal(10000),
+        balance=Decimal(10000),
+        free_margin=Decimal(10000),
+        margin_used=Decimal(0),
+        leverage=Decimal(1),
+        base_currency="USD",
+        timestamp=datetime.now(UTC),
+    )
+    assert isinstance(acc_snap, RiskSnapshot)
+    assert acc_snap.equity == Decimal(10000)

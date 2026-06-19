@@ -695,6 +695,23 @@ def evaluate_proposed_trade_correlation(
     if not isinstance(market_data, dict):
         market_data = market_context
 
+    env = market_context.get("environment", "local")
+    is_live = env in {
+        "paper",
+        "shadow",
+        "live_readonly",
+        "micro_live",
+        "full_live",
+    } or getattr(config, "allow_live_execution", False)
+    fallback_val = Decimal("1.0") if is_live else Decimal("0.0")
+
+    min_samples = int(
+        market_context.get(
+            "min_correlation_samples",
+            getattr(config, "min_correlation_samples", 20),
+        )
+    )
+
     try:
         marginal_corr, _ = calculate_marginal_correlation(
             portfolio_state=portfolio_state,
@@ -710,13 +727,13 @@ def evaluate_proposed_trade_correlation(
                 ReturnType.SIGMA_NORMALIZED,
             }
             else ReturnType.CLOSE_TO_CLOSE,
-            min_samples=2,
-            fallback_correlation=Decimal("0.0"),
+            min_samples=min_samples,
+            fallback_correlation=fallback_val,
             exclude_last=True,
         )
     except (ValueError, TypeError, KeyError, ValidationError) as e:
         logger.warning(f"Failed to calculate marginal correlation, falling back: {e}")
-        marginal_corr = Decimal("0.0")
+        marginal_corr = fallback_val
 
     threshold = config.correlation_threshold
     reject_thresh = min(
@@ -801,3 +818,192 @@ def calculate_correlation_matrix(
         exclude_last=exclude_last,
     )
     return snapshot.matrix
+
+
+def calculate_correlation_impact(
+    portfolio_state: PortfolioState,
+    proposed_trade: ProposedTrade,
+    market_data: dict[str, list[Any]],
+    lookback: int = 50,
+    return_type: str = ReturnType.CLOSE_TO_CLOSE,
+    min_samples: int = 20,
+    fallback_correlation: Decimal | None = None,
+    exclude_last: bool = True,
+) -> Decimal:
+    """Compute marginal correlation impact of a proposed trade before approval.
+
+    Args:
+        portfolio_state: Current portfolio state.
+        proposed_trade: Candidate proposed trade.
+        market_data: Historical price bars for symbols.
+        lookback: Maximum number of return samples.
+        return_type: Return formula type.
+        min_samples: Minimum required samples.
+        fallback_correlation: Fallback value if samples are insufficient.
+        exclude_last: Exclude the last bar.
+
+    Returns:
+        Decimal: Pearson marginal correlation coefficient between the portfolio returns
+            and the proposed trade asset returns (adjusted for trade direction).
+    """
+    corr, _ = calculate_marginal_correlation(
+        portfolio_state=portfolio_state,
+        proposed_trade=proposed_trade,
+        market_data=market_data,
+        lookback=lookback,
+        return_type=return_type,
+        min_samples=min_samples,
+        fallback_correlation=fallback_correlation,
+        exclude_last=exclude_last,
+    )
+    return corr
+
+
+def calculate_cluster_exposure(
+    portfolio_state: PortfolioState,
+    proposed_trade: ProposedTrade | None,
+    snapshot: CorrelationSnapshot,
+    threshold: Decimal,
+    market_context: dict[str, Any],
+) -> dict[str, Decimal]:
+    """Calculate gross exposure for correlated asset clusters (singular alias)."""
+    return calculate_cluster_exposures(
+        portfolio_state=portfolio_state,
+        proposed_trade=proposed_trade,
+        snapshot=snapshot,
+        threshold=threshold,
+        market_context=market_context,
+    )
+
+
+def calculate_symbol_cluster_exposure(
+    symbol: str,
+    portfolio_state: PortfolioState,
+    proposed_trade: ProposedTrade | None,
+    snapshot: CorrelationSnapshot,
+    threshold: Decimal,
+    market_context: dict[str, Any],
+) -> Decimal:
+    """Calculate gross exposure for the cluster containing a specific symbol.
+
+    Args:
+        symbol: The target symbol to evaluate.
+        portfolio_state: Current portfolio state.
+        proposed_trade: Proposed trade to include in projected exposure.
+        snapshot: CorrelationSnapshot containing the correlation matrix.
+        threshold: Pairwise correlation threshold to group assets.
+        market_context: Symbol market context (contract sizes, conversions, etc.).
+
+    Returns:
+        Decimal: Gross exposure of the correlated cluster containing the symbol.
+    """
+    symbols = _get_all_symbols(portfolio_state, proposed_trade)
+    if symbol not in symbols:
+        return Decimal("0.0")
+
+    account_ccy = portfolio_state.currency.upper()
+    sym_exposures = _calculate_symbol_exposures(
+        symbols, portfolio_state, proposed_trade, market_context, account_ccy
+    )
+
+    symbols_list = sorted(symbols)
+    adj = _build_adjacency_list(symbols_list, snapshot, threshold)
+    clusters = _find_connected_components(symbols_list, adj)
+
+    for comp in clusters:
+        if symbol in comp:
+            return sum((sym_exposures[sym] for sym in comp), Decimal("0.0"))
+
+    return Decimal("0.0")
+
+
+class CorrelationEngine:
+    """Orchestrator for correlation calculations and cluster risk analysis."""
+
+    def __init__(self, config: RiskConfig | None = None) -> None:
+        """Initialize with active risk configuration.
+
+        Args:
+            config: Optional active risk config profile.
+        """
+        self.config = config
+
+    def calculate_returns(
+        self,
+        bars: list[Any],
+        return_type: str,
+        exclude_last: bool = True,
+    ) -> dict[datetime, Decimal]:
+        """Calculate returns series for a list of bars."""
+        return calculate_returns(bars, return_type, exclude_last)
+
+    def align_return_series(
+        self,
+        returns_a: dict[datetime, Decimal],
+        returns_b: dict[datetime, Decimal],
+    ) -> tuple[list[Decimal], list[Decimal]]:
+        """Align two return series by common timestamps."""
+        return align_return_series(returns_a, returns_b)
+
+    def calculate_correlation_matrix(
+        self,
+        market_data: dict[str, list[Any]],
+        lookback: int = 50,
+        timeframe: str = "M1",
+        method: str = CorrelationMethod.PEARSON,
+        return_type: str = ReturnType.CLOSE_TO_CLOSE,
+        min_samples: int = 20,
+        fallback_correlation: Decimal | None = None,
+        exclude_last: bool = True,
+    ) -> dict[str, dict[str, Decimal]]:
+        """Compute rolling correlation matrix for multiple symbol price series."""
+        return calculate_correlation_matrix(
+            market_data=market_data,
+            lookback=lookback,
+            timeframe=timeframe,
+            method=method,
+            return_type=return_type,
+            min_samples=min_samples,
+            fallback_correlation=fallback_correlation,
+            exclude_last=exclude_last,
+        )
+
+    def calculate_correlation_impact(
+        self,
+        portfolio_state: PortfolioState,
+        proposed_trade: ProposedTrade,
+        market_data: dict[str, list[Any]],
+        lookback: int = 50,
+        return_type: str = ReturnType.CLOSE_TO_CLOSE,
+        min_samples: int = 20,
+        fallback_correlation: Decimal | None = None,
+        exclude_last: bool = True,
+    ) -> Decimal:
+        """Compute marginal correlation impact of a proposed trade."""
+        return calculate_correlation_impact(
+            portfolio_state=portfolio_state,
+            proposed_trade=proposed_trade,
+            market_data=market_data,
+            lookback=lookback,
+            return_type=return_type,
+            min_samples=min_samples,
+            fallback_correlation=fallback_correlation,
+            exclude_last=exclude_last,
+        )
+
+    def calculate_cluster_exposure(
+        self,
+        portfolio_state: PortfolioState,
+        proposed_trade: ProposedTrade | None,
+        snapshot: CorrelationSnapshot,
+        threshold: Decimal,
+        market_context: dict[str, Any],
+    ) -> dict[str, Decimal]:
+        """Calculate gross exposure for correlated asset clusters."""
+        return calculate_cluster_exposure(
+            portfolio_state=portfolio_state,
+            proposed_trade=proposed_trade,
+            snapshot=snapshot,
+            threshold=threshold,
+            market_context=market_context,
+        )

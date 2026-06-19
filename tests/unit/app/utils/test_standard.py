@@ -52,6 +52,10 @@ def test_build_metadata_contains_required_contract_fields() -> None:
         "deletes": False,
         "trades": False,
         "requires_network": False,
+        "read_only": True,
+        "writes_file": False,
+        "modifies_database": False,
+        "places_trade": False,
     }
 
 

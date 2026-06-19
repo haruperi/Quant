@@ -19,6 +19,7 @@ from app.services.risk import (
 )
 from app.services.risk.config import load_risk_config
 from app.services.risk.limits import (
+    LimitResult,
     check_daily_loss_limit,
     check_kill_switch_state,
     check_max_drawdown_limit,
@@ -214,3 +215,530 @@ def test_run_limit_checks_aggregation(
     assert code == RiskReasonCode.KILL_SWITCH_ACTIVE
     assert "kill_switch_state" in flags
     assert primary == "kill_switch_state"
+
+
+def test_unknown_limit_name_rejection(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test rejection of unknown limit names in market context."""
+    base_request.market_context["run_limits"] = ["invalid_limit_name_xyz"]
+    status, code, message, flags, primary, _results = run_limit_checks(
+        base_request, base_config
+    )
+    assert status == RiskDecisionStatus.BLOCK
+    assert code == RiskReasonCode.INVALID_INPUT
+    assert "invalid_limit_name" in flags
+    assert primary == "invalid_limit_name"
+    assert "Unknown limit name" in message
+
+
+def test_precedence_ordering_and_tie_breaking(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test aggregation status precedence rules and stable tie-breaking."""
+    # news_blackout and rollover_blackout both fail (REJECT).
+    # Since news_blackout runs first in ORDERED_LIMIT_CHECKS, it wins the tie-breaker.
+    base_request.market_context["news_blackout_active"] = True
+    base_request.market_context["rollover_blackout_active"] = True
+
+    status, _code, _message, flags, primary, _results = run_limit_checks(
+        base_request, base_config
+    )
+    assert status == RiskDecisionStatus.REJECT
+    assert primary == "news_blackout"
+    assert "news_blackout" in flags
+    assert "rollover_blackout" in flags
+
+    # BLOCK should override REJECT
+    base_request.market_context["kill_switch_active"] = True
+    status, _code, _message, flags, primary, _results = run_limit_checks(
+        base_request, base_config
+    )
+    assert status == RiskDecisionStatus.BLOCK
+    assert primary == "kill_switch_state"
+
+
+def test_non_finite_math_checks(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test that non-finite values in math limits trigger fail-closed BLOCK."""
+    from app.services.risk.limits import (
+        check_correlation_limit,
+        check_currency_exposure_limit,
+        check_daily_loss_limit,
+        check_expected_shortfall_limit,
+        check_leverage_limit,
+        check_margin_limit,
+        check_max_drawdown_limit,
+        check_pending_order_limit,
+        check_portfolio_exposure_limit,
+        check_slippage_limit,
+        check_spread_limit,
+        check_strategy_loss_limit,
+        check_stress_loss_limit,
+        check_symbol_exposure_limit,
+        check_trade_frequency_limit,
+        check_var_limit,
+    )
+
+    # 1. Drawdown
+    base_request.market_context["drawdown"] = float("nan")
+    assert (
+        check_max_drawdown_limit(base_request, base_config).status
+        == RiskDecisionStatus.BLOCK
+    )
+
+    # 2. Daily Loss
+    base_request.market_context["daily_loss_pct"] = float("nan")
+    assert (
+        check_daily_loss_limit(base_request, base_config).status
+        == RiskDecisionStatus.BLOCK
+    )
+
+    # 3. Strategy Loss
+    base_request.market_context["strategy_loss_pct"] = float("nan")
+    assert (
+        check_strategy_loss_limit(base_request, base_config).status
+        == RiskDecisionStatus.BLOCK
+    )
+
+    # 4. Spread
+    base_request.market_context["spread"] = float("nan")
+    assert (
+        check_spread_limit(base_request, base_config).status == RiskDecisionStatus.BLOCK
+    )
+
+    # 5. Slippage
+    base_request.market_context["slippage"] = float("nan")
+    assert (
+        check_slippage_limit(base_request, base_config).status
+        == RiskDecisionStatus.BLOCK
+    )
+
+    # 6. Trade Frequency
+    base_request.market_context["trade_frequency"] = float("nan")
+    assert (
+        check_trade_frequency_limit(base_request, base_config).status
+        == RiskDecisionStatus.BLOCK
+    )
+
+    # 7. Pending Order
+    base_request.market_context["pending_orders_count"] = float("nan")
+    assert (
+        check_pending_order_limit(base_request, base_config).status
+        == RiskDecisionStatus.BLOCK
+    )
+
+    # 8. Portfolio Exposure
+    base_request.market_context["portfolio_gross_exposure"] = float("nan")
+    assert (
+        check_portfolio_exposure_limit(base_request, base_config).status
+        == RiskDecisionStatus.BLOCK
+    )
+
+    # 9. Symbol Exposure
+    base_request.market_context["symbol_exposure_EURUSD"] = float("nan")
+    assert (
+        check_symbol_exposure_limit(base_request, base_config).status
+        == RiskDecisionStatus.BLOCK
+    )
+
+    # 10. Currency Exposure
+    base_request.market_context["currency_gross_exposure"] = float("nan")
+    assert (
+        check_currency_exposure_limit(base_request, base_config).status
+        == RiskDecisionStatus.BLOCK
+    )
+
+    # 11. Correlation
+    base_request.market_context["correlated_cluster_exposure"] = float("nan")
+    assert (
+        check_correlation_limit(base_request, base_config).status
+        == RiskDecisionStatus.BLOCK
+    )
+
+    # 12. VaR
+    base_request.market_context["var_metric"] = float("nan")
+    assert check_var_limit(base_request, base_config).status == RiskDecisionStatus.BLOCK
+
+    # 13. Expected Shortfall
+    base_request.market_context["es_metric"] = float("nan")
+    assert (
+        check_expected_shortfall_limit(base_request, base_config).status
+        == RiskDecisionStatus.BLOCK
+    )
+
+    # 14. Stress Loss
+    base_request.market_context["stress_loss_val"] = float("nan")
+    assert (
+        check_stress_loss_limit(base_request, base_config).status
+        == RiskDecisionStatus.BLOCK
+    )
+
+    # 15. Leverage
+    base_request.market_context["effective_leverage"] = float("nan")
+    assert (
+        check_leverage_limit(base_request, base_config).status
+        == RiskDecisionStatus.BLOCK
+    )
+
+    # 16. Margin
+    base_request.portfolio_state.margin_used = Decimal("NaN")
+    assert (
+        check_margin_limit(base_request, base_config).status == RiskDecisionStatus.BLOCK
+    )
+
+
+def test_limit_engine_calculation_failure(
+    base_request: RiskAssessmentRequest,
+    base_config: RiskConfig,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test how LimitEngine wraps limit check runtime calculation failures."""
+    from app.services.risk.limits import LimitEngine
+
+    def mock_check(req: RiskAssessmentRequest, conf: RiskConfig) -> LimitResult:
+        raise ValueError("Simulated calculation error")
+
+    import sys
+
+    monkeypatch.setattr(
+        sys.modules[LimitEngine.__module__],
+        "ORDERED_LIMIT_CHECKS",
+        (mock_check,),
+    )
+
+    engine = LimitEngine(config=base_config)
+    results = engine.execute(base_request)
+    assert len(results) == 1
+    assert results[0].status == RiskDecisionStatus.BLOCK
+    assert results[0].reason_code == RiskReasonCode.UNEXPECTED_ERROR
+    assert "calculation failed" in results[0].message
+
+
+def test_check_strategy_loss_limit(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test strategy drawdown limit gates."""
+    from app.services.risk.limits import check_strategy_loss_limit
+
+    # Pass
+    res = check_strategy_loss_limit(base_request, base_config)
+    assert not res.breached
+    assert res.status == RiskDecisionStatus.APPROVE
+
+    # Fail
+    base_request.market_context["strategy_loss_pct"] = 0.05
+    base_request.market_context["max_strategy_loss_pct"] = 0.04
+    res_fail = check_strategy_loss_limit(base_request, base_config)
+    assert res_fail.breached
+    assert res_fail.status == RiskDecisionStatus.REJECT
+
+
+def test_check_news_blackout(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test high impact news blackout gating."""
+    from app.services.risk.limits import check_news_blackout
+
+    # Pass
+    res = check_news_blackout(base_request, base_config)
+    assert not res.breached
+
+    # Fail
+    base_request.market_context["news_blackout_active"] = True
+    res_fail = check_news_blackout(base_request, base_config)
+    assert res_fail.breached
+    assert res_fail.status == RiskDecisionStatus.REJECT
+
+
+def test_check_rollover_blackout(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test broker midnight rollover blackout window gating."""
+    from app.services.risk.limits import check_rollover_blackout
+
+    # Pass
+    res = check_rollover_blackout(base_request, base_config)
+    assert not res.breached
+
+    # Fail
+    base_request.market_context["rollover_blackout_active"] = True
+    res_fail = check_rollover_blackout(base_request, base_config)
+    assert res_fail.breached
+    assert res_fail.status == RiskDecisionStatus.REJECT
+
+
+def test_check_spread_limit(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test spread threshold gates."""
+    from app.services.risk.limits import check_spread_limit
+
+    # Pass
+    res = check_spread_limit(base_request, base_config)
+    assert not res.breached
+
+    # Fail
+    base_request.market_context["spread"] = 0.0060
+    base_request.market_context["max_spread"] = 0.0050
+    res_fail = check_spread_limit(base_request, base_config)
+    assert res_fail.breached
+    assert res_fail.status == RiskDecisionStatus.REJECT
+
+
+def test_check_slippage_limit(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test execution slippage limit gates."""
+    from app.services.risk.limits import check_slippage_limit
+
+    # Pass
+    res = check_slippage_limit(base_request, base_config)
+    assert not res.breached
+
+    # Fail
+    base_request.market_context["slippage"] = 0.0030
+    base_request.market_context["max_slippage"] = 0.0020
+    res_fail = check_slippage_limit(base_request, base_config)
+    assert res_fail.breached
+    assert res_fail.status == RiskDecisionStatus.REJECT
+
+
+def test_check_trade_frequency_limit(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test short-term trade frequency throttling."""
+    from app.services.risk.limits import check_trade_frequency_limit
+
+    # Pass
+    res = check_trade_frequency_limit(base_request, base_config)
+    assert not res.breached
+
+    # Fail
+    base_request.market_context["trade_frequency"] = 12
+    base_request.market_context["max_trade_frequency"] = 10
+    res_fail = check_trade_frequency_limit(base_request, base_config)
+    assert res_fail.breached
+    assert res_fail.status == RiskDecisionStatus.REJECT
+
+    # Invalid input
+    base_request.market_context["trade_frequency"] = "invalid_non_numeric"
+    res_invalid = check_trade_frequency_limit(base_request, base_config)
+    assert res_invalid.breached
+    assert res_invalid.status == RiskDecisionStatus.BLOCK
+    assert res_invalid.reason_code == RiskReasonCode.INVALID_INPUT
+
+
+def test_check_pending_order_limit(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test pending order capacity checks."""
+    from app.services.risk.limits import check_pending_order_limit
+
+    # Pass
+    res = check_pending_order_limit(base_request, base_config)
+    assert not res.breached
+
+    # Fail
+    base_request.market_context["pending_orders_count"] = 6
+    base_request.market_context["max_pending_orders"] = 5
+    res_fail = check_pending_order_limit(base_request, base_config)
+    assert res_fail.breached
+    assert res_fail.status == RiskDecisionStatus.REJECT
+
+    # Invalid input
+    base_request.market_context["pending_orders_count"] = "invalid_non_numeric"
+    res_invalid = check_pending_order_limit(base_request, base_config)
+    assert res_invalid.breached
+    assert res_invalid.status == RiskDecisionStatus.BLOCK
+    assert res_invalid.reason_code == RiskReasonCode.INVALID_INPUT
+
+
+def test_check_symbol_exposure_limit(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test symbol-level concentration limits."""
+    from app.services.risk.limits import check_symbol_exposure_limit
+
+    # Pass
+    res = check_symbol_exposure_limit(base_request, base_config)
+    assert not res.breached
+
+    # Fail
+    base_request.market_context["symbol_exposure_EURUSD"] = 100000.0
+    base_request.market_context["contract_size"] = 100000.0
+    base_request.market_context["max_symbol_exposure"] = 1.0
+    base_request.portfolio_state.equity = Decimal("100000.00")
+    # Proposed volume is 0.1 -> 10,000 exposure.
+    # Total exposure 110,000 > equity 100,000.
+    res_fail = check_symbol_exposure_limit(base_request, base_config)
+    assert res_fail.breached
+    assert res_fail.status == RiskDecisionStatus.REJECT
+
+    # Negative equity
+    base_request.portfolio_state.equity = Decimal("-10.00")
+    res_neg = check_symbol_exposure_limit(base_request, base_config)
+    assert res_neg.status == RiskDecisionStatus.BLOCK
+
+
+def test_check_currency_exposure_limit(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test gross currency exposure concentration checks."""
+    from app.services.risk.limits import check_currency_exposure_limit
+
+    # Pass
+    res = check_currency_exposure_limit(base_request, base_config)
+    assert not res.breached
+
+    # Fail
+    base_request.market_context["currency_gross_exposure"] = 160000.0
+    base_request.market_context["max_currency_exposure"] = 1.5
+    base_request.portfolio_state.equity = Decimal("100000.00")
+    res_fail = check_currency_exposure_limit(base_request, base_config)
+    assert res_fail.breached
+    assert res_fail.status == RiskDecisionStatus.REJECT
+
+    # Negative equity
+    base_request.portfolio_state.equity = Decimal("0.00")
+    res_neg = check_currency_exposure_limit(base_request, base_config)
+    assert res_neg.status == RiskDecisionStatus.BLOCK
+
+
+def test_check_correlation_limit(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test correlated exposure cluster concentration limits."""
+    from app.services.risk.limits import check_correlation_limit
+
+    # Pass
+    res = check_correlation_limit(base_request, base_config)
+    assert not res.breached
+
+    # Fail
+    base_request.market_context["correlated_cluster_exposure"] = 210000.0
+    base_request.market_context["max_correlated_exposure"] = 2.0
+    base_request.portfolio_state.equity = Decimal("100000.00")
+    res_fail = check_correlation_limit(base_request, base_config)
+    assert res_fail.breached
+    assert res_fail.status == RiskDecisionStatus.REJECT
+
+    # Negative equity
+    base_request.portfolio_state.equity = Decimal("0.00")
+    res_neg = check_correlation_limit(base_request, base_config)
+    assert res_neg.status == RiskDecisionStatus.BLOCK
+
+
+def test_check_var_limit(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test portfolio Value-at-Risk percentage limits."""
+    from app.services.risk.limits import check_var_limit
+
+    # Pass
+    res = check_var_limit(base_request, base_config)
+    assert not res.breached
+
+    # Fail
+    base_request.market_context["var_metric"] = 6000.0
+    base_request.market_context["max_var_ratio"] = 0.05
+    base_request.portfolio_state.equity = Decimal("100000.00")
+    res_fail = check_var_limit(base_request, base_config)
+    assert res_fail.breached
+    assert res_fail.status == RiskDecisionStatus.REJECT
+
+    # Negative equity
+    base_request.portfolio_state.equity = Decimal("0.00")
+    res_neg = check_var_limit(base_request, base_config)
+    assert res_neg.status == RiskDecisionStatus.BLOCK
+
+
+def test_check_expected_shortfall_limit(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test portfolio Expected Shortfall tail-risk limits."""
+    from app.services.risk.limits import check_expected_shortfall_limit
+
+    # Pass
+    res = check_expected_shortfall_limit(base_request, base_config)
+    assert not res.breached
+
+    # Fail
+    base_request.market_context["es_metric"] = 9000.0
+    base_request.market_context["max_es_ratio"] = 0.08
+    base_request.portfolio_state.equity = Decimal("100000.00")
+    res_fail = check_expected_shortfall_limit(base_request, base_config)
+    assert res_fail.breached
+    assert res_fail.status == RiskDecisionStatus.REJECT
+
+    # Negative equity
+    base_request.portfolio_state.equity = Decimal("0.00")
+    res_neg = check_expected_shortfall_limit(base_request, base_config)
+    assert res_neg.status == RiskDecisionStatus.BLOCK
+
+
+def test_check_stress_loss_limit(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test stress testing shock impact limits."""
+    from app.services.risk.limits import check_stress_loss_limit
+
+    # Pass
+    res = check_stress_loss_limit(base_request, base_config)
+    assert not res.breached
+
+    # Fail
+    base_request.market_context["stress_loss_val"] = 16000.0
+    base_request.market_context["max_stress_ratio"] = 0.15
+    base_request.portfolio_state.equity = Decimal("100000.00")
+    res_fail = check_stress_loss_limit(base_request, base_config)
+    assert res_fail.breached
+    assert res_fail.status == RiskDecisionStatus.REJECT
+
+    # Negative equity
+    base_request.portfolio_state.equity = Decimal("0.00")
+    res_neg = check_stress_loss_limit(base_request, base_config)
+    assert res_neg.status == RiskDecisionStatus.BLOCK
+
+
+def test_check_leverage_limit(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test effective portfolio leverage limits."""
+    from app.services.risk.limits import check_leverage_limit
+
+    # Pass
+    res = check_leverage_limit(base_request, base_config)
+    assert not res.breached
+
+    # Fail
+    base_request.market_context["effective_leverage"] = 35.0
+    base_config.max_effective_leverage = Decimal("30.0")
+    res_fail = check_leverage_limit(base_request, base_config)
+    assert res_fail.breached
+    assert res_fail.status == RiskDecisionStatus.REJECT
+
+
+def test_check_margin_limit(
+    base_request: RiskAssessmentRequest, base_config: RiskConfig
+) -> None:
+    """Test portfolio margin utilization limit checks."""
+    from app.services.risk.limits import check_margin_limit
+
+    # Pass
+    res = check_margin_limit(base_request, base_config)
+    assert not res.breached
+
+    # Fail
+    base_request.portfolio_state.margin_used = Decimal("85000.00")
+    base_request.portfolio_state.equity = Decimal("100000.00")
+    base_config.max_margin_utilization_pct = Decimal("0.80")
+    res_fail = check_margin_limit(base_request, base_config)
+    assert res_fail.breached
+    assert res_fail.status == RiskDecisionStatus.REJECT
+
+    # Negative equity
+    base_request.portfolio_state.equity = Decimal("0.00")
+    res_neg = check_margin_limit(base_request, base_config)
+    assert res_neg.status == RiskDecisionStatus.BLOCK

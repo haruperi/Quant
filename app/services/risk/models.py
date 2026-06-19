@@ -6,12 +6,13 @@ and decision packages used by the RiskGovernor.
 
 from __future__ import annotations
 
+import contextlib
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from app.contracts.base import Contract
 
@@ -122,6 +123,103 @@ class RiskContract(Contract):
             raise ValidationError(msg) from e
 
 
+class RiskSubConfig(RiskContract):
+    """Sub-configuration for general risk caps."""
+
+    max_risk_per_trade: Decimal = Field(
+        default=Decimal("0.0025"), description="Max risk per trade."
+    )
+    max_total_open_risk: Decimal = Field(
+        default=Decimal("0.0150"), description="Max total open risk."
+    )
+    max_symbol_open_risk: Decimal = Field(
+        default=Decimal("0.0050"), description="Max symbol open risk."
+    )
+    max_currency_bucket_risk: Decimal = Field(
+        default=Decimal("0.0075"), description="Max currency bucket risk."
+    )
+    max_correlated_cluster_risk: Decimal = Field(
+        default=Decimal("0.0075"), description="Max correlated cluster risk."
+    )
+    max_margin_usage: Decimal = Field(
+        default=Decimal("0.30"), description="Max margin utilization."
+    )
+
+
+class DrawdownSubConfig(RiskContract):
+    """Sub-configuration for drawdown/loss thresholds."""
+
+    daily_loss_soft_limit: Decimal = Field(
+        default=Decimal("0.02"), description="Daily loss soft drawdown limit."
+    )
+    daily_loss_hard_limit: Decimal = Field(
+        default=Decimal("0.04"), description="Daily loss hard drawdown limit."
+    )
+    total_drawdown_soft_limit: Decimal = Field(
+        default=Decimal("0.06"), description="Total drawdown soft limit."
+    )
+    total_drawdown_hard_limit: Decimal = Field(
+        default=Decimal("0.09"), description="Total drawdown hard limit."
+    )
+
+
+class CorrelationSubConfig(RiskContract):
+    """Sub-configuration for correlation window parameters."""
+
+    lookback_m5: int = Field(
+        default=96, description="Lookback window bars for M5 charts."
+    )
+    lookback_h1: int = Field(
+        default=24, description="Lookback window bars for H1 charts."
+    )
+    lookback_d1: int = Field(
+        default=10, description="Lookback window bars for D1 charts."
+    )
+    reject_threshold: Decimal = Field(
+        default=Decimal("0.70"), description="Correlation threshold to reject."
+    )
+    reduce_threshold: Decimal = Field(
+        default=Decimal("0.50"), description="Correlation threshold to reduce."
+    )
+
+
+class TailRiskSubConfig(RiskContract):
+    """Sub-configuration for tail-risk limits."""
+
+    var_confidence: Decimal = Field(
+        default=Decimal("0.95"), description="VaR confidence level."
+    )
+    es_confidence: Decimal = Field(
+        default=Decimal("0.95"), description="ES confidence level."
+    )
+    max_portfolio_var: Decimal = Field(
+        default=Decimal("0.0100"), description="Max portfolio Value-at-Risk."
+    )
+    max_portfolio_es: Decimal = Field(
+        default=Decimal("0.0150"), description="Max portfolio Expected Shortfall."
+    )
+    stress_loss_limit: Decimal = Field(
+        default=Decimal("0.0200"), description="Max portfolio stress loss limit."
+    )
+
+
+class ExecutionSubConfig(RiskContract):
+    """Sub-configuration for execution blackout and spread controls."""
+
+    max_spread_to_sigma: Decimal = Field(
+        default=Decimal("0.25"), description="Max spread spike to sigma ratio."
+    )
+    max_slippage_to_sigma: Decimal = Field(
+        default=Decimal("0.20"), description="Max slippage to sigma ratio."
+    )
+    rollover_blackout_hours_before: int = Field(
+        default=2, description="Hours to block trading before rollover."
+    )
+    rollover_blackout_hours_after: int = Field(
+        default=2, description="Hours to block trading after rollover."
+    )
+
+
 class RiskConfig(RiskContract):
     """Configuration profile containing policy rules and risk limits."""
 
@@ -202,6 +300,132 @@ class RiskConfig(RiskContract):
     min_live_sharpe: Decimal = Field(
         default=Decimal("1.0"), description="Minimum Sharpe in micro-live."
     )
+    var_method: str = Field(
+        default="historical", description="Default Value-at-Risk calculation method."
+    )
+    var_confidence: Decimal = Field(
+        default=Decimal("0.95"), description="Default VaR confidence level."
+    )
+    var_lookback_days: int = Field(
+        default=250, description="Default lookback window in trading days for VaR/ES."
+    )
+    es_confidence: Decimal = Field(
+        default=Decimal("0.95"),
+        description="Default Expected Shortfall confidence level.",
+    )
+    max_stress_loss_pct: Decimal = Field(
+        default=Decimal("0.15"),
+        description="Max estimated stress loss threshold before rejection.",
+    )
+    min_correlation_samples: int = Field(
+        default=20,
+        description="Minimum data samples required for correlation calculation.",
+    )
+    currency_leg_limits: dict[str, Decimal] = Field(
+        default_factory=dict,
+        description="Exposure limits per currency leg in account currency.",
+    )
+    drawdown_stepdown_thresholds: list[Decimal] = Field(
+        default_factory=list,
+        description="List of drawdown thresholds for risk reduction scaling.",
+    )
+    drawdown_stepdown_multipliers: list[Decimal] = Field(
+        default_factory=list,
+        description="Risk scaling step-down multipliers matching thresholds.",
+    )
+    maintenance_margin_pct: Decimal = Field(
+        default=Decimal("0.50"), description="Maintenance margin ratio threshold."
+    )
+    max_spread_multiplier: Decimal = Field(
+        default=Decimal("3.0"),
+        description="Allowed spread spike multiplier above typical.",
+    )
+    max_slippage_pips: Decimal = Field(
+        default=Decimal("5.0"),
+        description="Maximum tolerable execution slippage in pips.",
+    )
+    rollover_blackout_start_utc: str = Field(
+        default="21:55", description="Rollover blackout window start time (HH:MM UTC)."
+    )
+    rollover_blackout_end_utc: str = Field(
+        default="22:05", description="Rollover blackout window end time (HH:MM UTC)."
+    )
+    m1_volatility_adaptive_sizing: bool = Field(
+        default=True,
+        description="Enable M1 micro-scalping volatility sizing adjustment.",
+    )
+    m1_spread_to_sigma_ratio_filter: Decimal = Field(
+        default=Decimal("1.5"),
+        description="Maximum ratio of spread to standard deviation on M1.",
+    )
+    m1_broker_midnight_blackout_minutes: int = Field(
+        default=15, description="Minutes to block trading around midnight on M1."
+    )
+    operator_approval_fields: dict[str, Any] | None = Field(
+        default=None,
+        description="Approval signatures/metadata required for live execution.",
+    )
+    experimental_features: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Namespaced dictionary for experimental features.",
+    )
+    risk: RiskSubConfig = Field(
+        default_factory=RiskSubConfig, description="General risk sub-configuration."
+    )
+    drawdown: DrawdownSubConfig = Field(
+        default_factory=DrawdownSubConfig, description="Drawdown/loss thresholds."
+    )
+    correlation: CorrelationSubConfig = Field(
+        default_factory=CorrelationSubConfig, description="Correlation parameters."
+    )
+    tail_risk: TailRiskSubConfig = Field(
+        default_factory=TailRiskSubConfig, description="Tail-risk limits."
+    )
+    execution: ExecutionSubConfig = Field(
+        default_factory=ExecutionSubConfig, description="Execution parameters."
+    )
+
+    @model_validator(mode="after")
+    def _sync_flat_and_nested_configs(self) -> RiskConfig:
+        """Synchronize flat and nested configuration fields bi-directionally."""
+        import os
+
+        # (Flat field name, Nested config name, Nested field name)
+        sync_map = [
+            ("max_risk_per_trade", "risk", "max_risk_per_trade"),
+            ("max_margin_utilization_pct", "risk", "max_margin_usage"),
+            ("max_daily_loss_pct", "drawdown", "daily_loss_hard_limit"),
+            ("max_total_loss_pct", "drawdown", "total_drawdown_hard_limit"),
+            ("correlation_threshold", "correlation", "reject_threshold"),
+            ("var_confidence", "tail_risk", "var_confidence"),
+            ("es_confidence", "tail_risk", "es_confidence"),
+            ("max_stress_loss_pct", "tail_risk", "stress_loss_limit"),
+            ("m1_spread_to_sigma_ratio_filter", "execution", "max_spread_to_sigma"),
+        ]
+
+        for flat_name, nested_name, nested_sub_name in sync_map:
+            nested_obj = getattr(self, nested_name)
+
+            # Check if environment override is present for the flat field
+            env_override = os.getenv(f"HARUQUANT_RISK_{flat_name.upper()}") is not None
+
+            if env_override:
+                # Flat field was overridden by environment, so copy from flat to nested
+                setattr(nested_obj, nested_sub_name, getattr(self, flat_name))
+            elif nested_name in self.model_fields_set:
+                # Nested configuration was explicitly set (e.g. from JSON config),
+                # so copy from nested to flat
+                setattr(self, flat_name, getattr(nested_obj, nested_sub_name))
+            elif flat_name in self.model_fields_set:
+                # Flat configuration was explicitly set, but nested was not,
+                # so copy from flat to nested
+                setattr(nested_obj, nested_sub_name, getattr(self, flat_name))
+            else:
+                # Neither was explicitly set, so copy from flat default
+                # to nested default to preserve backward compatibility.
+                setattr(nested_obj, nested_sub_name, getattr(self, flat_name))
+
+        return self
 
 
 class PositionState(RiskContract):
@@ -265,6 +489,41 @@ class ProposedTrade(RiskContract):
     requires_live_execution: bool = Field(
         default=False, description="True if evaluating live execution environment."
     )
+
+    # Added to fully meet checklist requirements
+    requested_size: Decimal | None = Field(
+        default=None, description="Requested trade volume size in lots."
+    )
+    order_type: str | None = Field(
+        default=None, description="Order type (e.g. buy_limit, sell_stop)."
+    )
+    intended_stop: Decimal | None = Field(
+        default=None, description="Intended stop loss price."
+    )
+    intended_target: Decimal | None = Field(
+        default=None, description="Intended take profit target price."
+    )
+    signal_id: str | None = Field(
+        default=None, description="Associated signal identifier."
+    )
+    timestamp: datetime | None = Field(
+        default=None, description="Proposed trade creation timestamp."
+    )
+    expected_holding_period: float | None = Field(
+        default=None, description="Expected holding duration in seconds."
+    )
+    evidence_references: list[RiskEvidenceRef] | None = Field(
+        default=None, description="Associated evidence references."
+    )
+
+    @model_validator(mode="after")
+    def sync_trade_fields(self) -> ProposedTrade:
+        """Synchronize alias fields for ProposedTrade."""
+        if self.requested_size is None:
+            self.requested_size = self.volume
+        if self.intended_stop is None:
+            self.intended_stop = self.stop_loss
+        return self
 
 
 class ProposedAllocation(RiskContract):
@@ -333,6 +592,9 @@ class RiskApprovalToken(RiskContract):
     expiry_time: datetime = Field(..., description="Expiration timestamp.")
     config_hash: str = Field(..., description="Evaluated risk configuration hash.")
     decision_hash: str = Field(..., description="Evaluated decision payload hash.")
+    policy_hash: str | None = Field(
+        default=None, description="Active policy signature hash."
+    )
     scope: dict[str, Any] = Field(
         default_factory=dict, description="Scope restriction parameters."
     )
@@ -360,6 +622,89 @@ class RiskDecisionPackage(RiskContract):
     details: dict[str, Any] = Field(
         default_factory=dict, description="Arbitrary decision details."
     )
+
+    # Added to fully meet checklist requirements
+    requested_size: Decimal | None = Field(
+        default=None, description="Requested lot volume."
+    )
+    approved_size: Decimal | None = Field(
+        default=None, description="Optionally approved lot volume."
+    )
+    max_allowed_size: Decimal | None = Field(
+        default=None, description="Maximum allowed volume."
+    )
+    action: str | None = Field(default=None, description="Evaluation action category.")
+    reason_codes: list[str] | None = Field(
+        default=None, description="Breached constraint codes."
+    )
+    risk_snapshot: PortfolioRiskSnapshot | None = Field(
+        default=None, description="Summarized risk snapshot parameters."
+    )
+    policy_hash: str | None = Field(
+        default=None, description="Active policy signature hash."
+    )
+    decision_token: RiskDecisionToken | None = Field(
+        default=None, description="Cryptographically signed approval token."
+    )
+    expiry: datetime | None = Field(
+        default=None, description="Decision validity expiration timestamp."
+    )
+    audit_hash_reference: str | None = Field(
+        default=None, description="Audit trail link reference hash."
+    )
+    policy_version: str | None = Field(
+        default=None, description="Active policy version identifier."
+    )
+    policy_scope: dict[str, Any] | None = Field(
+        default=None, description="Active policy scope attributes."
+    )
+
+    @model_validator(mode="after")
+    def sync_package_fields(self) -> RiskDecisionPackage:  # noqa: C901, PLR0912
+        """Synchronize alias fields for RiskDecisionPackage."""
+        if self.approved_size is None:
+            self.approved_size = self.calculated_volume
+        if self.reason_codes is None:
+            self.reason_codes = list(self.composite_breach_flags)
+        if self.requested_size is None and self.details:
+            vol = self.details.get("requested_volume") or self.details.get("volume")
+            if vol is not None:
+                self.requested_size = Decimal(str(vol))
+        if self.max_allowed_size is None and self.details:
+            max_vol = self.details.get("max_volume") or self.details.get(
+                "max_allowed_volume"
+            )
+            if max_vol is not None:
+                self.max_allowed_size = Decimal(str(max_vol))
+        if self.action is None and self.details:
+            self.action = self.details.get("action")
+        if self.policy_hash is None and self.details:
+            self.policy_hash = self.details.get("policy_hash")
+        if self.decision_token is None and self.details:
+            token_dict = self.details.get("decision_token") or self.details.get("token")
+            if isinstance(token_dict, dict):
+                with contextlib.suppress(Exception):
+                    self.decision_token = RiskDecisionToken.model_validate(token_dict)
+        if self.expiry is None and self.details:
+            exp = self.details.get("expiry_time") or self.details.get("expiry")
+            if isinstance(exp, str):
+                from app.utils.normalization import parse_datetime
+
+                with contextlib.suppress(Exception):
+                    self.expiry = parse_datetime(exp)
+            elif isinstance(exp, datetime):
+                self.expiry = exp
+        if self.audit_hash_reference is None and self.details:
+            self.audit_hash_reference = self.details.get(
+                "audit_hash"
+            ) or self.details.get("hash")
+        if self.policy_version is None and self.details:
+            self.policy_version = self.details.get("policy_version")
+        if self.policy_scope is None and self.details:
+            self.policy_scope = self.details.get("policy_scope") or self.details.get(
+                "scope"
+            )
+        return self
 
 
 class StressScenario(RiskContract):
@@ -397,6 +742,94 @@ class RiskAssessmentRequest(RiskContract):
         default_factory=dict, description="Live market spreads, slippage, volatility."
     )
 
+    # Added to fully meet checklist requirements
+    account_state: dict[str, Any] | None = Field(
+        default=None, description="Consolidated account balance and parameters."
+    )
+    market_state: dict[str, Any] | None = Field(
+        default=None, description="Underlying active market parameters."
+    )
+    pending_orders: list[Any] | None = Field(
+        default=None, description="Active pending orders."
+    )
+    open_positions: list[Any] | None = Field(
+        default=None, description="Active open positions."
+    )
+    policy_profile: str | None = Field(
+        default=None, description="Associated policy profile name."
+    )
+    mode: RiskMode | None = Field(
+        default=None, description="Evaluation execution mode."
+    )
+    freshness: datetime | None = Field(
+        default=None, description="Market data freshness timestamp."
+    )
+
+    @model_validator(mode="after")
+    def sync_request_fields(self) -> RiskAssessmentRequest:  # noqa: C901
+        """Synchronize alias fields for RiskAssessmentRequest."""
+        if self.account_state is None:
+            self.account_state = {
+                "balance": float(self.portfolio_state.balance),
+                "equity": float(self.portfolio_state.equity),
+                "margin_used": float(self.portfolio_state.margin_used),
+                "free_margin": float(self.portfolio_state.free_margin),
+                "currency": self.portfolio_state.currency,
+            }
+        if self.pending_orders is None:
+            self.pending_orders = list(self.portfolio_state.orders)
+        if self.open_positions is None:
+            self.open_positions = [
+                p.model_dump() for p in self.portfolio_state.positions
+            ]
+        if self.policy_profile is None:
+            self.policy_profile = self.risk_config.profile_name
+        if self.market_state is None:
+            self.market_state = dict(self.market_context)
+        if self.freshness is None:
+            from app.utils.normalization import parse_datetime, utc_now
+
+            f = self.market_context.get("freshness")
+            if isinstance(f, str):
+                with contextlib.suppress(Exception):
+                    self.freshness = parse_datetime(f)
+            elif isinstance(f, datetime):
+                self.freshness = f
+            else:
+                self.freshness = utc_now()
+        if self.mode is None:
+            mode_str = self.market_context.get("mode")
+            allowed_modes = {
+                "offline",
+                "simulation",
+                "paper",
+                "shadow",
+                "live_readonly",
+                "micro_live",
+                "full_live",
+            }
+            if mode_str in allowed_modes:
+                self.mode = RiskMode(mode_str)
+            else:
+                self.mode = RiskMode.PAPER
+        return self
+
+
+class RiskPolicyProfile(RiskContract):
+    """Policy profile metadata wrapping config parameters."""
+
+    profile_name: str = Field(..., description="Configuration profile name.")
+    description: str | None = Field(
+        default=None, description="Optional profile description."
+    )
+    config: RiskConfig = Field(
+        ..., description="Associated risk limits config parameters."
+    )
+
+
+class RiskSnapshot(RiskContract):
+    """Base class for all risk governance snapshots."""
+
 
 class RiskEvidenceRef(RiskContract):
     """Reference tracking data source or external snapshot proof."""
@@ -406,7 +839,7 @@ class RiskEvidenceRef(RiskContract):
     timestamp: datetime = Field(..., description="Source creation timestamp.")
 
 
-class AccountRiskSnapshot(RiskContract):
+class AccountRiskSnapshot(RiskSnapshot):
     """Sub-snapshot focused on account equity limits."""
 
     equity: Decimal = Field(..., description="Net asset equity.")
@@ -418,7 +851,7 @@ class AccountRiskSnapshot(RiskContract):
     timestamp: datetime = Field(..., description="Calculation timestamp.")
 
 
-class MarketRiskSnapshot(RiskContract):
+class MarketRiskSnapshot(RiskSnapshot):
     """Sub-snapshot capturing market regime parameters."""
 
     spread: Decimal = Field(..., description="Current symbol spread.")
@@ -433,7 +866,7 @@ class MarketRiskSnapshot(RiskContract):
     freshness: datetime = Field(..., description="Timestamp of quotes freshness.")
 
 
-class PortfolioRiskSnapshot(RiskContract):
+class PortfolioRiskSnapshot(RiskSnapshot):
     """Composite snapshot summarizing risk concentrations and metrics."""
 
     positions: list[PositionState] = Field(
@@ -451,7 +884,7 @@ class PortfolioRiskSnapshot(RiskContract):
     drawdown: Decimal = Field(..., description="Current drawdown percentage.")
 
 
-class PositionRiskSnapshot(RiskContract):
+class PositionRiskSnapshot(RiskSnapshot):
     """Risk breakdown of a single open position."""
 
     position_id: str = Field(..., description="Position ID.")
@@ -467,7 +900,7 @@ class PositionRiskSnapshot(RiskContract):
     timestamp: datetime = Field(..., description="As-of timestamp.")
 
 
-class PendingOrderRiskSnapshot(RiskContract):
+class PendingOrderRiskSnapshot(RiskSnapshot):
     """Exposure details of a pending order."""
 
     order_id: str = Field(..., description="Order identifier.")
@@ -491,7 +924,19 @@ class CurrencyExposure(RiskContract):
     )
 
 
-class CorrelationSnapshot(RiskContract):
+class SymbolExposure(RiskContract):
+    """Portfolio symbol exposure breakdown."""
+
+    symbol: str = Field(..., description="Target symbol.")
+    signed_amount: Decimal = Field(..., description="Signed symbol amount.")
+    gross: Decimal = Field(..., description="Gross exposure amount.")
+    net: Decimal = Field(..., description="Net exposure amount.")
+    account_currency_equivalent: Decimal = Field(
+        ..., description="Exposure in account currency."
+    )
+
+
+class CorrelationSnapshot(RiskSnapshot):
     """Rolling correlation matrix output details."""
 
     matrix: dict[str, dict[str, Decimal]] = Field(
@@ -506,7 +951,26 @@ class CorrelationSnapshot(RiskContract):
     )
 
 
-class VaRSnapshot(RiskContract):
+class CorrelationMatrix(RiskContract):
+    """Calculated pairwise correlation matrix for symbols."""
+
+    symbols: list[str] = Field(..., description="Ordered list of symbol names.")
+    matrix: dict[str, dict[str, Decimal]] = Field(
+        ..., description="Symbol to symbol pairwise correlation coefficients."
+    )
+
+
+class CorrelationCluster(RiskContract):
+    """Cluster of correlated symbols and their aggregated risk exposure."""
+
+    cluster_id: str = Field(..., description="Unique identifier for the cluster.")
+    symbols: list[str] = Field(..., description="Symbols included in this cluster.")
+    exposure: Decimal = Field(
+        ..., description="Aggregated gross exposure in account currency."
+    )
+
+
+class VaRSnapshot(RiskSnapshot):
     """Calculated Value-at-Risk parameters."""
 
     method: str = Field(..., description="Method used (e.g. parametric, historical).")
@@ -519,7 +983,7 @@ class VaRSnapshot(RiskContract):
     )
 
 
-class ExpectedShortfallSnapshot(RiskContract):
+class ExpectedShortfallSnapshot(RiskSnapshot):
     """Calculated Expected Shortfall metrics."""
 
     confidence: Decimal = Field(..., description="Confidence level (e.g. 0.95).")
@@ -547,7 +1011,7 @@ class StressScenarioResult(RiskContract):
     )
 
 
-class MarginRiskSnapshot(RiskContract):
+class MarginRiskSnapshot(RiskSnapshot):
     """Margin metrics snapshot."""
 
     projected_margin: Decimal = Field(
@@ -567,7 +1031,7 @@ class DrawdownState(RiskContract):
     multiplier: Decimal = Field(..., description="Applied risk scale step-down factor.")
 
 
-class ExecutionRiskSnapshot(RiskContract):
+class ExecutionRiskSnapshot(RiskSnapshot):
     """Execution feasibility conditions."""
 
     spread: Decimal = Field(..., description="Active spread.")
@@ -725,14 +1189,28 @@ class PolicyEnforcementResult(RiskContract):
     breaches: list[str] = Field(
         default_factory=list, description="List of rule/constraint breach details."
     )
+    policy_version: str | None = Field(
+        default=None, description="Active policy version identifier."
+    )
+    policy_scope: dict[str, Any] | None = Field(
+        default=None, description="Active policy scope attributes."
+    )
 
 
 class KillSwitchStateEnum(StrEnum):
-    """Safety kill-switch states."""
+    """Safety kill-switch states.
+
+    States progress: INACTIVE → TRIGGERED → ACTIVE → PENDING_RESUME → INACTIVE.
+    LOCKED is a special terminal state requiring admin/compliance intervention.
+    UNKNOWN signals an indeterminate state and must always fail closed.
+    """
 
     INACTIVE = "inactive"
     ACTIVE = "active"
     LOCKED = "locked"
+    UNKNOWN = "unknown"  # state cannot be determined → always fail closed
+    TRIGGERED = "triggered"  # halt signalled, not yet fully propagated
+    PENDING_RESUME = "pending_resume"  # awaiting governed approval to deactivate
 
 
 class KillSwitchReason(StrEnum):
@@ -792,3 +1270,8 @@ def create_risk_decision_package(
         calculated_volume=calculated_volume,
         details=details or {},
     )
+
+
+ProposedTrade.model_rebuild()
+RiskAssessmentRequest.model_rebuild()
+RiskDecisionPackage.model_rebuild()
