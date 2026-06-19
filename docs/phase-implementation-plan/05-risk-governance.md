@@ -858,15 +858,16 @@ validate_risk_approval_token
 generate_risk_report
 ```
 
-- [X] Export only approved public capabilities through `app/services/risk/__init__.py`. *app/services/risk/__init__.py:180*
-- [X] Export official AI-callable tools only through `app/services/risk/tools.py`. *app/services/risk/tools.py:212*
-- [X] Every official AI-callable tool shall return the standard HaruQuant response envelope. *app/services/risk/tools.py:129*
-- [X] Every official AI-callable tool shall include `tool_name`, `tool_version`, `tool_category`, `tool_risk_level`, `request_id`, `execution_ms`, `read_only`, `writes_file`, `modifies_database`, `places_trade`, and `requires_network` metadata. *app/services/risk/tools.py:112*
-- [X] Every official AI-callable tool shall be classified as read-only, database-writing, file-writing, or approval-sensitive. *app/services/risk/tools.py:212*
-- [X] No official risk tool shall place broker trades or mutate broker state. *app/services/risk/tools.py:122*
-- [X] Live-sensitive official tools shall require valid mode, policy profile, operator authority, and freshness evidence. *app/services/risk/tools.py:169*
-- [X] Public tool docstrings shall explain when agents should use the tool and what the tool cannot do. *app/services/risk/tools.py:221*
-- [X] Public tools shall never return raw exceptions, raw broker payloads, secrets, full approval packets, or private account identifiers. *app/services/risk/tools.py:134*
+- [ ] Export only approved public capabilities through `app/services/risk/__init__.py`.
+- [ ] Export official AI-callable tools only through `app/services/risk/tools.py`.
+- [ ] Every official AI-callable tool shall return the standard HaruQuant response envelope.
+- [ ] Every official AI-callable tool shall include `tool_name`, `tool_version`, `tool_category`, `tool_risk_level`, `request_id`, `execution_ms`, `read_only`, `writes_file`, `modifies_database`, `places_trade`, and `requires_network` metadata.
+- [ ] Every official AI-callable tool shall be classified as read-only, database-writing, file-writing, or approval-sensitive.
+- [ ] No official risk tool shall place broker trades or mutate broker state.
+- [ ] Live-sensitive official tools shall require valid mode, policy profile, operator authority, and freshness evidence.
+- [ ] Public tool docstrings shall explain when agents should use the tool and what the tool cannot do.
+- [ ] Public tools shall never return raw exceptions, raw broker payloads, secrets, full approval packets, or private account identifiers.
+
 
 ### `app/services/risk/models.py`
 
