@@ -191,6 +191,10 @@ module = [
     "requests",
     "pytest_mock",
     "MetaTrader5",
-    "yaml"
+    "yaml",
+    "sklearn.*",
+    "scipy.*",
+    "sklearn",
+    "scipy"
 ]
 ignore_missing_imports = true

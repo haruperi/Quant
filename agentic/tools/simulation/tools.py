@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.services.simulation.orchestrator import run_backtest as _run_backtest
+from app.services.simulator.orchestrator import run_backtest as _run_backtest
 from app.utils.standard import StandardResponse
 
 
