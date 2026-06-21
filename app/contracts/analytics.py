@@ -38,7 +38,7 @@ class PerformanceScorecard(Contract):
 
 
 class AnalyticsReport(Contract):
-    """Canonical structure representing an compiled analytics report."""
+    """Canonical structure representing a compiled analytics report."""
 
     report_id: str = Field(..., description="Unique report ID.")
     scorecard: PerformanceScorecard = Field(

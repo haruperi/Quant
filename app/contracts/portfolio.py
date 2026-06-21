@@ -15,7 +15,18 @@ from app.utils.normalization import normalize_timestamp
 
 
 class AccountSnapshot(Contract):
-    """Snapshot of account cash, margin, and equity metrics."""
+    """Snapshot of account cash, margin, and equity metrics.
+
+    Attributes:
+        equity: Current net asset equity value.
+        balance: Cash balance (excluding floating PnL).
+        margin: Used/allocated margin amount.
+        free_margin: Available margin for new positions.
+        currency: Account denomination currency code.
+        leverage: Account leverage multiplier.
+        timestamp: UTC ISO 8601 timestamp of this snapshot.
+        provider_metadata: Adapter-specific supplemental account fields.
+    """
 
     equity: float = Field(..., description="Current net asset equity value.")
     balance: float = Field(..., description="Account cash balance.")
@@ -23,17 +34,31 @@ class AccountSnapshot(Contract):
     free_margin: float = Field(
         ..., description="Available margin for opening positions."
     )
-    currency: str = Field(..., description="Account currency representation.")
+    currency: str = Field(..., description="Account denomination currency code.")
     leverage: int = Field(..., gt=0, description="Account leverage multiplier.")
     timestamp: str = Field(..., description="UTC ISO 8601 calculation timestamp.")
+    provider_metadata: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Adapter-specific supplemental account metadata.",
+    )
 
     @field_validator("timestamp")
     @classmethod
     def validate_snap_time(cls, v: str) -> str:
-        """Validate timestamp format."""
+        """Validate and normalize snapshot timestamp.
+
+        Args:
+            v: The timestamp string to validate.
+
+        Returns:
+            ISO 8601 UTC timestamp string.
+
+        Raises:
+            ValueError: If ``v`` cannot be parsed as a valid timestamp.
+        """
         try:
             return normalize_timestamp(v).isoformat()
-        except Exception as e:
+        except (ValueError, TypeError) as e:
             raise ValueError(f"Invalid timestamp: {v}") from e
 
 
@@ -57,11 +82,21 @@ class Position(Contract):
     @field_validator("opened_at", "updated_at")
     @classmethod
     def validate_pos_times(cls, v: str) -> str:
-        """Validate timestamp format."""
+        """Validate and normalize position lifecycle timestamps.
+
+        Args:
+            v: Raw timestamp string.
+
+        Returns:
+            ISO 8601 UTC timestamp string.
+
+        Raises:
+            ValueError: If ``v`` cannot be parsed as a valid timestamp.
+        """
         try:
             return normalize_timestamp(v).isoformat()
         except Exception as e:
-            raise ValueError(f"Invalid timestamp: {v}") from e
+            raise ValueError(f"Invalid position timestamp: {v}") from e
 
 
 class PortfolioSnapshot(Contract):

@@ -1,6 +1,7 @@
+# ruff: noqa: TC001
 """Risk contracts module.
 
-Defines RiskDecision, RiskRejection, PositionSizingResult, and RiskAuditEvent contracts.
+Defines RiskDecision, RiskRejection, PositionSizingResult, and RiskAuditEvent.
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ from typing import Any, Literal
 from pydantic import Field, model_validator
 
 from app.contracts.base import Contract
+from app.contracts.trading import OrderIntent
 
 
 class RiskRejection(Contract):
@@ -69,9 +71,9 @@ class RiskDecision(Contract):
     rejection: RiskRejection | None = Field(
         default=None, description="Applied rejection details."
     )
-    approved_order_intent: dict[str, Any] | None = Field(
+    approved_order_intent: OrderIntent | None = Field(
         default=None,
-        description="Approved OrderIntent payload matching the decision.",
+        description="Approved OrderIntent produced after all risk gates pass.",
     )
     risk_signature: str | None = Field(
         default=None,
@@ -80,7 +82,19 @@ class RiskDecision(Contract):
 
     @model_validator(mode="after")
     def validate_outcome_consistency(self) -> RiskDecision:
-        """Enforce that rejections are present for non-approved runs."""
+        """Enforce mutual exclusivity of approval and rejection states.
+
+        A non-approved decision must carry a ``RiskRejection`` explaining
+        why.  An approved decision must not carry a rejection, as that
+        would produce an ambiguous audit record.
+
+        Returns:
+            The validated RiskDecision instance.
+
+        Raises:
+            ValueError: If a non-approved decision has no rejection, or if
+                an approved decision carries a rejection object.
+        """
         if not self.approved and self.rejection is None:
             raise ValueError("Rejection details must be provided if not approved.")
         if self.approved and self.rejection is not None:

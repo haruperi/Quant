@@ -48,7 +48,11 @@ class OrderIntent(Contract):
 class TradeRequest(Contract):
     """Canonical execution request sent to a broker provider adapter."""
 
-    request_id: str = Field(..., description="Unique execution Request ID.")
+    # Named `execution_request_id` to avoid shadowing `Contract.request_id`
+    # (the base trace/correlation field). This field is the primary business key.
+    execution_request_id: str = Field(
+        ..., description="Unique execution request identifier."
+    )
     order_intent: OrderIntent = Field(..., description="Associated OrderIntent.")
     submitted_at: str = Field(..., description="UTC timestamp of submission.")
     execution_provider: str = Field(
@@ -59,10 +63,22 @@ class TradeRequest(Contract):
     @field_validator("submitted_at")
     @classmethod
     def validate_submitted_time(cls, v: str) -> str:
-        """Validate timestamp format."""
+        """Validate and normalize the submission timestamp.
+
+        Args:
+            v: Raw timestamp string.
+
+        Returns:
+            ISO 8601 UTC timestamp string.
+
+        Raises:
+            ValueError: If ``v`` cannot be parsed as a valid timestamp.
+        """
         try:
             return normalize_timestamp(v).isoformat()
         except Exception as e:
+            # Broad catch: normalize_timestamp may raise app.utils.errors
+            # ValidationError in addition to stdlib ValueError/TypeError.
             raise ValueError(f"Invalid submitted_at timestamp: {v}") from e
 
 
@@ -70,7 +86,10 @@ class TradeResult(Contract):
     """Standard outcome response after execution adapter returns."""
 
     trade_id: str = Field(..., description="Unique trade identification.")
-    request_id: str = Field(..., description="Matching TradeRequest ID.")
+    # Named `execution_request_id` to avoid shadowing `Contract.request_id`.
+    execution_request_id: str = Field(
+        ..., description="Matching TradeRequest execution_request_id."
+    )
     status: Literal[
         "accepted",
         "rejected",
@@ -124,11 +143,21 @@ class Fill(Contract):
     @field_validator("timestamp")
     @classmethod
     def validate_fill_time(cls, v: str) -> str:
-        """Validate timestamp format."""
+        """Validate and normalize the fill execution timestamp.
+
+        Args:
+            v: Raw timestamp string.
+
+        Returns:
+            ISO 8601 UTC timestamp string.
+
+        Raises:
+            ValueError: If ``v`` cannot be parsed as a valid timestamp.
+        """
         try:
             return normalize_timestamp(v).isoformat()
         except Exception as e:
-            raise ValueError(f"Invalid timestamp: {v}") from e
+            raise ValueError(f"Invalid fill timestamp: {v}") from e
 
 
 class ExecutionReport(Contract):
@@ -137,8 +166,17 @@ class ExecutionReport(Contract):
     report_id: str = Field(..., description="Report identifier.")
     order_id: str = Field(..., description="Broker order ID.")
     symbol: str = Field(..., description="Symbol name.")
-    action: str = Field(..., description="Buy/sell direction.")
-    status: str = Field(..., description="Report status.")
+    action: Literal["buy", "sell"] = Field(..., description="Order direction.")
+    status: Literal[
+        "accepted",
+        "pending",
+        "partially_filled",
+        "filled",
+        "cancelled",
+        "expired",
+        "rejected",
+        "failed",
+    ] = Field(..., description="Broker-neutral execution report status.")
     price: float = Field(..., ge=0.0, description="Order price level.")
     quantity: float = Field(..., ge=0.0, description="Order volume size.")
     cumulative_quantity: float = Field(
@@ -147,7 +185,9 @@ class ExecutionReport(Contract):
     leaves_quantity: float = Field(..., ge=0.0, description="Remaining volume size.")
     commission: float = Field(default=0.0, description="Total commission.")
     slippage: float = Field(default=0.0, description="Recorded slippage.")
-    latency_ms: float = Field(default=0.0, description="Recorded execution speed.")
+    latency_ms: float = Field(
+        default=0.0, description="Round-trip execution latency in ms."
+    )
     provider_order_id: str = Field(
         ..., description="Raw provider order ticket identifier."
     )
@@ -156,15 +196,36 @@ class ExecutionReport(Contract):
     @field_validator("timestamp")
     @classmethod
     def validate_report_time(cls, v: str) -> str:
-        """Validate timestamp format."""
+        """Validate and normalize the execution report timestamp.
+
+        Args:
+            v: Raw timestamp string.
+
+        Returns:
+            ISO 8601 UTC timestamp string.
+
+        Raises:
+            ValueError: If ``v`` cannot be parsed as a valid timestamp.
+        """
         try:
             return normalize_timestamp(v).isoformat()
         except Exception as e:
-            raise ValueError(f"Invalid timestamp: {v}") from e
+            raise ValueError(f"Invalid report timestamp: {v}") from e
 
 
 class BrokerCapabilities(Contract):
-    """Supported order features and policies of an execution provider."""
+    """Supported order features and policies of an execution provider.
+
+    Note on ``margin_mode`` vs ``hedging_netting_mode``:
+
+    - ``hedging_netting_mode``: Controls how positions for the same symbol are
+      aggregated. ``"netting"`` collapses all positions into one net position;
+      ``"hedging"`` allows multiple independent positions per symbol (MT5/cTrader
+      typical modes).
+    - ``margin_mode``: Controls how margin is calculated across open positions.
+      ``"isolated"`` reserves margin per-position; ``"cross"`` shares the full
+      account margin across all positions (common in crypto exchanges).
+    """
 
     order_types: list[str] = Field(
         default_factory=list, description="Supported order types."
@@ -178,12 +239,21 @@ class BrokerCapabilities(Contract):
     time_in_force_options: list[str] = Field(
         default_factory=list, description="Supported TIF variants."
     )
-    margin_mode: Literal["netting", "hedging"] = Field(
-        ..., description="Broker account margin reconciliation mode."
+    margin_mode: Literal["isolated", "cross"] = Field(
+        ...,
+        description=(
+            "Margin calculation scope: 'isolated' reserves margin per-position;"
+            " 'cross' shares account margin across all positions."
+        ),
     )
     hedging_netting_mode: Literal["netting", "hedging"] = Field(
-        ..., description="Position mode."
+        ...,
+        description=(
+            "Position accounting mode: 'netting' collapses same-symbol positions;"
+            " 'hedging' allows multiple independent positions per symbol."
+        ),
     )
     provider_limits: dict[str, Any] = Field(
-        default_factory=dict, description="Custom broker-specific limitation metadata."
+        default_factory=dict,
+        description="Custom broker-specific limitation metadata.",
     )

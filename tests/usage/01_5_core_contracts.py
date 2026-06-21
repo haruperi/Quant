@@ -46,17 +46,17 @@ class SimulatorExecutionProvider:
         print(msg)
         return TradeResult(
             trade_id="sim_trd_987",
-            request_id=request.request_id,
+            execution_request_id=request.execution_request_id,
             status="filled",
             fill_price=request.order_intent.price or 1.1000,
             fill_volume=request.order_intent.volume,
             execution_time_ms=15.5,
         )
 
-    def cancel_order(self, request_id: str, _order_id: str) -> TradeResult:
+    def cancel_order(self, execution_request_id: str, _order_id: str) -> TradeResult:
         return TradeResult(
             trade_id="sim_trd_canc",
-            request_id=request_id,
+            execution_request_id=execution_request_id,
             status="cancelled",
         )
 
@@ -71,7 +71,6 @@ class LiveExecutionProvider:
             f"{request.order_intent.volume} lots..."
         )
         print(msg)
-        # Populate broker-specific ticket in namespaced metadata
         result_metadata = {
             "mt5.ticket": 556677,
             "mt5.magic": 12345,
@@ -79,7 +78,7 @@ class LiveExecutionProvider:
         }
         return TradeResult(
             trade_id="live_trd_3321",
-            request_id=request.request_id,
+            execution_request_id=request.execution_request_id,
             status="filled",
             fill_price=request.order_intent.price or 1.1005,
             fill_volume=request.order_intent.volume,
@@ -87,10 +86,10 @@ class LiveExecutionProvider:
             metadata=result_metadata,
         )
 
-    def cancel_order(self, request_id: str, _order_id: str) -> TradeResult:
+    def cancel_order(self, execution_request_id: str, _order_id: str) -> TradeResult:
         return TradeResult(
             trade_id="live_trd_canc",
-            request_id=request_id,
+            execution_request_id=execution_request_id,
             status="cancelled",
         )
 
@@ -146,7 +145,7 @@ def example_indicator_and_strategy_signal() -> None:
         symbol="EURUSD",
         side="buy",
         confidence=0.8,
-        validity_window=300,
+        validity_window=86400,  # 24h window — won't expire during examples run
         reason="SMA 20 crossover",
         evidence_references=[ind_res.contract_hash()],
         source_data_hash="market_hash_77",
@@ -182,7 +181,7 @@ def example_risk_decision() -> None:
         signal_id="sig_hash_99",
         approved=True,
         sizing=sizing,
-        approved_order_intent=intent.model_dump(),
+        approved_order_intent=intent,
     )
     print(f"Approved RiskDecision hash: {approved_decision.contract_hash()}")
 
@@ -217,7 +216,7 @@ def example_provider_sharing() -> None:
         risk_decision_id="dec_88",
     )
     request = TradeRequest(
-        request_id="req_999",
+        execution_request_id="req_999",
         order_intent=intent,
         submitted_at=datetime.now(UTC).isoformat(),
         execution_provider="mt5",
@@ -247,7 +246,7 @@ def example_metadata_reconciliation() -> None:
         risk_decision_id="dec_90",
     )
     request = TradeRequest(
-        request_id="req_888",
+        execution_request_id="req_888",
         order_intent=intent,
         submitted_at=datetime.now(UTC).isoformat(),
         execution_provider="mt5",
