@@ -1,15 +1,33 @@
 """Public registry for the utilities domain.
 
-This module exports approved public names only. It is import-safe and
-side-effect free: importing it does not configure logging, read configuration
-files, open network connections, or import heavy optional dependencies.
+This module exposes only approved public names. It is import-safe and
+side-effect free: importing it does not configure logging, read
+configuration files, open network connections, or load heavy optional
+dependencies such as pydantic-settings (dotenv).
 
-Export groups below are organized by implementation source file.
+Lightweight modules are imported eagerly. ``app.utils.settings`` is
+deferred via ``__getattr__`` because ``pydantic_settings`` triggers
+dotenv scanning at class-body evaluation time.
+
+Compatibility review (v8): all public names in ``__all__`` are stable.
+Removals or renames require a new versioned specification and a registry
+review before merging.
+
+Export groups
+-------------
+Eager:
+    auth, data_quality, dataframe_tools, errors, event_bus, identity,
+    logger, normalization, notifications, observability, paths,
+    security, standard, validations
+Lazy:
+    settings
 """
 
-# auth.py exports
-# logger.py exports
-# security.py exports
+from __future__ import annotations
+
+from importlib import import_module
+
+# ── auth.py exports ──────────────────────────────────────────────────────
 from app.utils.auth import (
     AuthContext,
     AuthorizationDecision,
@@ -19,7 +37,7 @@ from app.utils.auth import (
     validate_auth_context,
 )
 
-# data_quality.py exports
+# ── data_quality.py exports ──────────────────────────────────────────────
 from app.utils.data_quality import (
     QualityIssue,
     QualityProfile,
@@ -28,7 +46,7 @@ from app.utils.data_quality import (
     validate_ohlcv_quality,
 )
 
-# dataframe_tools.py exports
+# ── dataframe_tools.py exports ───────────────────────────────────────────
 from app.utils.dataframe_tools import (
     OHLC_COLUMNS,
     OHLCV_COLUMNS,
@@ -44,7 +62,7 @@ from app.utils.dataframe_tools import (
     serialize_dataframe_records,
 )
 
-# errors.py exports
+# ── errors.py exports ────────────────────────────────────────────────────
 from app.utils.errors import (
     APPROVED_ERROR_CODES,
     ConfigurationError,
@@ -67,7 +85,7 @@ from app.utils.errors import (
     validate_error_payload,
 )
 
-# event_bus.py exports
+# ── event_bus.py exports ─────────────────────────────────────────────────
 from app.utils.event_bus import (
     EventEnvelope,
     InMemoryEventBus,
@@ -76,7 +94,7 @@ from app.utils.event_bus import (
     publish_event,
 )
 
-# identity.py exports
+# ── identity.py exports ──────────────────────────────────────────────────
 from app.utils.identity import (
     DEFAULT_VERSION,
     ID_PREFIXES,
@@ -93,6 +111,8 @@ from app.utils.identity import (
     validate_request_id,
     validate_workflow_id,
 )
+
+# ── logger.py exports ────────────────────────────────────────────────────
 from app.utils.logger import (
     clear_trace_context,
     configure_logging,
@@ -101,7 +121,7 @@ from app.utils.logger import (
     set_trace_context,
 )
 
-# normalization.py exports
+# ── normalization.py exports ─────────────────────────────────────────────
 from app.utils.normalization import (
     DEFAULT_TIMEZONE,
     UTC,
@@ -120,7 +140,7 @@ from app.utils.normalization import (
     validate_timestamp_sequence,
 )
 
-# notifications.py exports
+# ── notifications.py exports ─────────────────────────────────────────────
 from app.utils.notifications import (
     FakeNotificationAdapter,
     NotificationMessage,
@@ -131,7 +151,7 @@ from app.utils.notifications import (
     route_notification,
 )
 
-# observability.py exports
+# ── observability.py exports ─────────────────────────────────────────────
 from app.utils.observability import (
     GRAFANA_DASHBOARD_EXPECTATIONS,
     CircuitBreaker,
@@ -145,8 +165,10 @@ from app.utils.observability import (
     record_tool_call_metric,
 )
 
-# paths.py exports
+# ── paths.py exports ─────────────────────────────────────────────────────
 from app.utils.paths import ensure_dir, ensure_parent_dir, normalize_path
+
+# ── security.py exports ──────────────────────────────────────────────────
 from app.utils.security import (
     MAX_REDACTION_DEPTH,
     SECRET_VERSION_NOT_FOUND,
@@ -170,16 +192,7 @@ from app.utils.security import (
     verify_password,
 )
 
-# settings.py exports
-from app.utils.settings import (
-    CONFIGURATION_ERROR,
-    HARUQUANT_HOME,
-    HaruQuantConfigurationError,
-    Settings,
-    settings,
-)
-
-# standard.py exports
+# ── standard.py exports ──────────────────────────────────────────────────
 from app.utils.standard import (
     AlertDeduplicator,
     DataQualityIssue,
@@ -202,7 +215,7 @@ from app.utils.standard import (
     validate_standard_response,
 )
 
-# validations.py exports
+# ── validations.py exports ───────────────────────────────────────────────
 from app.utils.validations import (
     ValidationResult,
     validate_approval_packet,
@@ -217,6 +230,17 @@ from app.utils.validations import (
     validate_required_fields,
     validate_schema_version,
     validation_failed_paths,
+)
+
+# ── settings.py exports (lazy — avoids eager pydantic-settings / dotenv) ─
+_LAZY_SETTINGS_EXPORTS: frozenset[str] = frozenset(
+    {
+        "CONFIGURATION_ERROR",
+        "HARUQUANT_HOME",
+        "HaruQuantConfigurationError",
+        "Settings",
+        "settings",
+    }
 )
 
 __all__ = [
@@ -379,3 +403,27 @@ __all__ = [
     "validation_failed_paths",
     "verify_password",
 ]
+
+
+def __getattr__(name: str) -> object:
+    """Lazily resolve settings exports to avoid eager dotenv loading.
+
+    Resolved values are cached in the module's global namespace so that
+    subsequent attribute accesses bypass this function entirely.
+
+    Args:
+        name: The attribute name being accessed on this package.
+
+    Returns:
+        The requested public symbol from ``app.utils.settings``.
+
+    Raises:
+        AttributeError: If ``name`` is not an approved public export.
+    """
+    if name in _LAZY_SETTINGS_EXPORTS:
+        module = import_module("app.utils.settings")
+        value: object = getattr(module, name)
+        globals()[name] = value
+        return value
+    message = f"module 'app.utils' has no attribute {name!r}"
+    raise AttributeError(message)
