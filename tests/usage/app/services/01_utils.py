@@ -21,9 +21,11 @@ from typing import Any, cast
 import pandas as pd
 from app.utils import (
     CircuitBreaker,
-    FakeNotificationAdapter,
+    DesktopNotificationAdapter,
+    EmailNotificationAdapter,
     InMemoryEventBus,
     NotificationRouter,
+    TelegramNotificationAdapter,
     ValidationError,
     align_dataframe_datetime,
     build_event_envelope,
@@ -69,11 +71,20 @@ from app.utils import (
     validate_workflow_id,
     verify_password,
 )
+from app.utils.settings import settings
 
 
 def example_01_logging_and_tracing() -> None:
     """Demonstrate configure_logging, logger usage, and trace context propagation."""
     print("\n--- 1. Logging & Tracing Demo ---")
+
+    # Default logging
+    logger.info("This is a INFO log.")
+    logger.warning("This is a WARNING log.")
+    logger.error("This is a ERROR log.")
+    logger.debug("This is a DEBUG log.")
+    logger.critical("This is a CRITICAL log.")
+
     # Configure logging for local run
     configure_logging(level="INFO")
 
@@ -327,23 +338,70 @@ def example_10_circuit_breakers_and_observability() -> None:
 
 
 def example_11_notifications() -> None:
-    """Demonstrate rendered alerts and mock channel routing."""
-    print("\n--- 11. Notifications Router Demo ---")
+    """Demonstrate real notifications using settings credentials."""
+    print("\n--- 11. Notifications Router Demo (Real Adapters) ---")
     from app.utils.notifications import NotificationAdapter, NotificationChannel
 
     adapters: dict[NotificationChannel, NotificationAdapter] = {
-        "desktop": FakeNotificationAdapter(channel="desktop"),
+        "desktop": DesktopNotificationAdapter(),
+        "telegram": TelegramNotificationAdapter(
+            bot_token=settings.telegram_bot_token,
+            chat_id=settings.telegram_chat_id,
+        ),
+        "email": EmailNotificationAdapter(
+            host=settings.smtp_host,
+            port=settings.smtp_port,
+            username=settings.smtp_username,
+            password=settings.smtp_password,
+            recipient=settings.smtp_recipient or settings.smtp_username,
+        ),
     }
     router = NotificationRouter(adapters=adapters)
 
-    # Route message
-    res = route_notification(
+    # 1. Desktop Notification
+    print("Sending real Desktop notification...")
+    res_desktop = route_notification(
         router,
         channel="desktop",
-        title="System warning",
-        body="Disk space low on server A.",
+        title="HaruQuant Desktop Alert",
+        body="This is a real desktop notification from the utilities demo.",
     )
-    print(f"Routed Notification Status: {res.status}, Delivered: {res.channel}")
+    print(
+        f"Desktop Result: status={res_desktop.status}, "
+        f"channel={res_desktop.channel}, provider={res_desktop.provider}"
+    )
+
+    # 2. Telegram Notification
+    if settings.telegram_bot_token and settings.telegram_chat_id:
+        print("Sending real Telegram notification...")
+        res_telegram = route_notification(
+            router,
+            channel="telegram",
+            title="HaruQuant Telegram Alert",
+            body="This is a real Telegram notification from the utilities demo.",
+        )
+        print(
+            f"Telegram Result: status={res_telegram.status}, "
+            f"channel={res_telegram.channel}, provider={res_telegram.provider}"
+        )
+    else:
+        print("Skipping Telegram (not configured in settings/env).")
+
+    # 3. Email Notification
+    if settings.smtp_username and settings.smtp_password:
+        print("Sending real Email notification...")
+        res_email = route_notification(
+            router,
+            channel="email",
+            title="HaruQuant Email Alert",
+            body="This is a real Email notification from the utilities demo.",
+        )
+        print(
+            f"Email Result: status={res_email.status}, "
+            f"channel={res_email.channel}, provider={res_email.provider}"
+        )
+    else:
+        print("Skipping Email (not configured in settings/env).")
 
 
 def example_12_paths() -> None:

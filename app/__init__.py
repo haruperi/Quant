@@ -16,6 +16,7 @@ Optimisation (lazy):
 from __future__ import annotations
 
 from importlib import import_module
+from typing import Any
 
 __all__ = [
     "OPT_JSON_SERIALIZATION_FAILED",
@@ -47,7 +48,7 @@ _LAZY_OPTIMIZATION_EXPORTS: frozenset[str] = frozenset(
 )
 
 
-def __getattr__(name: str) -> object:
+def __getattr__(name: str) -> Any:  # noqa: ANN401
     """Lazily resolve analytics and optimisation exports on first access.
 
     Resolved values are cached in the module's global namespace so that

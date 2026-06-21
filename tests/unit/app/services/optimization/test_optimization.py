@@ -326,6 +326,8 @@ def test_run_strategy_backtest_from_path() -> None:
             "from app.services.strategies.base import BaseStrategy\n"
             "class MyTempStrat(BaseStrategy):\n"
             "    strategy_ref = 'my_temp_strat'\n"
+            "    def run_vectorized_signals(self, data, indicators, context, config):\n"
+            "        return []\n"
         )
         tmp_path = tmp.name
 

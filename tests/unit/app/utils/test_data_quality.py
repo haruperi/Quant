@@ -178,7 +178,8 @@ def test_inspect_ohlcv_quality_reports_nonfinite_and_range_cases() -> None:
     issues = cast("list[dict[str, object]]", result["issues"])
     codes = {issue["code"] for issue in issues}
 
-    assert "NON_FINITE_NUMERIC_VALUE" in codes
+    assert "NAN_VALUE" in codes
+    assert "INFINITY_VALUE" in codes
     assert "NON_POSITIVE_PRICE" in codes
     assert "NEGATIVE_VOLUME" in codes
     assert "OHLC_OUTSIDE_RANGE" in codes

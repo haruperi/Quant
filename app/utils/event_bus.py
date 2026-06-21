@@ -1,4 +1,17 @@
-"""In-memory Event Bus and pub/sub primitives for utilities."""
+"""In-memory Event Bus and pub/sub primitives for utilities.
+
+This module is a support helper, not an official AI tool. It provides a
+thread-safe bounded pub/sub bus suitable for tests and local workflows.
+It does not connect to any external message broker.
+
+Public exports:
+    EventEnvelope, PublishResult, InMemoryEventBus,
+    build_event_envelope, publish_event.
+
+Side effects:
+    None on import. All state lives inside caller-owned ``InMemoryEventBus``
+    instances.
+"""
 
 from __future__ import annotations
 
@@ -49,14 +62,21 @@ class PublishResult:
 
 @dataclass
 class InMemoryEventBus:
-    """Thread-safe bounded in-memory Event Bus for tests and local workflows."""
+    """Thread-safe bounded in-memory Event Bus for tests and local workflows.
+
+    Note:
+        The idempotency cache grows unbounded. For production workflows,
+        supply an external bus with TTL-based eviction.
+    """
 
     max_queue_size: int = 1000
     fail_fast_when_full: bool = True
-    _handlers: dict[str, list[EventHandler]] = field(default_factory=dict)
-    _queue: deque[EventEnvelope] = field(default_factory=deque)
-    _idempotency: dict[str, str] = field(default_factory=dict)
-    _lock: RLock = field(default_factory=RLock)
+    _handlers: dict[str, list[EventHandler]] = field(
+        default_factory=dict, init=False, repr=False
+    )
+    _queue: deque[EventEnvelope] = field(default_factory=deque, init=False, repr=False)
+    _idempotency: dict[str, str] = field(default_factory=dict, init=False, repr=False)
+    _lock: RLock = field(default_factory=RLock, init=False, repr=False)
 
     def subscribe(self, event_type: str, handler: EventHandler) -> None:
         """Register an event handler."""

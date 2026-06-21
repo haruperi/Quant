@@ -1,4 +1,20 @@
-"""Security helpers for redaction, hashing, and optional encryption."""
+"""Security helpers for redaction, hashing, and optional encryption.
+
+This module is a support helper, not an official AI tool (except for the
+``redact_payload`` exported tool). It provides denylist-based secret
+redaction, Argon2id/PBKDF2 password hashing, Fernet symmetric encryption,
+and secret-version selection.
+
+Public exports:
+    MAX_REDACTION_DEPTH, SECRET_VERSION_NOT_FOUND, SENSITIVE_KEY_PATTERN,
+    RedactionDiagnostics, SecretVersion,
+    redact_text, redact_mapping, redact_value,
+    redact_mapping_with_diagnostics, classify_secret_key,
+    hash_password, verify_password,
+    generate_encryption_key, load_encryption_key,
+    encrypt_text, decrypt_text, encrypt_value, decrypt_value,
+    select_active_secret_version, redact_payload.
+"""
 
 from __future__ import annotations
 
@@ -10,7 +26,7 @@ import os
 import re
 import time
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Literal, TypedDict
+from typing import TYPE_CHECKING, Any, Final, Literal, TypedDict
 
 if TYPE_CHECKING:
     from app.utils.standard import StandardResponse
@@ -27,9 +43,9 @@ DELETES = False
 TRADES = False
 REQUIRES_NETWORK = False
 
-MIN_PASSWORD_HASH_ITERATIONS = 100_000
-MAX_REDACTION_DEPTH = 12
-SECRET_VERSION_NOT_FOUND = (
+MIN_PASSWORD_HASH_ITERATIONS: Final[int] = 100_000
+MAX_REDACTION_DEPTH: Final[int] = 12
+SECRET_VERSION_NOT_FOUND: Final[str] = (
     "SECRET_VERSION_NOT_FOUND"  # pragma: allowlist secret  # noqa: S105
 )
 SENSITIVE_KEY_PATTERN = re.compile(
@@ -233,11 +249,29 @@ def hash_password(
     salt: bytes | None = None,
     iterations: int = 390_000,
 ) -> str:
-    """Hash a password with PBKDF2-HMAC-SHA256.
+    """Hash a password with Argon2id (preferred) or PBKDF2-HMAC-SHA256.
 
-    Argon2id remains preferred for production policy, but this stdlib fallback
-    is deterministic, explicit, salted, and available without optional
-    dependencies.
+    Tries ``argon2-cffi`` first. Falls back to stdlib PBKDF2-HMAC-SHA256
+    when the optional ``argon2`` package is unavailable.
+
+    Args:
+        password: Non-empty plaintext password to hash.
+        salt: Optional explicit salt bytes for PBKDF2 fallback. When
+            ``None``, a 16-byte random salt is generated. Ignored when
+            Argon2id is used (Argon2 generates its own salt internally).
+        iterations: PBKDF2 iteration count. Must be at least
+            ``MIN_PASSWORD_HASH_ITERATIONS``. Ignored for Argon2id.
+
+    Returns:
+        Opaque hash string. Argon2id hashes begin with ``$argon2id$``.
+        PBKDF2 hashes begin with ``pbkdf2_sha256$``.
+
+    Raises:
+        ValidationError: If ``password`` is empty or ``iterations`` is
+            below the approved minimum.
+
+    Side effects:
+        None. Password value is never logged.
     """
     from app.utils.errors import ValidationError
 
@@ -245,6 +279,17 @@ def hash_password(
         raise ValidationError(
             "password must be a non-empty string.", code="INVALID_INPUT"
         )
+    # Prefer Argon2id when available.
+    try:
+        from argon2 import (
+            PasswordHasher,  # type: ignore[import-not-found, unused-ignore]
+        )
+
+        ph = PasswordHasher()
+        return str(ph.hash(password))
+    except ImportError:
+        pass
+    # PBKDF2-HMAC-SHA256 stdlib fallback.
     if iterations < MIN_PASSWORD_HASH_ITERATIONS:
         raise ValidationError(
             "iterations is below the approved minimum.", code="INVALID_INPUT"
@@ -260,7 +305,38 @@ def hash_password(
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    """Verify a password against a ``hash_password`` value."""
+    """Verify a password against a ``hash_password`` value.
+
+    Supports both Argon2id hashes (``$argon2id$…``) and legacy
+    ``pbkdf2_sha256$…`` hashes produced by the stdlib fallback.
+
+    Args:
+        password: Plaintext candidate password.
+        password_hash: Hash produced by ``hash_password``.
+
+    Returns:
+        ``True`` when the password matches the hash; ``False`` otherwise.
+
+    Side effects:
+        None. Uses constant-time comparison to prevent timing attacks.
+    """
+    if password_hash.startswith("$argon2"):
+        try:
+            from argon2 import (
+                PasswordHasher,  # type: ignore[import-not-found, unused-ignore]
+            )
+            from argon2.exceptions import (  # type: ignore[import-not-found, unused-ignore]
+                VerifyMismatchError,
+            )
+
+            ph = PasswordHasher()
+            try:
+                return bool(ph.verify(password_hash, password))
+            except VerifyMismatchError:
+                return False
+        except ImportError:
+            return False
+    # Legacy PBKDF2-HMAC-SHA256 path.
     try:
         algorithm, iterations_text, salt_text, _digest_text = password_hash.split("$")
         if algorithm != "pbkdf2_sha256":
@@ -324,7 +400,23 @@ def encrypt_text(plaintext: str, *, key: str) -> str:
 
 
 def decrypt_text(ciphertext: str, *, key: str) -> str:
-    """Decrypt Fernet ciphertext with a caller-supplied key."""
+    """Decrypt Fernet ciphertext with a caller-supplied key.
+
+    Args:
+        ciphertext: Non-empty Fernet-encrypted string.
+        key: Fernet key string. Must not be empty.
+
+    Returns:
+        Decrypted plaintext string.
+
+    Raises:
+        ValidationError: If ``ciphertext`` is empty.
+        SecurityError: If ``key`` is empty or decryption fails (invalid
+            token, wrong key, or corrupted ciphertext).
+
+    Side effects:
+        None.
+    """
     from app.utils.errors import SecurityError, ValidationError
 
     if not ciphertext:
@@ -332,7 +424,13 @@ def decrypt_text(ciphertext: str, *, key: str) -> str:
     if not key:
         raise SecurityError("encryption key is required.")
     fernet: Any = _fernet()
-    return str(fernet(key.encode()).decrypt(ciphertext.encode()).decode())
+    try:
+        return str(fernet(key.encode()).decrypt(ciphertext.encode()).decode())
+    except Exception as exc:
+        raise SecurityError(
+            "decryption failed: invalid token or key.",
+            code="PERMISSION_DENIED",
+        ) from exc
 
 
 def encrypt_value(plaintext: str, *, key: str | None = None) -> str:
@@ -409,22 +507,24 @@ def redact_payload(
 ) -> StandardResponse:
     """Official low-risk read-only redaction tool for approved workflows.
 
-    Use this tool to redact sensitive keys (like passwords, keys, tokens) from payloads.
+    Use this tool to redact sensitive keys (passwords, API keys, tokens)
+    from mapping payloads or free-text strings.
 
     Args:
-        payload (Mapping[str, object] | str): The payload or text to redact.
-        request_id (str | None, optional): Optional trace request ID.
+        payload: The payload or text to redact. Must be a ``Mapping`` or
+            a ``str``.
+        request_id: Optional trace request identifier.
 
     Returns:
-        StandardResponse: Standard tool response envelope.
+        Standard tool response envelope with ``data.redacted`` containing
+        the redacted output.
 
-    Errors:
-        INVALID_INPUT: Payload is not a mapping or string.
-        PERMISSION_DENIED: Redaction security validation fails.
-        TOOL_EXECUTION_FAILED: Unexpected redaction runtime failure.
+    Raises:
+        N/A — all exceptions are caught and returned as error responses.
 
     Side effects:
-        Emits structured tool logs only.
+        Emits structured tool call, success, and exception logs only.
+        Secret values are never logged.
     """
     from app.utils.errors import SecurityError, ValidationError
     from app.utils.logger import logger

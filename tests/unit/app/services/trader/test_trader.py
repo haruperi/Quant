@@ -19,6 +19,19 @@ from app.utils.errors import classify_broker_error, trading_retry_delay
 from pytest_mock import MockerFixture
 
 
+@pytest.fixture(autouse=True)
+def mock_market_weekday(mocker: MockerFixture) -> None:
+    """Mock datetime in validation module to always return a weekday."""
+    import datetime as real_datetime
+
+    mock_dt = mocker.patch("app.services.trader.validation.datetime.datetime")
+    # Make now() return a fixed Wednesday datetime in UTC (June 17, 2026 is Wednesday)
+    wednesday_dt = real_datetime.datetime(
+        2026, 6, 17, 12, 0, 0, tzinfo=real_datetime.UTC
+    )
+    mock_dt.now.return_value = wednesday_dt
+
+
 @pytest.fixture
 def mock_broker(mocker: MockerFixture) -> MagicMock:
     """Fixture providing a mock broker module."""

@@ -35,7 +35,15 @@ def test_official_schema_tools_return_envelopes() -> None:
         {"schema_version": "1.0.0", "name": "tool"},
         {"required": ("schema_version",), "schema_version": "1.0.0"},
     )
-    approval = validate_approval_packet({"approval_id": "appr_1", "action": "read"})
+    approval = validate_approval_packet(
+        {
+            "action": "read",
+            "reason": "testing",
+            "evidence": "proof",
+            "risk_class": "low",
+            "approval_status": "approved",
+        }
+    )
     failed = validate_numeric_range(float("inf"), field_name="price")
 
     assert response["status"] == "success"

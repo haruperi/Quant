@@ -9,9 +9,9 @@ from __future__ import annotations
 import time
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Literal
+from typing import Final, Literal
 
-from app.utils.errors import SecurityError, ValidationError
+from app.utils.errors import SecurityError, ValidationError, normalize_error_code
 from app.utils.identity import validate_request_id, validate_workflow_id
 from app.utils.logger import logger
 from app.utils.standard import (
@@ -21,9 +21,9 @@ from app.utils.standard import (
     success_response,
 )
 
-TOOL_NAME = "validate_auth_context"
-TOOL_VERSION = "1.0.0"
-TOOL_CATEGORY = "utils"
+TOOL_NAME: Final[str] = "validate_auth_context"
+TOOL_VERSION: Final[str] = "1.0.0"
+TOOL_CATEGORY: Final[str] = "utils"
 TOOL_RISK_LEVEL: Literal["low"] = "low"
 REQUIRES_APPROVAL = False
 READS = False
@@ -153,11 +153,12 @@ def validate_auth_context(
     Returns:
         StandardResponse: Standard tool response envelope.
 
-    Errors:
-        INVALID_INPUT: The payload is missing required auth fields or uses
-            malformed collection values.
-        PERMISSION_DENIED: The auth context violates security validation.
-        TOOL_EXECUTION_FAILED: An unexpected validation runtime failure occurred.
+    Raises:
+        N/A — all exceptions are caught and returned as error responses.
+            INVALID_INPUT: Missing required auth fields or malformed
+                collection values.
+            PERMISSION_DENIED: Auth context violates security validation.
+            TOOL_EXECUTION_FAILED: Unexpected validation runtime failure.
 
     Side effects:
         Emits structured tool call, validation failure, success, and exception
@@ -206,7 +207,7 @@ def validate_auth_context(
             "validate_auth_context validation failed",
             extra={"event_name": "tool_validation_failed", "request_id": request_id},
         )
-        code = getattr(exc, "code", "INVALID_INPUT")
+        code = normalize_error_code(getattr(exc, "code", "INVALID_INPUT"))
         return error_response(
             message="Auth context is invalid.",
             code=code,
@@ -224,8 +225,15 @@ def validate_auth_context(
             details=f"{exc.__class__.__name__}: {exc}",
             metadata=metadata,
         )
+    roles_count = len(_string_set(payload.get("roles")))
+    permissions_count = len(_string_set(payload.get("permissions")))
     return success_response(
         message="Auth context is valid.",
-        data={"valid": True},
+        data={
+            "valid": True,
+            "principal_type": str(payload.get("principal_type", "")),
+            "roles_count": roles_count,
+            "permissions_count": permissions_count,
+        },
         metadata=metadata,
     )

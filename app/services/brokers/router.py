@@ -24,7 +24,7 @@ def get_active_broker_name() -> str:
 
     if settings_obj is None:
         try:
-            from app.core.config import (
+            from app.core.config import (  # type: ignore[import-not-found, unused-ignore]
                 settings as core_settings,
             )
 

@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Final, Literal
 
 from pydantic import BaseModel, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -26,8 +26,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from app.utils.errors import ConfigurationError
 from app.utils.paths import normalize_path
 
-HARUQUANT_HOME = "HARUQUANT_HOME"
-CONFIGURATION_ERROR = "CONFIGURATION_ERROR"
+HARUQUANT_HOME: Final[str] = "HARUQUANT_HOME"
+CONFIGURATION_ERROR: Final[str] = "CONFIGURATION_ERROR"
 HaruQuantConfigurationError = ConfigurationError
 
 EnvironmentMode = Literal["local", "test", "development", "staging", "production"]
@@ -99,7 +99,7 @@ class Settings(BaseSettings):
     ollama_top_p: float = 0.95
     ollama_top_k: int = 40
 
-    FOREX_SYMBOLS: list[str] = [
+    FOREX_SYMBOLS: tuple[str, ...] = (
         "AUDCAD",
         "AUDCHF",
         "AUDJPY",
@@ -128,9 +128,9 @@ class Settings(BaseSettings):
         "USDCHF",
         "USDCAD",
         "USDJPY",
-    ]
+    )
 
-    COMMODITY_SYMBOLS: list[str] = [
+    COMMODITY_SYMBOLS: tuple[str, ...] = (
         "XAUUSD",
         "XAUEUR",
         "XAUGBP",
@@ -138,9 +138,9 @@ class Settings(BaseSettings):
         "XAUAUD",
         "XAUCHF",
         "XAGUSD",
-    ]
+    )
 
-    INDICES_SYMBOLS: list[str] = [
+    INDICES_SYMBOLS: tuple[str, ...] = (
         "US500",
         "US30",
         "UK100",
@@ -149,10 +149,10 @@ class Settings(BaseSettings):
         "USDX",
         "EURX",
         "JPYX",
-    ]
+    )
 
-    # Combine all symbols
-    ALL_SYMBOLS: list[str] = []
+    # Populated by @model_validator from the three symbol tuples above.
+    ALL_SYMBOLS: tuple[str, ...] = ()
 
     # Runtime Directories & Time
     haruquant_home: Path = Field(
@@ -176,6 +176,17 @@ class Settings(BaseSettings):
     log_backup_count: int = Field(default=5, validation_alias="LOG_BACKUP_COUNT")
     log_use_json: bool | None = Field(default=None, validation_alias="LOG_USE_JSON")
     log_use_color: bool | None = Field(default=None, validation_alias="LOG_USE_COLOR")
+
+    # Telegram Credentials
+    telegram_bot_token: str = Field(default="", validation_alias="TELEGRAM_BOT_TOKEN")
+    telegram_chat_id: str = Field(default="", validation_alias="TELEGRAM_CHAT_ID")
+
+    # SMTP / Email Credentials
+    smtp_host: str = Field(default="smtp.gmail.com", validation_alias="SMTP_HOST")
+    smtp_port: int = Field(default=587, validation_alias="SMTP_PORT")
+    smtp_username: str = Field(default="", validation_alias="SMTP_USERNAME")
+    smtp_password: str = Field(default="", validation_alias="SMTP_PASSWORD")
+    smtp_recipient: str = Field(default="", validation_alias="SMTP_RECIPIENT")
 
     # Mappings for extensible components
     auth: dict[str, object] = Field(default_factory=dict)
@@ -316,7 +327,7 @@ class Settings(BaseSettings):
         if self.log_use_color is None:
             self.log_use_color = self.environment not in {"staging", "production"}
 
-        # Populate combined symbols list
+        # Populate combined symbols tuple
         self.ALL_SYMBOLS = (
             self.FOREX_SYMBOLS + self.COMMODITY_SYMBOLS + self.INDICES_SYMBOLS
         )
@@ -353,9 +364,8 @@ def validate_config(cfg: Settings) -> list[str]:
     """Validate a Settings instance for live runtime readiness.
 
     Checks live-specific constraints beyond Pydantic field validation:
-    - live_enabled/live_mode consistency
-    - required live secret references are non-empty when live is enabled
-    - staleness/timeout are within safe bounds
+    live_enabled/live_mode consistency, required secret references, and
+    timeout bounds.
 
     Args:
         cfg: Settings instance to validate.
@@ -364,7 +374,7 @@ def validate_config(cfg: Settings) -> list[str]:
         List of human-readable validation error strings. Empty list means valid.
 
     Side effects:
-        None. Does not expose secret values in error messages.
+        None. Secret values are never included in error messages.
     """
     errors: list[str] = []
 
@@ -377,20 +387,18 @@ def validate_config(cfg: Settings) -> list[str]:
     if cfg.live_enabled and not cfg.active_broker.strip():
         errors.append("active_broker must be set when live_enabled=True.")
 
-    # Validate MT5 secret references when MT5 is enabled and live is enabled
+    # Validate MT5 secret references (values never logged)
     if cfg.live_enabled and cfg.mt5_enabled:
         if not cfg.mt5_login.strip():
             errors.append("mt5_login is required when live_enabled and mt5_enabled.")
         if not cfg.mt5_server.strip():
             errors.append("mt5_server is required when live_enabled and mt5_enabled.")
-        # Note: password presence is checked but NOT logged (secret value)
         if not cfg.mt5_password:
             errors.append(
-                "mt5_password secret reference is missing "
-                "when live_enabled and mt5_enabled. [secret value not logged]"
+                "mt5_password secret reference is missing. [secret value not logged]"
             )
 
-    # Validate cTrader secret references when cTrader is enabled and live is enabled
+    # Validate cTrader secret references (values never logged)
     if cfg.live_enabled and cfg.ctrader_enabled:
         if not cfg.ctrader_client_id.strip():
             errors.append(

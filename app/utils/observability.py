@@ -3,6 +3,12 @@
 This module is import-safe without Prometheus. Metrics are recorded in a
 caller-owned in-memory registry and can be exported to a Prometheus-compatible
 text format without external services.
+
+Public exports:
+    GRAFANA_DASHBOARD_EXPECTATIONS, MetricRecord, HealthSnapshot,
+    MetricRegistry, CircuitBreaker,
+    record_metric, record_tool_call_metric, build_health_snapshot,
+    check_clock_drift_health, export_prometheus_metrics.
 """
 
 from __future__ import annotations
@@ -11,11 +17,12 @@ import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from threading import RLock
-from typing import Literal, TypedDict
+from typing import Final, Literal, TypedDict
 
 from app.utils.errors import ExternalServiceError, ValidationError
 from app.utils.logger import logger
 from app.utils.normalization import format_utc_timestamp, utc_now
+from app.utils.security import SENSITIVE_KEY_PATTERN
 from app.utils.standard import validate_metric_labels
 
 MetricKind = Literal["counter", "gauge", "histogram"]
@@ -24,7 +31,7 @@ HealthStatus = Literal[
 ]
 CircuitState = Literal["closed", "open", "half_open"]
 
-GRAFANA_DASHBOARD_EXPECTATIONS = (
+GRAFANA_DASHBOARD_EXPECTATIONS: Final[tuple[str, ...]] = (
     "system_health",
     "tool_health",
     "event_bus_health",
@@ -77,7 +84,7 @@ class MetricRegistry:
             raise ValidationError("metric kind is invalid.")
         if not name.strip():
             raise ValidationError("metric name must be non-empty.")
-        if not isinstance(value, int | float):
+        if isinstance(value, bool) or not isinstance(value, int | float):
             raise ValidationError("metric value must be numeric.")
         safe_labels = validate_metric_labels(labels or {})
         record: MetricRecord = {
@@ -108,25 +115,39 @@ class MetricRegistry:
 
 @dataclass
 class CircuitBreaker:
-    """Thread-safe circuit breaker with closed/open/half-open states."""
+    """Thread-safe circuit breaker with closed/open/half-open states.
+
+    State is private and only accessible through the ``state`` property to
+    prevent external code from bypassing the state machine.
+    """
 
     name: str
     failure_threshold: int = 3
     cooldown_seconds: float = 30.0
     registry: MetricRegistry | None = None
-    state: CircuitState = "closed"
-    consecutive_failures: int = 0
-    opened_at: float | None = None
-    _lock: RLock = field(default_factory=RLock)
+    _state: CircuitState = field(default="closed", init=False, repr=False)
+    _consecutive_failures: int = field(default=0, init=False, repr=False)
+    _opened_at: float | None = field(default=None, init=False, repr=False)
+    _lock: RLock = field(default_factory=RLock, init=False, repr=False)
+
+    @property
+    def state(self) -> CircuitState:
+        """Return the current circuit state."""
+        return self._state
+
+    @property
+    def consecutive_failures(self) -> int:
+        """Return the current consecutive failure count."""
+        return self._consecutive_failures
 
     def allow_request(self) -> bool:
         """Return whether work may proceed through the circuit."""
         with self._lock:
-            if self.state != "open":
+            if self._state != "open":
                 return True
-            if self.opened_at is None:
+            if self._opened_at is None:
                 return False
-            if time.monotonic() - self.opened_at >= self.cooldown_seconds:
+            if time.monotonic() - self._opened_at >= self.cooldown_seconds:
                 self._transition("half_open")
                 return True
             return False
@@ -134,23 +155,23 @@ class CircuitBreaker:
     def record_success(self) -> None:
         """Record a successful provider attempt."""
         with self._lock:
-            self.consecutive_failures = 0
-            self.opened_at = None
+            self._consecutive_failures = 0
+            self._opened_at = None
             self._transition("closed")
 
     def record_failure(self) -> None:
-        """Record a failed provider attempt and open if threshold is reached."""
+        """Record a failed attempt and open the circuit when threshold hit."""
         with self._lock:
-            self.consecutive_failures += 1
-            if self.consecutive_failures >= self.failure_threshold:
-                self.opened_at = time.monotonic()
+            self._consecutive_failures += 1
+            if self._consecutive_failures >= self.failure_threshold:
+                self._opened_at = time.monotonic()
                 self._transition("open")
 
     def _transition(self, state: CircuitState) -> None:
         """Transition state and record observable metrics."""
-        if self.state == state:
+        if self._state == state:
             return
-        self.state = state
+        self._state = state
         logger.warning(
             "circuit breaker state transition",
             extra={"event_name": "circuit_state_changed"},
@@ -159,7 +180,11 @@ class CircuitBreaker:
             self.registry.record(
                 name="haruquant_circuit_breaker_state",
                 kind="gauge",
-                value={"closed": 0.0, "half_open": 0.5, "open": 1.0}[state],
+                value={
+                    "closed": 0.0,
+                    "half_open": 0.5,
+                    "open": 1.0,
+                }[state],
                 labels={"component": self.name, "state": state},
             )
 
@@ -222,7 +247,7 @@ def build_health_snapshot(
     safe_details = {
         key: value
         for key, value in (details or {}).items()
-        if "token" not in key.lower() and "secret" not in key.lower()
+        if not SENSITIVE_KEY_PATTERN.search(key)
     }
     return {
         "component": component,

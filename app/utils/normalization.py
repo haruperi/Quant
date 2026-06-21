@@ -21,15 +21,16 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from datetime import UTC as DATETIME_UTC
 from datetime import date, datetime, time, timedelta, timezone, tzinfo
-from typing import Literal, NoReturn, TypedDict
+from typing import Final, Literal, NoReturn, TypedDict
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.utils.errors import ValidationError
 from app.utils.logger import logger
 
-DEFAULT_TIMEZONE = "UTC"
+DEFAULT_TIMEZONE: Final[str] = "UTC"
 UTC = DATETIME_UTC
-FALLBACK_TIMEZONES: dict[str, tzinfo] = {
+# Typed as a read-only Mapping to prevent external mutation.
+FALLBACK_TIMEZONES: Mapping[str, tzinfo] = {
     "Africa/Cairo": timezone(timedelta(hours=3), name="Africa/Cairo"),
 }
 TimestampIssueCode = Literal[
@@ -384,6 +385,10 @@ def validate_timestamp_sequence(
                 )
         previous = current
     return issues
+
+
+# Required public name alias (spec uses format_timestamp).
+format_timestamp = format_utc_timestamp
 
 
 def check_clock_drift(

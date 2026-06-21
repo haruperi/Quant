@@ -5,11 +5,13 @@ side-effect-free path normalization plus explicit directory creation helpers
 with base-directory traversal protection.
 
 Public exports:
-    normalize_path, ensure_dir, ensure_parent_dir.
+    normalize_path, ensure_dir, ensure_parent_dir,
+    safe_join, validate_path_within_root.
 
 Side effects:
-    ``normalize_path`` has none. ``ensure_dir`` and ``ensure_parent_dir`` create
-    directories only when explicitly called.
+    ``normalize_path``, ``safe_join``, and ``validate_path_within_root`` have
+    none. ``ensure_dir`` and ``ensure_parent_dir`` create directories only when
+    explicitly called.
 """
 
 from __future__ import annotations
@@ -89,7 +91,11 @@ def _ensure_within_base(path: Path, base_dir: Path) -> None:
         raise SecurityError(message) from exc
 
 
-def normalize_path(path: str | Path, *, base_dir: str | Path | None = None) -> Path:
+def normalize_path(
+    path: str | Path,
+    *,
+    base_dir: str | Path | None = None,
+) -> Path:
     """Normalize a path with optional base-directory traversal protection.
 
     Use this for deterministic path handling before reading, writing, or
@@ -98,8 +104,9 @@ def normalize_path(path: str | Path, *, base_dir: str | Path | None = None) -> P
 
     Args:
         path: String or ``Path`` value to normalize.
-        base_dir: Optional base directory. Relative paths are resolved under
-            this directory, and absolute/relative paths outside it are rejected.
+        base_dir: Optional base directory. Relative paths are resolved
+            under this directory, and absolute/relative paths outside it
+            are rejected.
 
     Returns:
         Normalized absolute ``Path`` object.
@@ -123,7 +130,75 @@ def normalize_path(path: str | Path, *, base_dir: str | Path | None = None) -> P
     return normalized
 
 
-def ensure_dir(path: str | Path, *, base_dir: str | Path | None = None) -> Path:
+def safe_join(base_dir: str | Path, *parts: str | Path) -> Path:
+    """Join path parts relative to base_dir with traversal protection.
+
+    All resolved path components must remain inside ``base_dir``. This
+    function is the approved replacement for unsafe ``os.path.join`` calls
+    in security-sensitive contexts.
+
+    Args:
+        base_dir: Root directory that all resolved paths must stay inside.
+        *parts: Path components to join under ``base_dir``.
+
+    Returns:
+        Resolved absolute ``Path`` guaranteed to be inside ``base_dir``.
+
+    Raises:
+        ValidationError: If any part is empty or malformed.
+        SecurityError: If the joined path escapes ``base_dir``.
+
+    Side effects:
+        None.
+    """
+    raw_base = _coerce_path(base_dir, field_name="base_dir")
+    normalized_base = _resolve_path(raw_base)
+    candidate = normalized_base
+    for index, part in enumerate(parts):
+        raw_part = _coerce_path(part, field_name=f"parts[{index}]")
+        candidate = candidate / raw_part
+    normalized = _resolve_path(candidate)
+    _ensure_within_base(normalized, normalized_base)
+    return normalized
+
+
+def validate_path_within_root(
+    path: str | Path,
+    root: str | Path,
+) -> Path:
+    """Validate that ``path`` is inside ``root`` and return the resolved path.
+
+    Use this to gate filesystem operations on caller-supplied paths before
+    they reach ``open()``, ``shutil``, or any other I/O helper.
+
+    Args:
+        path: Path to validate.
+        root: Required root directory boundary.
+
+    Returns:
+        Resolved absolute ``Path``.
+
+    Raises:
+        ValidationError: If either ``path`` or ``root`` is empty or malformed.
+        SecurityError: If ``path`` escapes ``root``.
+
+    Side effects:
+        None.
+    """
+    raw_path = _coerce_path(path, field_name="path")
+    raw_root = _coerce_path(root, field_name="root")
+    normalized_root = _resolve_path(raw_root)
+    candidate = raw_path if raw_path.is_absolute() else normalized_root / raw_path
+    normalized = _resolve_path(candidate)
+    _ensure_within_base(normalized, normalized_root)
+    return normalized
+
+
+def ensure_dir(
+    path: str | Path,
+    *,
+    base_dir: str | Path | None = None,
+) -> Path:
     """Normalize and create a directory if it is missing.
 
     Args:
@@ -134,7 +209,8 @@ def ensure_dir(path: str | Path, *, base_dir: str | Path | None = None) -> Path:
         Normalized directory ``Path``.
 
     Raises:
-        ValidationError: If path input is invalid or directory creation fails.
+        ValidationError: If path input is invalid or directory creation
+            fails due to a filesystem error.
         SecurityError: If the normalized path escapes ``base_dir``.
 
     Side effects:
@@ -145,7 +221,7 @@ def ensure_dir(path: str | Path, *, base_dir: str | Path | None = None) -> Path:
         directory.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
         message = f"failed to create directory: {directory}"
-        raise ValidationError(message, code="TOOL_EXECUTION_FAILED") from exc
+        raise ValidationError(message, code="INVALID_INPUT") from exc
     logger.info(
         "directory ensured",
         extra={
@@ -156,7 +232,11 @@ def ensure_dir(path: str | Path, *, base_dir: str | Path | None = None) -> Path:
     return directory
 
 
-def ensure_parent_dir(path: str | Path, *, base_dir: str | Path | None = None) -> Path:
+def ensure_parent_dir(
+    path: str | Path,
+    *,
+    base_dir: str | Path | None = None,
+) -> Path:
     """Normalize a file path and create its parent directory if missing.
 
     Args:
@@ -167,7 +247,8 @@ def ensure_parent_dir(path: str | Path, *, base_dir: str | Path | None = None) -
         Normalized file ``Path``.
 
     Raises:
-        ValidationError: If path input is invalid or parent creation fails.
+        ValidationError: If path input is invalid or parent creation fails
+            due to a filesystem error.
         SecurityError: If the normalized path escapes ``base_dir``.
 
     Side effects:
@@ -178,7 +259,7 @@ def ensure_parent_dir(path: str | Path, *, base_dir: str | Path | None = None) -
         file_path.parent.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
         message = f"failed to create parent directory: {file_path.parent}"
-        raise ValidationError(message, code="TOOL_EXECUTION_FAILED") from exc
+        raise ValidationError(message, code="INVALID_INPUT") from exc
     logger.info(
         "parent directory ensured",
         extra={

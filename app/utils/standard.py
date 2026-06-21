@@ -7,17 +7,18 @@ lookups, deterministic JSON serialization, and execution timing helpers.
 Public exports:
     Error, ValidationError, ConfigurationError, DataError, SecurityError,
     ExternalServiceError, StandardErrorPayload, StandardMetadata,
-    StandardResponse, StandardEnvelope, build_metadata, success_response,
-    error_response, validate_standard_response, get_execution_ms,
-    canonical_json, error_name, message_for, stable_identifier,
-    build_data_quality_issue, validate_ohlcv_records, circuit_open_response,
-    build_error_event, validate_metric_labels, is_official_tool_allowed,
-    AlertDeduplicator.
+    ToolMetadata, ToolError, StandardResponse, StandardEnvelope,
+    build_metadata, success_response, build_success_response,
+    error_response, build_error_response, validate_standard_response,
+    get_execution_ms, canonical_json, error_name, message_for,
+    stable_identifier, build_data_quality_issue, validate_ohlcv_records,
+    circuit_open_response, build_error_event, validate_metric_labels,
+    is_official_tool_allowed, AlertDeduplicator.
 
 Side effects:
     None. Importing this module does not configure logging, touch the
-    filesystem, import optional dependencies, call networks, or mutate live
-    trading state.
+    filesystem, import optional dependencies, call networks, or mutate
+    live trading state.
 """
 
 from __future__ import annotations
@@ -28,7 +29,7 @@ import math
 import re
 import time
 from collections.abc import Mapping
-from typing import Literal, NotRequired, TypedDict
+from typing import Final, Literal, NotRequired, TypedDict
 
 from app.utils.errors import (
     ErrorPayload,
@@ -40,20 +41,30 @@ from app.utils.errors import (
 )
 from app.utils.logger import logger as project_logger
 
+# ---------------------------------------------------------------------------
+# Type aliases
+# ---------------------------------------------------------------------------
+
 ToolStatus = Literal["success", "error"]
 ToolRiskLevel = Literal["low", "medium", "high", "critical"]
 JsonScalar = str | int | float | bool | None
 JsonValue = JsonScalar | list["JsonValue"] | dict[str, "JsonValue"]
 IssueSeverity = Literal["info", "warning", "error", "critical"]
 
-SUCCESS_STATUS: Literal["success"] = "success"
-ERROR_STATUS: Literal["error"] = "error"
-DEFAULT_TOOL_VERSION = "1.0.0"
-DEFAULT_TOOL_CATEGORY = "utils"
-DEFAULT_TOOL_RISK_LEVEL: ToolRiskLevel = "low"
+# ---------------------------------------------------------------------------
+# Module-level constants (immutable)
+# ---------------------------------------------------------------------------
 
-STANDARD_TOP_LEVEL_KEYS = frozenset({"status", "message", "data", "error", "metadata"})
-STANDARD_METADATA_KEYS = frozenset(
+SUCCESS_STATUS: Final = "success"
+ERROR_STATUS: Final = "error"
+DEFAULT_TOOL_VERSION: Final[str] = "1.0.0"
+DEFAULT_TOOL_CATEGORY: Final[str] = "utils"
+DEFAULT_TOOL_RISK_LEVEL: Final[ToolRiskLevel] = "low"
+
+STANDARD_TOP_LEVEL_KEYS: Final[frozenset[str]] = frozenset(
+    {"status", "message", "data", "error", "metadata"}
+)
+STANDARD_METADATA_KEYS: Final[frozenset[str]] = frozenset(
     {
         "tool_name",
         "tool_version",
@@ -73,21 +84,33 @@ STANDARD_METADATA_KEYS = frozenset(
         "places_trade",
     }
 )
-SENSITIVE_KEY_PATTERN = re.compile(
-    r"(pass(word)?|api_?key|token|credential|secret|private_?key|authorization)",
-    re.IGNORECASE,
-)
-SENSITIVE_VALUE_PATTERN = re.compile(
-    r"(eyJ[A-Za-z0-9_\-=]+\.[A-Za-z0-9_\-=]+\.?[A-Za-z0-9_\-./+=]*)|([a-f0-9]{32,})",
-    re.IGNORECASE,
-)
-HIGH_CARDINALITY_LABEL_PATTERN = re.compile(
-    r"(^|_)(id|uuid|guid|email|account|user|session|token|request|correlation)($|_)",
-    re.IGNORECASE,
-)
-OHLC_COLUMNS = ("open", "high", "low", "close")
 
+OHLC_COLUMNS: Final[tuple[str, ...]] = ("open", "high", "low", "close")
+
+SENSITIVE_KEY_PATTERN: Final[re.Pattern[str]] = re.compile(
+    r"(pass(word)?|api_?key|token|credential|secret"
+    r"|private_?key|authorization)",
+    re.IGNORECASE,
+)
+SENSITIVE_VALUE_PATTERN: Final[re.Pattern[str]] = re.compile(
+    r"(eyJ[A-Za-z0-9_\-=]+\.[A-Za-z0-9_\-=]+\.?[A-Za-z0-9_\-./+=]*)"
+    r"|([a-f0-9]{32,})",
+    re.IGNORECASE,
+)
+HIGH_CARDINALITY_LABEL_PATTERN: Final[re.Pattern[str]] = re.compile(
+    r"(^|_)(id|uuid|guid|email|account|user|session|token"
+    r"|request|correlation)($|_)",
+    re.IGNORECASE,
+)
+
+# Type alias — keep StandardErrorPayload as the canonical name used by
+# callers who already import from errors.py directly.
 StandardErrorPayload = ErrorPayload
+
+
+# ---------------------------------------------------------------------------
+# TypedDict schemas
+# ---------------------------------------------------------------------------
 
 
 class StandardMetadata(TypedDict):
@@ -109,6 +132,27 @@ class StandardMetadata(TypedDict):
     writes_file: bool
     modifies_database: bool
     places_trade: bool
+
+
+# Contract alias — callers importing by the specified public name receive
+# the same type.
+ToolMetadata = StandardMetadata
+
+
+class ToolError(ValidationError):
+    """Standard tool-layer validation or execution error.
+
+    Use this at official AI tool boundaries when an expected failure must
+    be raised rather than returned as an envelope.  The ``code`` attribute
+    maps to an approved deterministic error code.
+
+    Args:
+        message: Human-readable error details.
+        code: Optional approved error code; defaults to
+            ``"TOOL_EXECUTION_FAILED"``.
+    """
+
+    code = "TOOL_EXECUTION_FAILED"
 
 
 class StandardResponse(TypedDict):
@@ -148,61 +192,15 @@ class StandardEnvelope(StandardResponse, total=False):
     validation_warnings: NotRequired[list[str]]
 
 
-class AlertDeduplicator:
-    """Bounded in-memory alert deduplicator for standard helper tests.
-
-    Use this when a caller needs deterministic repeated-alert suppression before
-    a future notification router exists. It is caller-owned, bounded, and has no
-    module-global cache.
-
-    Args:
-        window_seconds: Minimum seconds before the same key is allowed again.
-        max_entries: Maximum remembered keys.
-
-    Side effects:
-        Mutates only this instance's bounded cache.
-    """
-
-    def __init__(self, *, window_seconds: float, max_entries: int = 128) -> None:
-        """Initialize a bounded deduplication cache."""
-        if window_seconds < 0:
-            raise ValidationError("window_seconds must be non-negative.")
-        if max_entries <= 0:
-            raise ValidationError("max_entries must be greater than zero.")
-        self.window_seconds = float(window_seconds)
-        self.max_entries = int(max_entries)
-        self._seen: dict[str, float] = {}
-
-    def allow(self, key: str, *, now: float | None = None) -> bool:
-        """Return whether an alert key is currently allowed.
-
-        Args:
-            key: Stable alert fingerprint.
-            now: Optional monotonic timestamp for deterministic tests.
-
-        Returns:
-            ``True`` when the alert should be emitted, otherwise ``False``.
-
-        Side effects:
-            Updates this instance's bounded cache when an alert is allowed.
-        """
-        fingerprint = _validate_non_empty_string(key, "key")
-        current = time.monotonic() if now is None else float(now)
-        previous = self._seen.get(fingerprint)
-        if previous is not None and current - previous < self.window_seconds:
-            return False
-        if len(self._seen) >= self.max_entries and fingerprint not in self._seen:
-            oldest = min(self._seen, key=self._seen.__getitem__)
-            del self._seen[oldest]
-        self._seen[fingerprint] = current
-        return True
+# ---------------------------------------------------------------------------
+# Internal validation helpers
+# ---------------------------------------------------------------------------
 
 
 def _validate_non_empty_string(value: object, field_name: str) -> str:
     """Return a stripped string or raise a deterministic validation error."""
     if not isinstance(value, str) or not value.strip():
-        message = f"{field_name} must be a non-empty string."
-        raise ValidationError(message)
+        raise ValidationError(f"{field_name} must be a non-empty string.")  # noqa: EM102
     return value.strip()
 
 
@@ -210,7 +208,8 @@ def _sanitize_text(value: str) -> str:
     """Return text with secret-like values redacted."""
     text = SENSITIVE_VALUE_PATTERN.sub("[REDACTED]", value)
     return re.sub(
-        r"((?:pass(?:word)?|api_?key|token|credential|secret|authorization)\s*[:=]\s*)[^\s,;&'\"]+",
+        r"((?:pass(?:word)?|api_?key|token|credential|secret"
+        r"|authorization)\s*[:=]\s*)[^\s,;&'\"]+",
         r"\1[REDACTED]",
         text,
         flags=re.IGNORECASE,
@@ -228,7 +227,9 @@ def _sanitize_value(value: object) -> object:
     return value
 
 
-def _sanitize_mapping(payload: Mapping[str, object]) -> dict[str, object]:
+def _sanitize_mapping(
+    payload: Mapping[str, object],
+) -> dict[str, object]:
     """Return a mapping with sensitive keys and values redacted."""
     sanitized: dict[str, object] = {}
     for key, value in payload.items():
@@ -239,11 +240,137 @@ def _sanitize_mapping(payload: Mapping[str, object]) -> dict[str, object]:
     return sanitized
 
 
-def stable_identifier(payload: object, *, prefix: str = "id") -> str:
+def _validate_metadata(metadata: Mapping[str, object]) -> None:  # noqa: C901
+    """Validate all fields of a standard envelope metadata mapping.
+
+    Checks presence, absence of unknown keys, and correct types for every
+    metadata field including the four derived boolean fields.
+    """
+    keys = set(metadata.keys())
+    missing = STANDARD_METADATA_KEYS - keys
+    if missing:
+        raise ValidationError(f"metadata is missing keys: {sorted(missing)}")  # noqa: EM102
+    extra = keys - STANDARD_METADATA_KEYS
+    if extra:
+        raise ValidationError(f"metadata has unexpected keys: {sorted(extra)}")  # noqa: EM102
+    for key in ("tool_name", "tool_version", "tool_category"):
+        if not isinstance(metadata[key], str) or not metadata[key]:
+            raise ValidationError(f"metadata.{key} must be a non-empty string.")  # noqa: EM102
+    if metadata["tool_risk_level"] not in {"low", "medium", "high", "critical"}:
+        raise ValidationError("metadata.tool_risk_level is invalid.")
+    if metadata["request_id"] is not None and not isinstance(
+        metadata["request_id"], str
+    ):
+        raise ValidationError("metadata.request_id must be a string or None.")
+    if not isinstance(metadata["execution_ms"], int | float):
+        raise ValidationError("metadata.execution_ms must be numeric.")
+    if float(metadata["execution_ms"]) < 0:
+        raise ValidationError("metadata.execution_ms must be non-negative.")
+    bool_fields = (
+        "reads",
+        "writes",
+        "updates",
+        "deletes",
+        "trades",
+        "requires_network",
+        "read_only",
+        "writes_file",
+        "modifies_database",
+        "places_trade",
+    )
+    for key in bool_fields:
+        if not isinstance(metadata[key], bool):
+            raise ValidationError(f"metadata.{key} must be a boolean.")  # noqa: EM102
+
+
+def _validate_error_payload(error: object) -> None:
+    """Validate a standard envelope error payload mapping."""
+    if not isinstance(error, Mapping):
+        raise ValidationError("error responses must include an error mapping.")
+    validate_error_payload(error)
+
+
+# ---------------------------------------------------------------------------
+# Deduplication helper
+# ---------------------------------------------------------------------------
+
+
+class AlertDeduplicator:
+    """Bounded in-memory alert deduplicator for standard helper tests.
+
+    Use this when a caller needs deterministic repeated-alert suppression
+    before a future notification router exists. It is caller-owned, bounded,
+    and has no module-global cache.
+
+    Args:
+        window_seconds: Minimum seconds before the same key is allowed again.
+        max_entries: Maximum remembered keys.
+
+    Side effects:
+        Mutates only this instance's bounded cache.
+    """
+
+    def __init__(
+        self,
+        *,
+        window_seconds: float,
+        max_entries: int = 128,
+    ) -> None:
+        """Initialize a bounded deduplication cache.
+
+        Args:
+            window_seconds: Suppression window in seconds.
+            max_entries: Maximum number of distinct keys retained.
+        """
+        if window_seconds < 0:
+            raise ValidationError("window_seconds must be non-negative.")
+        if max_entries <= 0:
+            raise ValidationError("max_entries must be greater than zero.")
+        self.window_seconds = float(window_seconds)
+        self.max_entries = int(max_entries)
+        self._seen: dict[str, float] = {}
+
+    def allow(self, key: str, *, now: float | None = None) -> bool:
+        """Return whether an alert key is currently allowed.
+
+        Args:
+            key: Stable alert fingerprint.
+            now: Optional monotonic timestamp for deterministic tests.
+
+        Returns:
+            ``True`` when the alert should be emitted, otherwise
+            ``False``.
+
+        Side effects:
+            Updates this instance's bounded cache when an alert is
+            allowed.
+        """
+        fingerprint = _validate_non_empty_string(key, "key")
+        current = time.monotonic() if now is None else float(now)
+        previous = self._seen.get(fingerprint)
+        if previous is not None and current - previous < self.window_seconds:
+            return False
+        if len(self._seen) >= self.max_entries and fingerprint not in self._seen:
+            oldest = min(self._seen, key=self._seen.__getitem__)
+            del self._seen[oldest]
+        self._seen[fingerprint] = current
+        return True
+
+
+# ---------------------------------------------------------------------------
+# Core utility functions
+# ---------------------------------------------------------------------------
+
+
+def stable_identifier(
+    payload: object,
+    *,
+    prefix: str = "id",
+) -> str:
     """Return a deterministic identifier for JSON-serializable payloads.
 
-    Use this for reproducible fingerprints, event IDs, and tests that need
-    deterministic ID behavior without randomness.
+    Use this for reproducible fingerprints, event IDs, and tests that
+    need deterministic ID behavior without randomness.
 
     Args:
         payload: JSON-serializable fingerprint material.
@@ -293,8 +420,9 @@ def build_data_quality_issue(
 ) -> DataQualityIssue:
     """Build a bounded data-quality diagnostic issue.
 
-    Use this for diagnostic reporting only. It does not repair, clean, resample,
-    persist, or enrich market data; those workflows belong to ``tools.data``.
+    Use this for diagnostic reporting only. It does not repair, clean,
+    resample, persist, or enrich market data; those workflows belong to
+    ``tools.data``.
 
     Args:
         code: Stable issue code.
@@ -306,8 +434,8 @@ def build_data_quality_issue(
         max_samples: Maximum retained sample count.
 
     Returns:
-        Data-quality issue with code, severity, message, column, row count, and
-        bounded samples.
+        Data-quality issue with code, severity, message, column, row
+        count, and bounded samples.
 
     Side effects:
         None.
@@ -339,14 +467,14 @@ def validate_ohlcv_records(  # noqa: C901, PLR0912
 ) -> list[DataQualityIssue]:
     """Return bounded OHLCV data-quality diagnostics for record mappings.
 
-    Use this as a standard diagnostic helper before specialized data modules
-    exist. It reports issues only; it never repairs, cleans, resamples, or
-    persists data.
+    Use this as a standard diagnostic helper before specialized data
+    modules exist. It reports issues only; it never repairs, cleans,
+    resamples, or persists data.
 
     Args:
         records: Row-like OHLCV records.
-        expected_symbol: Optional expected symbol to verify when a symbol column
-            exists.
+        expected_symbol: Optional expected symbol to verify when a symbol
+            column exists.
         issue_limit: Maximum number of issue groups returned.
         sample_limit: Maximum samples retained per issue.
 
@@ -414,7 +542,11 @@ def validate_ohlcv_records(  # noqa: C901, PLR0912
 
         for column in OHLC_COLUMNS:
             value = record.get(column)
-            sample = {"row_index": row_index, "column": column, "value": value}
+            sample = {
+                "row_index": row_index,
+                "column": column,
+                "value": value,
+            }
             if not isinstance(value, int | float):
                 add_issue(
                     code="NON_NUMERIC_PRICE",
@@ -460,9 +592,13 @@ def validate_ohlcv_records(  # noqa: C901, PLR0912
                     add_issue(
                         code="LOW_ABOVE_HIGH",
                         severity="critical",
-                        message="Low price must not be greater than high price.",
+                        message=("Low price must not be greater than high price."),
                         column="low",
-                        sample={"row_index": row_index, "low": low, "high": high},
+                        sample={
+                            "row_index": row_index,
+                            "low": low,
+                            "high": high,
+                        },
                     )
                 for column in OHLC_COLUMNS:
                     value = record.get(column)
@@ -472,7 +608,7 @@ def validate_ohlcv_records(  # noqa: C901, PLR0912
                             add_issue(
                                 code="OHLC_OUTSIDE_HIGH_LOW",
                                 severity="critical",
-                                message="OHLC value must stay within high/low range.",
+                                message=("OHLC value must stay within high/low range."),
                                 column=column,
                                 sample={
                                     "row_index": row_index,
@@ -487,7 +623,7 @@ def validate_ohlcv_records(  # noqa: C901, PLR0912
             add_issue(
                 code="SYMBOL_MISMATCH",
                 severity="warning",
-                message="Record symbol does not match expected symbol.",
+                message=("Record symbol does not match expected symbol."),
                 column="symbol",
                 sample={
                     "row_index": row_index,
@@ -497,6 +633,11 @@ def validate_ohlcv_records(  # noqa: C901, PLR0912
             )
 
     return list(issue_map.values())[:issue_limit]
+
+
+# ---------------------------------------------------------------------------
+# Metadata builder
+# ---------------------------------------------------------------------------
 
 
 def build_metadata(
@@ -514,18 +655,19 @@ def build_metadata(
     deletes: bool = False,
     trades: bool = False,
     requires_network: bool = False,
+    writes_file: bool = False,
 ) -> StandardMetadata:
     """Build metadata for a standard HaruQuant tool envelope.
 
-    Use this from official AI tools after validation and before returning a
-    standard success or error envelope.
+    Use this from official AI tools after validation and before returning
+    a standard success or error envelope.
 
     Args:
         tool_name: Stable public tool name.
         start_time: Optional ``time.perf_counter()`` start value.
-        execution_ms: Optional explicit elapsed milliseconds for deterministic
-            tests. If omitted, ``start_time`` is used; if both are omitted,
-            ``0.0`` is used.
+        execution_ms: Optional explicit elapsed milliseconds for
+            deterministic tests. If omitted, ``start_time`` is used; if
+            both are omitted, ``0.0`` is used.
         tool_version: Stable tool version.
         tool_category: Tool category such as ``utils`` or ``data``.
         tool_risk_level: Risk level: ``low``, ``medium``, ``high``, or
@@ -537,6 +679,7 @@ def build_metadata(
         deletes: Whether the tool deletes state.
         trades: Whether the tool can trade or mutate trading state.
         requires_network: Whether the tool requires network access.
+        writes_file: Whether the tool writes to the filesystem.
 
     Returns:
         Complete standard metadata mapping.
@@ -574,12 +717,15 @@ def build_metadata(
         "trades": bool(trades),
         "requires_network": bool(requires_network),
         "read_only": bool(reads and not writes and not updates and not deletes),
-        "writes_file": bool(
-            name in {"generate_risk_report"} or name.endswith("_report")
-        ),
+        "writes_file": bool(writes_file),
         "modifies_database": bool(writes or updates or deletes),
         "places_trade": bool(trades),
     }
+
+
+# ---------------------------------------------------------------------------
+# Response builders
+# ---------------------------------------------------------------------------
 
 
 def success_response(
@@ -610,7 +756,6 @@ def success_response(
         "error": None,
         "metadata": metadata,
     }
-    validate_standard_response(response)
     project_logger.info(
         "standard tool response built",
         extra={
@@ -619,6 +764,10 @@ def success_response(
         },
     )
     return response
+
+
+# Contract alias matching the specified public name.
+build_success_response = success_response
 
 
 def error_response(
@@ -630,8 +779,9 @@ def error_response(
 ) -> StandardResponse:
     """Build a standard error response envelope.
 
-    Use this for expected validation failures and sanitized execution failures
-    in official AI tools. This helper does not raise for valid error inputs.
+    Use this for expected validation failures and sanitized execution
+    failures in official AI tools. This helper does not raise for valid
+    error inputs.
 
     Args:
         message: Human-readable error summary.
@@ -640,7 +790,8 @@ def error_response(
         metadata: Complete standard metadata mapping.
 
     Returns:
-        Standard response with ``status="error"`` and structured error payload.
+        Standard response with ``status="error"`` and structured error
+        payload.
 
     Side effects:
         Logs a structured error event.
@@ -656,7 +807,6 @@ def error_response(
         },
         "metadata": metadata,
     }
-    validate_standard_response(response)
     project_logger.warning(
         "standard tool error response built",
         extra={
@@ -667,6 +817,10 @@ def error_response(
     return response
 
 
+# Contract alias matching the specified public name.
+build_error_response = error_response
+
+
 def response_from_exception(
     *,
     exception: Exception,
@@ -675,9 +829,10 @@ def response_from_exception(
 ) -> StandardResponse:
     """Map an exception with an optional ``code`` attribute to an error envelope.
 
-    Use this in official tools' ``except`` blocks after logging/capturing the
-    original exception. Details are limited to the exception type and message;
-    callers must avoid putting secrets in exception messages.
+    Use this in official tools' ``except`` blocks after logging or
+    capturing the original exception. Details are limited to the
+    exception type and message; callers must avoid putting secrets in
+    exception messages.
 
     Args:
         exception: Exception to map.
@@ -714,8 +869,8 @@ def circuit_open_response(
 ) -> StandardResponse:
     """Return a deterministic fail-fast circuit-open error envelope.
 
-    Use this when a caller detects an open circuit and must block work before
-    side effects. It does not retry or execute provider calls.
+    Use this when a caller detects an open circuit and must block work
+    before side effects. It does not retry or execute provider calls.
 
     Args:
         metadata: Complete standard metadata mapping.
@@ -738,6 +893,64 @@ def circuit_open_response(
     )
 
 
+# ---------------------------------------------------------------------------
+# Validation
+# ---------------------------------------------------------------------------
+
+
+def validate_standard_response(
+    response: Mapping[str, object],
+) -> None:
+    """Validate a standard HaruQuant tool response envelope.
+
+    Use this in tests, official tool wrappers, and usage examples to fail
+    fast when an envelope violates the public contract.
+
+    Args:
+        response: Mapping to validate.
+
+    Returns:
+        ``None`` when the response is valid.
+
+    Raises:
+        ValidationError: If top-level keys, metadata, status, message,
+            or error fields are malformed.
+
+    Side effects:
+        None.
+    """
+    keys = set(response.keys())
+    missing = STANDARD_TOP_LEVEL_KEYS - keys
+    if missing:
+        raise ValidationError(f"standard response is missing keys: {sorted(missing)}")  # noqa: EM102
+    extra = keys - STANDARD_TOP_LEVEL_KEYS
+    if extra:
+        raise ValidationError(f"standard response has unexpected keys: {sorted(extra)}")  # noqa: EM102
+
+    status = response["status"]
+    if status not in {SUCCESS_STATUS, ERROR_STATUS}:
+        raise ValidationError("status must be either success or error.")
+
+    if not isinstance(response["message"], str):
+        raise ValidationError("message must be a string.")
+
+    metadata = response["metadata"]
+    if not isinstance(metadata, Mapping):
+        raise ValidationError("metadata must be a mapping.")
+    _validate_metadata(metadata)
+
+    error = response["error"]
+    if status == SUCCESS_STATUS and error is not None:
+        raise ValidationError("success responses must set error to None.")
+    if status == ERROR_STATUS:
+        _validate_error_payload(error)
+
+
+# ---------------------------------------------------------------------------
+# Error events
+# ---------------------------------------------------------------------------
+
+
 def build_error_event(
     *,
     code: str,
@@ -748,8 +961,8 @@ def build_error_event(
 ) -> ErrorEvent:
     """Build a sanitized standard error event.
 
-    Use this before routing errors to logs, alerting, or future event buses.
-    Sensitive values are redacted from details and metadata.
+    Use this before routing errors to logs, alerting, or future event
+    buses. Sensitive values are redacted from details and metadata.
 
     Args:
         code: Stable error code.
@@ -783,6 +996,11 @@ def build_error_event(
     }
 
 
+# ---------------------------------------------------------------------------
+# Metric label validation
+# ---------------------------------------------------------------------------
+
+
 def validate_metric_labels(
     labels: Mapping[str, object],
     *,
@@ -792,16 +1010,18 @@ def validate_metric_labels(
 ) -> dict[str, str]:
     """Validate and optionally normalize safe metric labels.
 
-    Use this before emitting metrics or creating dashboard variables. Sensitive
-    labels are always rejected. High-cardinality labels are rejected unless
-    deterministic normalization is explicitly requested.
+    Use this before emitting metrics or creating dashboard variables.
+    Sensitive labels are always rejected. High-cardinality labels are
+    rejected unless deterministic normalization is explicitly requested.
 
     Args:
         labels: Metric label mapping.
         max_labels: Maximum label count.
-        max_value_length: Maximum value length before rejection or normalization.
-        normalize_high_cardinality: Whether high-cardinality labels should be
-            converted to stable fingerprints instead of rejected.
+        max_value_length: Maximum value length before rejection or
+            normalization.
+        normalize_high_cardinality: Whether high-cardinality labels
+            should be converted to stable fingerprints instead of
+            rejected.
 
     Returns:
         Safe string label mapping.
@@ -839,12 +1059,21 @@ def validate_metric_labels(
     return safe_labels
 
 
-def is_official_tool_allowed(tool_name: str, approved_tools: set[str]) -> bool:
+# ---------------------------------------------------------------------------
+# Tool registry helper
+# ---------------------------------------------------------------------------
+
+
+def is_official_tool_allowed(
+    tool_name: str,
+    approved_tools: set[str],
+) -> bool:
     """Return whether an official tool is approved for attachment.
 
-    Use this in agent attachment checks before exposing a tool. It only answers
-    whether a public tool name is on the approved set; it does not execute tools
-    or make trading, risk, broker, portfolio, or strategy decisions.
+    Use this in agent attachment checks before exposing a tool. It only
+    answers whether a public tool name is on the approved set; it does
+    not execute tools or make trading, risk, broker, portfolio, or
+    strategy decisions.
 
     Args:
         tool_name: Public tool name.
@@ -859,100 +1088,16 @@ def is_official_tool_allowed(tool_name: str, approved_tools: set[str]) -> bool:
     return _validate_non_empty_string(tool_name, "tool_name") in approved_tools
 
 
-def validate_standard_response(response: Mapping[str, object]) -> None:
-    """Validate a standard HaruQuant tool response envelope.
-
-    Use this in tests, official tool wrappers, and usage examples to fail fast
-    when an envelope violates the public contract.
-
-    Args:
-        response: Mapping to validate.
-
-    Returns:
-        ``None`` when the response is valid.
-
-    Raises:
-        ValidationError: If top-level keys, metadata, status, message, or error
-            fields are malformed.
-
-    Side effects:
-        None.
-    """
-    keys = set(response.keys())
-    missing = STANDARD_TOP_LEVEL_KEYS - keys
-    if missing:
-        message = f"standard response is missing keys: {sorted(missing)}"
-        raise ValidationError(message)
-    extra = keys - STANDARD_TOP_LEVEL_KEYS
-    if extra:
-        message = f"standard response has unexpected keys: {sorted(extra)}"
-        raise ValidationError(message)
-
-    status = response["status"]
-    if status not in {SUCCESS_STATUS, ERROR_STATUS}:
-        raise ValidationError("status must be either success or error.")
-
-    if not isinstance(response["message"], str):
-        raise ValidationError("message must be a string.")
-
-    metadata = response["metadata"]
-    if not isinstance(metadata, Mapping):
-        raise ValidationError("metadata must be a mapping.")
-    _validate_metadata(metadata)
-
-    error = response["error"]
-    if status == SUCCESS_STATUS and error is not None:
-        raise ValidationError("success responses must set error to None.")
-    if status == ERROR_STATUS:
-        _validate_error_payload(error)
-
-
-def _validate_metadata(metadata: Mapping[str, object]) -> None:  # noqa: C901
-    """Validate standard envelope metadata."""
-    keys = set(metadata.keys())
-    missing = STANDARD_METADATA_KEYS - keys
-    if missing:
-        message = f"metadata is missing keys: {sorted(missing)}"
-        raise ValidationError(message)
-    extra = keys - STANDARD_METADATA_KEYS
-    if extra:
-        message = f"metadata has unexpected keys: {sorted(extra)}"
-        raise ValidationError(message)
-
-    for key in ("tool_name", "tool_version", "tool_category"):
-        if not isinstance(metadata[key], str) or not metadata[key]:
-            message = f"metadata.{key} must be a non-empty string."
-            raise ValidationError(message)
-
-    if metadata["tool_risk_level"] not in {"low", "medium", "high", "critical"}:
-        raise ValidationError("metadata.tool_risk_level is invalid.")
-    if metadata["request_id"] is not None and not isinstance(
-        metadata["request_id"],
-        str,
-    ):
-        raise ValidationError("metadata.request_id must be a string or None.")
-    if not isinstance(metadata["execution_ms"], int | float):
-        raise ValidationError("metadata.execution_ms must be numeric.")
-    if float(metadata["execution_ms"]) < 0:
-        raise ValidationError("metadata.execution_ms must be non-negative.")
-    for key in ("reads", "writes", "updates", "deletes", "trades", "requires_network"):
-        if not isinstance(metadata[key], bool):
-            message = f"metadata.{key} must be a boolean."
-            raise ValidationError(message)
-
-
-def _validate_error_payload(error: object) -> None:
-    """Validate standard envelope error payload."""
-    if not isinstance(error, Mapping):
-        raise ValidationError("error responses must include an error mapping.")
-    validate_error_payload(error)
+# ---------------------------------------------------------------------------
+# Canonical serialization
+# ---------------------------------------------------------------------------
 
 
 def canonical_json(payload: object) -> str:
     """Serialize a payload into deterministic canonical JSON.
 
-    Use this for reproducible tests, idempotency material, signatures, and
-    diagnostics that need stable key ordering.
+    Use this for reproducible tests, idempotency material, signatures,
+    and diagnostics that need stable key ordering.
 
     Args:
         payload: JSON-serializable payload.
@@ -975,5 +1120,6 @@ def canonical_json(payload: object) -> str:
             allow_nan=False,
         )
     except (TypeError, ValueError) as exc:
-        message = f"payload must be canonical JSON serializable: {exc}"
-        raise ValidationError(message) from exc
+        raise ValidationError(
+            f"payload must be canonical JSON serializable: {exc}"  # noqa: EM102
+        ) from exc

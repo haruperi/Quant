@@ -14,14 +14,14 @@ import math
 from collections.abc import Iterable, Mapping, Sequence
 from datetime import date, datetime
 from itertools import product
-from typing import Any, TypeVar, cast
+from typing import Any, Final, TypeVar, cast
 
 from app.utils.errors import ConfigurationError, ValidationError
 from app.utils.normalization import format_utc_timestamp
 
 T = TypeVar("T")
-OHLC_COLUMNS = ("open", "high", "low", "close")
-OHLCV_COLUMNS = (*OHLC_COLUMNS, "volume")
+OHLC_COLUMNS: Final[tuple[str, ...]] = ("open", "high", "low", "close")
+OHLCV_COLUMNS: Final[tuple[str, ...]] = (*OHLC_COLUMNS, "volume")
 
 
 def _pandas() -> Any:
@@ -153,7 +153,23 @@ def bar_to_record(
     *,
     timestamp_field: str = "timestamp",
 ) -> dict[str, object]:
-    """Convert a bar-like mapping into a JSON-safe record."""
+    """Convert a bar-like mapping into a JSON-safe record.
+
+    Args:
+        bar: Bar-like mapping with OHLCV and optional timestamp fields.
+        timestamp_field: Name of the timestamp field to normalize as a
+            UTC ``Z`` ISO string. Defaults to ``"timestamp"``.
+
+    Returns:
+        JSON-safe record dict with the timestamp field normalized.
+
+    Raises:
+        ValidationError: If ``bar`` is not a mapping or if the timestamp
+            field value is not datetime-like.
+
+    Side effects:
+        None. The input mapping is not mutated.
+    """
     if not isinstance(bar, Mapping):
         raise ValidationError("bar must be a mapping.", code="INVALID_INPUT")
     record = {str(key): _json_safe(value) for key, value in bar.items()}
@@ -167,8 +183,42 @@ def bar_to_record(
     return record
 
 
+def bars_to_records(
+    bars: Iterable[Mapping[str, object]],
+    *,
+    timestamp_field: str = "timestamp",
+) -> list[dict[str, object]]:
+    """Convert an iterable of bar-like mappings to JSON-safe records.
+
+    Args:
+        bars: Iterable of bar-like mappings.
+        timestamp_field: Timestamp field name to normalize in each bar.
+
+    Returns:
+        List of JSON-safe record dicts.
+
+    Side effects:
+        None.
+    """
+    return [bar_to_record(bar, timestamp_field=timestamp_field) for bar in bars]
+
+
 def chunked(values: Sequence[T], *, size: int) -> list[list[T]]:
-    """Return deterministic chunks from a sequence."""
+    """Return deterministic chunks from a sequence.
+
+    Args:
+        values: Sequence to split into chunks.
+        size: Maximum number of elements per chunk. Must be positive.
+
+    Returns:
+        List of sub-lists, each containing at most ``size`` elements.
+
+    Raises:
+        ValidationError: If ``size`` is not positive.
+
+    Side effects:
+        None.
+    """
     if size <= 0:
         raise ValidationError("size must be greater than zero.", code="INVALID_INPUT")
     return [list(values[index : index + size]) for index in range(0, len(values), size)]
@@ -177,7 +227,22 @@ def chunked(values: Sequence[T], *, size: int) -> list[list[T]]:
 def parameter_combinations(
     grid: Mapping[str, Sequence[object]],
 ) -> list[dict[str, object]]:
-    """Return deterministic parameter combinations from a parameter grid."""
+    """Return deterministic parameter combinations from a parameter grid.
+
+    Args:
+        grid: Mapping of parameter names to their candidate value sequences.
+            Each sequence must be non-empty.
+
+    Returns:
+        List of dicts, each representing one parameter combination. Returns
+        ``[{}]`` when the grid is empty.
+
+    Raises:
+        ValidationError: If any parameter sequence is empty or not a sequence.
+
+    Side effects:
+        None.
+    """
     if not grid:
         return [{}]
     keys = list(grid)
@@ -198,7 +263,27 @@ def compare_dataframes(
     columns: Sequence[str] | None = None,
     tolerance: float = 0.0,
 ) -> dict[str, object]:
-    """Compare two dataframes with deterministic index alignment."""
+    """Compare two dataframes with deterministic index alignment.
+
+    Args:
+        left: Left pandas DataFrame.
+        right: Right pandas DataFrame.
+        columns: Optional subset of columns to compare. Defaults to all.
+        tolerance: Absolute numeric tolerance for float comparisons.
+            Defaults to 0.0 (exact equality).
+
+    Returns:
+        Mapping with ``equal`` flag, ``row_count``, ``column_count``, and
+        a bounded ``differences`` list of ``{index, column, left, right}``
+        records.
+
+    Raises:
+        ValidationError: If inputs are not DataFrames, indexes don't align,
+            columns are missing, or ``tolerance`` is negative.
+
+    Side effects:
+        None.
+    """
     if tolerance < 0:
         raise ValidationError("tolerance must be non-negative.", code="INVALID_INPUT")
     left_frame = _require_dataframe(left, "left")
@@ -268,3 +353,9 @@ def dataframe_columns(dataframe: object) -> list[str]:
 def iter_dataframe_records(dataframe: object) -> Iterable[dict[str, object]]:
     """Yield JSON-safe dataframe records without mutating the input."""
     yield from serialize_dataframe_records(dataframe)
+
+
+# ── Contract aliases (required public names) ──────────────────────────────────
+align_dataframe_time_index = align_dataframe_datetime
+chunk_sequence = chunked
+generate_parameter_combinations = parameter_combinations

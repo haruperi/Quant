@@ -20,16 +20,20 @@ from __future__ import annotations
 
 import re
 import uuid
-from typing import NoReturn
+from typing import Final, NoReturn
 
 from app.utils.errors import ValidationError
 from app.utils.logger import logger
 
-DEFAULT_VERSION = "1.0.0"
-ID_PREFIXES = frozenset({"id", "req", "wf", "corr", "cause", "event", "idem"})
-_PREFIX_PATTERN = re.compile(r"^[a-z][a-z0-9-]{0,15}$")
-_ID_PATTERN = re.compile(r"^[a-z][a-z0-9-]{0,15}_[a-f0-9]{32}$")
-_VERSION_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$")
+DEFAULT_VERSION: Final[str] = "1.0.0"
+ID_PREFIXES: Final[frozenset[str]] = frozenset(
+    {"id", "req", "wf", "corr", "cause", "event", "idem"}
+)
+_PREFIX_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[a-z][a-z0-9-]{0,15}$")
+_ID_PATTERN: Final[re.Pattern[str]] = re.compile(r"^[a-z][a-z0-9-]{0,15}_[a-f0-9]{32}$")
+_VERSION_PATTERN: Final[re.Pattern[str]] = re.compile(
+    r"^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$"
+)
 
 
 def _raise_validation(message: str, *, field_name: str) -> NoReturn:
